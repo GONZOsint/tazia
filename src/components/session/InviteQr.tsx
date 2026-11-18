@@ -22,8 +22,12 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
     let cancelled = false;
     setError(false);
     setDataUrl(null);
-    const dark = theme === 'dark' ? '#f2f2ee' : '#0a0d06';
-    const light = theme === 'dark' ? '#181818' : '#ffffff';
+    const cs = getComputedStyle(document.documentElement);
+    const ink = cs.getPropertyValue('--color-ink').trim() || '#121211';
+    const raised = cs.getPropertyValue('--color-surface-raised').trim() || '#efede8';
+    /* High-contrast modules: dark ink on raised/white for reliable scanning */
+    const dark = theme === 'dark' ? ink : '#0a0d06';
+    const light = theme === 'dark' ? raised : '#ffffff';
     void import('qrcode')
       .then((QRCode) =>
         QRCode.toDataURL(inviteUrl, {
@@ -59,12 +63,14 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
     const r = el.getBoundingClientRect();
     const nx = (e.clientX - r.left) / r.width - 0.5;
     const ny = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transition = 'none';
     el.style.transform = `rotateX(${-ny * 12}deg) rotateY(${nx * 12}deg) scale(1.02)`;
   };
 
   const onPointerLeave = () => {
     const el = surfaceRef.current;
     if (!el) return;
+    el.style.transition = '';
     el.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
   };
 

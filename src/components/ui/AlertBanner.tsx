@@ -42,7 +42,7 @@ export function AlertBanner({
   return (
     <div
       role={role}
-      className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-xs font-medium sm:text-sm ${wrap} ${className}`}
+      className={`flex items-start gap-2.5 rounded-[var(--radius-panel)] border px-4 py-3 text-xs font-medium sm:text-sm ${wrap} ${className}`}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       <div className="min-w-0 flex-1">{children}</div>

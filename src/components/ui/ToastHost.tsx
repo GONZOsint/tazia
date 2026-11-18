@@ -6,9 +6,8 @@ import {
   useRef,
   useState,
   type ReactNode,
-  type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, type PanInfo } from 'motion/react';
 import { AlertBanner } from './AlertBanner';
 import { DUR, EASE } from '../../motion/tokens';
 
@@ -63,71 +62,27 @@ function ToastCard({
   item: ToastItem;
   onDismiss: (id: string) => void;
 }) {
-  const dragRef = useRef({
-    active: false,
-    startX: 0,
-    startY: 0,
-    dx: 0,
-    dy: 0,
-  });
-  const elRef = useRef<HTMLDivElement>(null);
-
-  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const d = dragRef.current;
-    d.active = true;
-    d.startX = e.clientX;
-    d.startY = e.clientY;
-    d.dx = 0;
-    d.dy = 0;
-    elRef.current?.setPointerCapture(e.pointerId);
-  };
-
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const d = dragRef.current;
-    if (!d.active || !elRef.current) return;
-    d.dx = e.clientX - d.startX;
-    d.dy = Math.min(0, e.clientY - d.startY);
-    const dist = Math.hypot(d.dx, d.dy);
-    elRef.current.style.transition = 'none';
-    elRef.current.style.transform = `translate(${d.dx}px, ${d.dy}px)`;
-    elRef.current.style.opacity = `${Math.max(0.25, 1 - dist / 180)}`;
-  };
-
-  const onPointerUp = () => {
-    const d = dragRef.current;
-    if (!d.active || !elRef.current) return;
-    d.active = false;
-    const el = elRef.current;
-    if (d.dx > 85 || d.dy < -45) {
-      el.style.transition = 'transform 220ms cubic-bezier(0.4, 0, 1, 1), opacity 200ms ease';
-      el.style.transform = d.dy < -45 ? 'translate(0, -90px)' : 'translate(260px, 0)';
-      el.style.opacity = '0';
-      window.setTimeout(() => onDismiss(item.id), 220);
-    } else {
-      el.style.transition =
-        'transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease';
-      el.style.transform = 'translate(0, 0)';
-      el.style.opacity = '1';
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.x > 85 || info.offset.y < -45) {
+      onDismiss(item.id);
     }
-    d.dx = 0;
-    d.dy = 0;
   };
 
   return (
     <motion.div
-      ref={elRef}
+      layout
       initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)', x: 0 }}
+      exit={{ opacity: 0, y: 8, scale: 0.96, transition: { duration: DUR.micro, ease: EASE.exit } }}
       transition={{ duration: DUR.switch, ease: EASE.outExpo }}
+      drag
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      dragElastic={0.72}
+      onDragEnd={onDragEnd}
       className="pointer-events-auto tazia-toast-card"
       style={{ ['--toast-ttl' as string]: `${item.durationMs}ms` }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
     >
-      <AlertBanner tone={item.tone} role="status" className="w-full shadow-md">
+      <AlertBanner tone={item.tone} role="status" className="w-full">
         <button
           type="button"
           className="w-full text-left"
@@ -194,7 +149,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         className="pointer-events-none fixed inset-x-0 bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-[420px] flex-col gap-2 px-4 md:bottom-6"
         aria-live="polite"
-        aria-relevant="additions"
+        aria-relevant="additions removals"
       >
         <AnimatePresence initial={false}>
           {items.map((item) => (

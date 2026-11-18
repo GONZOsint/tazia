@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, Wrench } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
+import { DUR, EASE } from '../../motion/tokens';
 
 const LS_KEY = 'tazia:turn-config';
 
@@ -120,6 +121,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: DUR.medium, ease: EASE.outExpo }}
             className="overflow-hidden"
           >
             <div className="space-y-3 pt-3">
@@ -151,7 +153,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                       value={config.url}
                       onChange={(e) => update({ url: e.target.value })}
                       placeholder="turn:turn.example.com:3478"
-                      className="mt-1 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                      className="input-base mt-1"
                     />
                   </div>
                   <div>
@@ -162,7 +164,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                       id="turn-user"
                       value={config.username}
                       onChange={(e) => update({ username: e.target.value })}
-                      className="mt-1 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                      className="input-base mt-1"
                     />
                   </div>
                   <div>
@@ -174,7 +176,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                       type="password"
                       value={config.credential}
                       onChange={(e) => update({ credential: e.target.value })}
-                      className="mt-1 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                      className="input-base mt-1"
                     />
                   </div>
 

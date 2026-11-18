@@ -1,34 +1,46 @@
 # Protocolo `agora-forum-v1`
 
-Wire format del foro P2P sobre Trystero 0.27 (Nostr signaling + WebRTC).
+Wire format del foro P2P sobre Trystero 0.27 (señalización Nostr + WebRTC).
 
 ## Constantes
 
 | Nombre | Valor |
 | --- | --- |
 | `PROTOCOL_NAME` | `agora-forum-v1` |
-| `protocolVersion` | `1` |
+| `PROTOCOL_VERSION` | `1` |
 | `APP_ID` | `tazia.app` |
 | `MAX_USERS` | 48 |
 | `MAX_BODY_CHARS` | 8000 |
 | `MAX_TITLE_CHARS` | 200 |
+| `MAX_ALIAS_CHARS` | 40 |
+| `MAX_DM_BODY_CHARS` | 4000 |
 | `MAX_SYNC_MESSAGES` | 500 |
+| `MAX_SYNC_TOTAL_BYTES` | 2 MB |
 | `MAX_PUBLISH_PER_MINUTE` | 30 |
 | `MAX_SYNC_ANSWERS_PER_MINUTE` | 12 |
-| `CLOCK_SKEW_MS` | 24 h |
+| `LIVE_CLOCK_SKEW_MS` | ±5 min (mensajes en vivo) |
+| `SYNC_CLOCK_SKEW_MS` | ±24 h (snapshot histórico) |
 
 Versiones distintas de `1` se **rechazan**.
+
+Límite de UI (no del wire): hasta **5** zonas concurrentes (`MAX_ROOMS` en `useRoomManager`).
 
 ## Canales Trystero
 
 | Canal | Tipo | Uso |
 | --- | --- | --- |
-| `forumMsg` | `makeAction` (mensaje) | Publicación en vivo |
+| `forumMsg` | `makeAction` | Publicación en vivo (hilos / respuestas) |
+| `directMsg` | `makeAction` | Susurros (DM) a un `target` |
 | `forumSync` | `makeAction(..., { kind: 'request' })` | Snapshot RPC para late joiners |
-| `presence` | `makeUserState` | Alias + pubkey de firma |
+| `presence` | `makeUserState` | Alias + pubkey de firma (+ X25519 opcional) |
 
-Zona (API Trystero `roomId`): `joinRoom({ appId, password, identity: 'none', maxUsers }, roomId)`.
-La UI permite hasta 5 zonas concurrentes (`useRoomManager`); cada una es un `joinP2pRoom` aislado.
+Zona (API Trystero `roomId`):
+
+```ts
+joinRoom({ appId, password, identity: 'none', maxUsers }, roomId)
+```
+
+Cada zona de la UI es un `joinP2pRoom` aislado.
 
 ## Presencia
 
@@ -68,16 +80,16 @@ Orden fijo (JSON array), **sin** `sig`:
 [protocolVersion, msgId, type, threadId, parentMsgId, title, body, createdAtMs, authorUserId]
 ```
 
-UTF-8 → `crypto.subtle.sign({ name: 'Ed25519' }, …)`.
+UTF-8 → firma Ed25519 (Web Crypto `SubtleCrypto` si hay soporte nativo; si no, `@noble/ed25519`).
 
 ### Validación
 
 - Campos tipados y límites de tamaño.
-- `|now - createdAtMs| ≤ CLOCK_SKEW_MS` (si no, descartar).
+- Reloj: `|now - createdAtMs| ≤ LIVE_CLOCK_SKEW_MS` en vivo; `≤ SYNC_CLOCK_SKEW_MS` en sync. Si no, descartar.
 - **En vivo:** `authorUserId === userId` del peer Trystero **y** firma válida frente a la pubkey conocida.
 - **Sync:** firma válida frente a pubkey de presencia/cache; si falta clave o falla verify → descartar (incrementa contador de rechazos).
 - Rate-limit: > `MAX_PUBLISH_PER_MINUTE` por peer en 60 s → ignorar exceso.
-- Snapshot: como máximo `MAX_SYNC_MESSAGES` (más recientes por `createdAtMs`).
+- Snapshot: como máximo `MAX_SYNC_MESSAGES` (más recientes por `createdAtMs`); respuestas > `MAX_SYNC_TOTAL_BYTES` se rechazan.
 
 ## Susurros (DM)
 
@@ -101,13 +113,20 @@ Canónico firmado:
 [protocolVersion, msgId, fromUserId, toUserId, body, createdAtMs, bodyCipherB64|'', seal|0]
 ```
 
-Fallback Nostr de datos: AES-GCM sala `tazia.fallback.v2` (PBKDF2 210k + HKDF) con padding de blob versión `0x02`. Topic estable por `roomId`+frase (sin rotación horaria).
+Límite de cuerpo: `MAX_DM_BODY_CHARS` (4000).
+
+### Fallback Nostr de datos
+
+Si ICE falla, el plano de datos puede ir por Nostr cifrado: AES-GCM de sala `tazia.fallback.v2` (PBKDF2 210k + HKDF) con padding de blob versión `0x02`. Topic estable por `roomId`+frase (sin rotación horaria). Relés ven metadatos y ciphertext, no el texto en claro.
 
 ## Flujo
 
 ```
 publish → Ed25519_sign → forumMsg.send
                       ↘ onMessage: author==userId + verify
+
+whisper → Ed25519_sign → directMsg.send({ target })
+                      ↘ seal=2 si hay X25519 mutuo
 
 late joiner → forumSync.requestMany({ want: 'snapshot' })
            → verify cada evento con pubkey de presencia
@@ -118,6 +137,7 @@ late joiner → forumSync.requestMany({ want: 'snapshot' })
 - Tipos: [`src/core/protocol.ts`](src/core/protocol.ts)
 - Firmas / identidad: [`src/core/crypto/`](src/core/crypto/)
 - Mesh: [`src/core/p2p/p2pRoom.ts`](src/core/p2p/p2pRoom.ts)
+- Fallback Nostr: [`src/core/p2p/nostrFallback.ts`](src/core/p2p/nostrFallback.ts), [`src/core/p2p/roomCrypto.ts`](src/core/p2p/roomCrypto.ts)
 - Multi-zona: [`src/hooks/useRoomManager.ts`](src/hooks/useRoomManager.ts)
 
 ## Roadmap de sync

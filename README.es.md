@@ -22,9 +22,10 @@ Tenéis que estar **online a la vez**. No hay buzón asíncrono.
 ### Funciones
 
 - **Varias zonas a la vez** (máx. **5**): cada una mantiene su sesión P2P; **Zonas** las lista; cambia o sal de una; Plaza / Tribu / Susurros muestran la zona **activa**; **Quemar** borra todas en este dispositivo
-- Susurros (mensajes directos firmados) en la zona activa
+- Susurros (firmados; sellados pairwise cuando ambos peers anuncian X25519) en la zona activa
 - Confianza TOFU + códigos de 6 emojis ligados a `roomId` (Tribu)
 - TURN opcional autoalojado (rescate ICE / ocultar IP) — [`TURN.md`](TURN.md)
+- Fallback de datos cifrado por Nostr si falla ICE (solo ciphertext; no es P2P puro)
 
 ### Varias zonas
 
@@ -35,7 +36,7 @@ Entra a la zona A y luego abre o entra a la B sin tumbar A (espera a que termine
 Si Firefox muestra `WebRTC: ICE failed, add a TURN server`, STUN no puede atravesar tu NAT (habitual con CGNAT residencial). Opciones:
 
 1. Misma **Wi‑Fi** (candidatos host/mDNS) — en Pages, permite **Red local** si Chrome lo pide; sin aislamiento de AP; **Forzar relay** apagado.
-2. Tu propio **coturn** y activar TURN en Zonas (ambos peers).
+2. Tu propio **coturn** y activar TURN en Zonas → **Arreglar** (ambos peers).
 
 Helpers en JS: `iceCandidatePoolSize`, `turnConfig`, priming LNA, y **fallback de datos cifrado por Nostr** si falla ICE para que el chat siga en Pages sin TURN (no es P2P puro; los relés ven ciphertext). TURN propio sigue siendo el camino para mesh real. Detalle: [`TURN.md`](TURN.md).
 
@@ -57,9 +58,12 @@ Para probar en la red local, Vite escucha en todas las interfaces (`host: true`)
 
 ## Documentación
 
-- [`SECURITY.md`](SECURITY.md) — modelo de amenaza, TOFU, CSP, límites honestos.
-- [`PROTOCOL.md`](PROTOCOL.md) — formato wire `agora-forum-v1`.
-- [`TURN.md`](TURN.md) — coturn autoalojado + checklist ICE failed.
+| Doc | Idioma | Contenido |
+| --- | --- | --- |
+| [`SECURITY.md`](SECURITY.md) | ES | Modelo de amenaza, TOFU, CSP, límites honestos |
+| [`PROTOCOL.md`](PROTOCOL.md) | ES | Formato wire `agora-forum-v1` |
+| [`TURN.md`](TURN.md) | EN | Coturn autoalojado + checklist ICE failed |
+| [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) | EN | Spike de señalización SDP/QR manual (no empaquetado) |
 
 ## Lecturas
 

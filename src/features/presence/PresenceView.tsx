@@ -140,7 +140,7 @@ export function PresenceView({
           return (
             <li
               key={id}
-              className="rounded-xl border border-border bg-surface-raised px-4 py-3"
+              className="list-row px-4 py-3"
             >
               <div className="flex items-center gap-3">
                 {visual ? (

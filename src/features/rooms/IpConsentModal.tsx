@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
+import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface IpConsentModalProps {
   open: boolean;
@@ -61,47 +62,57 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
     if (open) dialogRef.current?.focus();
   }, [open]);
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
-      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ip-consent-title"
-      ref={dialogRef}
-      tabIndex={-1}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 }}
-        className="w-full max-w-md rounded-2xl border border-border bg-surface-raised p-5 shadow-lg sm:p-6"
-      >
-        <h2 id="ip-consent-title" className="font-display text-lg font-semibold text-ink">
-          {t('consentTitle')}
-        </h2>
-        <IpExposureDiagram />
-        <p className="mt-2 text-sm leading-relaxed text-muted">{t('consentBody')}</p>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="min-h-[44px] rounded-lg border border-border bg-surface-raised px-4 py-2 text-sm font-medium text-muted hover:bg-bg"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: DUR.micro }}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-scrim p-4 sm:items-center"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ip-consent-title"
+          onClick={onCancel}
+        >
+          <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: DUR.modal, ease: EASE.outExpo }}
+            className="panel-surface w-full max-w-md p-5 shadow-lg outline-none sm:p-6"
+            onClick={(e) => e.stopPropagation()}
           >
-            {t('consentCancel')}
-          </button>
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            type="button"
-            onClick={onAccept}
-            className="min-h-[44px] rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:opacity-90"
-          >
-            {t('consentAccept')}
-          </motion.button>
-        </div>
-      </motion.div>
-    </div>
+            <h2 id="ip-consent-title" className="font-display text-lg font-semibold text-ink">
+              {t('consentTitle')}
+            </h2>
+            <IpExposureDiagram />
+            <p className="mt-2 text-sm leading-relaxed text-muted">{t('consentBody')}</p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="min-h-[44px] rounded-lg border border-border bg-surface-raised px-4 py-2 text-sm font-medium text-muted hover:bg-bg"
+              >
+                {t('consentCancel')}
+              </button>
+              <motion.button
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
+                type="button"
+                onClick={onAccept}
+                className="min-h-[44px] rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:opacity-90"
+              >
+                {t('consentAccept')}
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

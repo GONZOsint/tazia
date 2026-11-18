@@ -31,7 +31,7 @@ export function HowItWorksView() {
           {steps.map((label, i) => (
             <li
               key={label}
-              className="flex gap-2.5 rounded-xl border border-border bg-surface-raised px-3 py-3 text-sm leading-snug text-muted"
+              className="list-row flex gap-2.5 px-3 py-3 text-sm leading-snug text-muted"
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-on-accent">
                 {i + 1}
@@ -43,28 +43,28 @@ export function HowItWorksView() {
       </section>
 
       <ul className="mt-8 space-y-4">
-        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+        <li className="panel-surface p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <Radio className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('helpDirectTitle')}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpDirectBody')}</p>
         </li>
-        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+        <li className="panel-surface p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <Users className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('helpGroupTitle')}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpGroupBody')}</p>
         </li>
-        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+        <li className="panel-surface p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <Radio className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('helpZonesTitle')}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpZonesBody')}</p>
         </li>
-        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+        <li className="panel-surface p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <WifiOff className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('helpRelayTitle')}
@@ -83,14 +83,14 @@ export function HowItWorksView() {
             <li>{t('helpSafety4')}</li>
           </ul>
         </li>
-        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+        <li className="panel-surface p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <WifiOff className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('helpNoServerTitle')}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpNoServerBody')}</p>
         </li>
-        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+        <li className="panel-surface p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <Wrench className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('helpFixTitle')}
@@ -113,7 +113,7 @@ export function HowItWorksView() {
         </p>
       )}
 
-      <div className="mt-8 rounded-2xl border border-border bg-surface-raised p-5">
+      <div className="mt-8 panel-surface p-5">
         <button
           type="button"
           onClick={() => {

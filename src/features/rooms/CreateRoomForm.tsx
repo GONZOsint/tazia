@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Dices, KeyRound, Link2, Loader2, Radio, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { DUR, EASE } from '../../motion/tokens';
 import { generateRandomHex } from '../../core/crypto/identity';
 import {
   evaluatePassphraseStrength,
@@ -128,6 +129,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: DUR.medium, ease: EASE.outExpo }}
                   className="overflow-hidden"
                 >
                   <div className="space-y-3 pt-2">
@@ -139,7 +141,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                         id="create-alias"
                         value={createAlias}
                         onChange={(e) => setCreateAlias(e.target.value)}
-                        className="mt-2 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                        className="input-base mt-2"
                         placeholder={t('roomsAliasPlaceholder')}
                       />
                     </div>

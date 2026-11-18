@@ -25,11 +25,15 @@ function detectTheme(): ThemeMode {
   return 'light';
 }
 
+const THEME_COLOR = { light: '#e3e1db', dark: '#0c0e0a' } as const;
+
 function applyThemeClass(mode: ThemeMode) {
   const root = document.documentElement;
   root.classList.toggle('dark', mode === 'dark');
   root.style.colorScheme = mode;
   root.dataset.theme = mode;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', THEME_COLOR[mode]);
 }
 
 interface ThemeContextValue {

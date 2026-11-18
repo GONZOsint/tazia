@@ -80,7 +80,7 @@ export function RoomSidebar({
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-surface-raised p-5">
+      <div className="panel-surface p-5">
         <div className="flex items-center gap-3">
           <Identicon matrix={profile.identiconMatrix} size={36} label={profile.alias} />
           <div className="min-w-0">
@@ -123,7 +123,7 @@ export function RoomSidebar({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface-raised p-4">
+      <div className="panel-surface p-4">
         <div className="relative">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-faint"
@@ -133,7 +133,7 @@ export function RoomSidebar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t('sidebarSearch')}
-            className="w-full min-h-[44px] rounded-lg border border-border bg-bg py-2 pr-8 pl-9 text-[16px] focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+            className="input-base bg-bg py-2 pr-8 pl-9"
           />
           {searchQuery && (
             <button
@@ -169,7 +169,7 @@ export function RoomSidebar({
                   onClick={() => onSelectThread(thread.threadId)}
                   className={`flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] px-3 py-2.5 text-left text-sm transition-colors ${
                     active
-                      ? 'border border-accent/40 bg-accent-soft/15 font-semibold text-ink'
+                      ? 'border border-accent/40 bg-accent-soft font-semibold text-ink'
                       : 'border border-transparent text-ink hover:bg-bg'
                   }`}
                 >

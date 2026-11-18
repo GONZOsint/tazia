@@ -19,6 +19,7 @@
   --type-display: 26px;
   --radius-ctrl: 10px;
   --radius-msg: 14px;
+  --radius-panel: 16px;
   --radius-sheet: 20px;
   --icon-sm: 16px;
   --icon-md: 20px;
@@ -31,34 +32,40 @@
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
 
-  /* Warm-neutral light — not flat grey, not cream-AI */
-  --color-bg: #e6e4df;
-  --color-surface: #ddd9d2;
-  --color-surface-raised: #f3f1ec;
-  --color-ink: #111110;
+  /* Warm-stone light — cooler than cream-AI, not flat grey */
+  --color-bg: #e3e1db;
+  --color-surface: #d8d5ce;
+  --color-surface-raised: #efede8;
+  --color-ink: #121211;
   --color-muted: #4a4640;
-  --color-faint: #7a756c;
-  --color-border: #bdb7ad;
+  --color-faint: #76716a;
+  --color-border: #b6b0a6;
   --color-accent: #ccff66;
   --color-accent-hover: #b8e85a;
-  --color-accent-soft: color-mix(in oklab, #ccff66 28%, #f3f1ec);
+  --color-accent-soft: color-mix(in oklab, #ccff66 26%, #efede8);
   --color-on-accent: #0a0d06;
+  --color-on-danger: #ffffff;
   --color-danger: #dc2626;
-  --color-danger-bg: color-mix(in oklab, #dc2626 10%, #f3f1ec);
-  --color-danger-border: color-mix(in oklab, #dc2626 28%, #bdb7ad);
+  --color-danger-bg: color-mix(in oklab, #dc2626 10%, #efede8);
+  --color-danger-border: color-mix(in oklab, #dc2626 28%, #b6b0a6);
   --color-danger-ink: #991b1b;
   --color-warn: #d97706;
-  --color-warn-bg: color-mix(in oklab, #d97706 12%, #f3f1ec);
-  --color-warn-border: color-mix(in oklab, #d97706 30%, #bdb7ad);
+  --color-warn-bg: color-mix(in oklab, #d97706 12%, #efede8);
+  --color-warn-border: color-mix(in oklab, #d97706 30%, #b6b0a6);
   --color-warn-ink: #92400e;
   --color-ok: #059669;
-  --color-ok-bg: color-mix(in oklab, #059669 10%, #f3f1ec);
-  --color-ok-border: color-mix(in oklab, #059669 28%, #bdb7ad);
+  --color-ok-bg: color-mix(in oklab, #059669 10%, #efede8);
+  --color-ok-border: color-mix(in oklab, #059669 28%, #b6b0a6);
   --color-ok-ink: #065f46;
   --color-info: #0284c7;
-  --color-info-bg: color-mix(in oklab, #0284c7 10%, #f3f1ec);
-  --color-info-border: color-mix(in oklab, #0284c7 28%, #bdb7ad);
+  --color-info-bg: color-mix(in oklab, #0284c7 10%, #efede8);
+  --color-info-border: color-mix(in oklab, #0284c7 28%, #b6b0a6);
   --color-info-ink: #075985;
+  --color-scrim: color-mix(in oklab, #000 48%, transparent);
+  --color-scrim-strong: color-mix(in oklab, #000 68%, transparent);
+
+  --shadow-chrome: 0 -2px 10px color-mix(in oklab, #000 5%, transparent);
+  --shadow-toast: 0 8px 24px color-mix(in oklab, #000 10%, transparent);
 
   --fire-core: #facc15;
   --fire-mid: #f97316;
@@ -66,33 +73,39 @@
 }
 
 html.dark {
-  --color-bg: #0b0b0b;
-  --color-surface: #121212;
-  --color-surface-raised: #181818;
+  --color-bg: #0c0e0a;
+  --color-surface: #131511;
+  --color-surface-raised: #1a1c16;
   --color-ink: #f2f2ee;
-  --color-muted: #9ca3af;
-  --color-faint: #6b7280;
-  --color-border: #2a2a2a;
+  --color-muted: #a3a39a;
+  --color-faint: #72726a;
+  --color-border: #2c2e28;
   --color-accent: #ccff66;
   --color-accent-hover: #d9ff88;
   --color-accent-soft: color-mix(in oklab, #ccff66 14%, transparent);
   --color-on-accent: #0a0d06;
+  --color-on-danger: #ffffff;
   --color-danger: #f87171;
-  --color-danger-bg: color-mix(in oklab, #f87171 14%, #0b0b0b);
-  --color-danger-border: color-mix(in oklab, #f87171 32%, #2a2a2a);
+  --color-danger-bg: color-mix(in oklab, #f87171 14%, #0c0e0a);
+  --color-danger-border: color-mix(in oklab, #f87171 32%, #2c2e28);
   --color-danger-ink: #fecaca;
   --color-warn: #fbbf24;
-  --color-warn-bg: color-mix(in oklab, #fbbf24 12%, #0b0b0b);
-  --color-warn-border: color-mix(in oklab, #fbbf24 30%, #2a2a2a);
+  --color-warn-bg: color-mix(in oklab, #fbbf24 12%, #0c0e0a);
+  --color-warn-border: color-mix(in oklab, #fbbf24 30%, #2c2e28);
   --color-warn-ink: #fde68a;
   --color-ok: #34d399;
-  --color-ok-bg: color-mix(in oklab, #34d399 12%, #0b0b0b);
-  --color-ok-border: color-mix(in oklab, #34d399 28%, #2a2a2a);
+  --color-ok-bg: color-mix(in oklab, #34d399 12%, #0c0e0a);
+  --color-ok-border: color-mix(in oklab, #34d399 28%, #2c2e28);
   --color-ok-ink: #a7f3d0;
   --color-info: #38bdf8;
-  --color-info-bg: color-mix(in oklab, #38bdf8 12%, #0b0b0b);
-  --color-info-border: color-mix(in oklab, #38bdf8 28%, #2a2a2a);
+  --color-info-bg: color-mix(in oklab, #38bdf8 12%, #0c0e0a);
+  --color-info-border: color-mix(in oklab, #38bdf8 28%, #2c2e28);
   --color-info-ink: #bae6fd;
+  --color-scrim: color-mix(in oklab, #000 55%, transparent);
+  --color-scrim-strong: color-mix(in oklab, #000 72%, transparent);
+
+  --shadow-chrome: 0 -2px 12px color-mix(in oklab, #000 35%, transparent);
+  --shadow-toast: 0 10px 28px color-mix(in oklab, #000 45%, transparent);
 
   --fire-core: #facc15;
   --fire-mid: #f97316;
@@ -115,6 +128,7 @@ html.dark {
   --color-accent-hover: var(--color-accent-hover);
   --color-accent-soft: var(--color-accent-soft);
   --color-on-accent: var(--color-on-accent);
+  --color-on-danger: var(--color-on-danger);
   --color-danger: var(--color-danger);
   --color-danger-bg: var(--color-danger-bg);
   --color-danger-border: var(--color-danger-border);
@@ -131,9 +145,15 @@ html.dark {
   --color-info-bg: var(--color-info-bg);
   --color-info-border: var(--color-info-border);
   --color-info-ink: var(--color-info-ink);
+  --color-scrim: var(--color-scrim);
+  --color-scrim-strong: var(--color-scrim-strong);
 }
 
 @layer base {
+  html {
+    overflow-x: clip;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: var(--color-bg);
@@ -151,18 +171,26 @@ html.dark {
     background-color: var(--color-accent);
     color: var(--color-on-accent);
   }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 @layer components {
   .input-base {
-    min-height: 44px;
+    min-height: var(--tap-min);
     width: 100%;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-ctrl);
     border: 1px solid var(--color-border);
     background-color: var(--color-surface-raised);
     padding: 0.625rem 0.75rem;
     font-size: 16px;
     color: var(--color-ink);
+    transition:
+      border-color var(--dur-micro) var(--ease-out-expo),
+      box-shadow var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo);
   }
   .input-base::placeholder {
     color: var(--color-faint);
@@ -170,12 +198,50 @@ html.dark {
   .input-base:focus {
     border-color: var(--color-ink);
     outline: none;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 32%, transparent);
+  }
+  textarea.input-base {
+    line-height: 1.45;
+    min-height: 7.5rem;
   }
 
   .tap-target {
     min-height: var(--tap-min);
     min-width: var(--tap-min);
+  }
+
+  .chrome-elev {
+    box-shadow: var(--shadow-chrome);
+  }
+  @media (min-width: 768px) {
+    .chrome-elev-md-flat {
+      box-shadow: none;
+    }
+  }
+
+  .panel-surface {
+    border-radius: var(--radius-panel);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-raised);
+  }
+
+  .list-row {
+    border-radius: var(--radius-panel);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-raised);
+    transition: background-color var(--dur-micro) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo);
+  }
+
+  .hero-glow {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at 30% 18%,
+      color-mix(in oklab, var(--color-accent) 16%, transparent),
+      transparent 55%
+    );
   }
 
   /* Primary CTA: brief directional sheen on hover (GPU transform only) */
@@ -195,11 +261,16 @@ html.dark {
     );
     transform: translateX(-120%);
     pointer-events: none;
+    transition: transform 0.45s var(--ease-out-expo);
   }
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .btn-accent-sheen:hover::after {
-      transition: transform 0.45s var(--ease-out-expo);
       transform: translateX(120%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn-accent-sheen::after {
+      transition: none;
     }
   }
 
@@ -224,6 +295,7 @@ html.dark {
     transform: scaleX(0);
     transform-origin: left center;
     pointer-events: none;
+    transition: transform 700ms linear, opacity var(--dur-micro) ease;
   }
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .burn-heat:hover {
@@ -243,6 +315,14 @@ html.dark {
     box-shadow: 0 0 26px color-mix(in oklab, var(--fire-mid) 45%, transparent) !important;
   }
 
+  .session-burn-target {
+    /* Large ceiling so collapse can animate without clipping tall zone cards */
+    max-height: 80rem;
+    transition:
+      box-shadow var(--dur-medium) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo);
+  }
   .session-burn-target.burning-front {
     box-shadow:
       0 0 32px color-mix(in oklab, var(--fire-mid) 45%, transparent),
@@ -308,7 +388,7 @@ html.dark {
     overflow: hidden;
     touch-action: none;
     user-select: none;
-    will-change: transform, opacity;
+    filter: drop-shadow(var(--shadow-toast));
   }
   .tazia-toast-progress {
     position: absolute;
@@ -475,6 +555,7 @@ html.dark {
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none !important; }
   .animate-spin { animation: none !important; }
+  .animate-ping { animation: none !important; }
   .tab-panel-enter,
   .dice-rolling,
   .plane-launching,
@@ -483,9 +564,11 @@ html.dark {
   .mesh-radar-dot::before,
   .wifi-arc-1,
   .wifi-arc-2,
-  .qr-surface-3d.scanning .qr-laser-line,
-  .tazia-toast-progress > span {
+  .qr-surface-3d.scanning .qr-laser-line {
     animation: none !important;
+  }
+  .tazia-toast-progress {
+    display: none;
   }
   .tazia-check[data-checked='true'] {
     transform: none;
@@ -499,6 +582,9 @@ html.dark {
     transition: opacity 160ms ease, max-height 160ms ease;
   }
   .qr-surface-3d {
+    transition: none;
+  }
+  .burn-heat .burn-ignition-bar {
     transition: none;
   }
 }

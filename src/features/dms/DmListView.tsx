@@ -98,7 +98,7 @@ export function DmListView({
               <button
                 type="button"
                 onClick={() => onSelectPeer(id)}
-                className="flex w-full min-h-[60px] items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
+                className="list-row flex w-full min-h-[60px] items-center gap-3 px-4 py-3 text-left hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <div className="relative">
                   {visual ? (
@@ -107,7 +107,7 @@ export function DmListView({
                     <div className="h-9 w-9 rounded-lg bg-surface" />
                   )}
                   {isOnline && (
-                    <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-green-500" />
+                    <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-ok" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">

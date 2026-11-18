@@ -5,6 +5,7 @@ import { evaluatePassphraseStrength } from '../../core/crypto/passphraseWords';
 import { buildInviteUrl, parseInviteInput } from '../../core/utils/inviteLink';
 import type { RoomJoinParams } from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
+import { DUR, EASE } from '../../motion/tokens';
 import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
 
@@ -102,6 +103,7 @@ export function JoinRoomForm({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: DUR.medium, ease: EASE.outExpo }}
               className="overflow-hidden"
             >
               <div className="pt-2">
@@ -109,7 +111,7 @@ export function JoinRoomForm({
                   id="join-invite"
                   value={joinInviteInput}
                   onChange={(e) => handlePasteInviteInput(e.target.value)}
-                  className="w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                  className="input-base"
                   placeholder={t('roomsInvitePaste')}
                   aria-label={t('roomsInvitePaste')}
                 />
@@ -124,29 +126,34 @@ export function JoinRoomForm({
         </AnimatePresence>
       </div>
 
-      {(phraseNeeded || joinPhrase || joinRoomId) && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="overflow-hidden"
-        >
-          <label htmlFor="join-phrase" className="text-xs font-semibold text-ink">
-            {t('roomsPhraseLabel')}
-          </label>
-          <div className="mt-2">
-            <SecretPhraseInput
-              id="join-phrase"
-              value={joinPhrase}
-              onChange={setJoinPhrase}
-              visible={showJoinPhrase}
-              onToggleVisible={() => setShowJoinPhrase((v) => !v)}
-            />
-          </div>
-          {showStrength && (
-            <PassphraseStrengthBar id={joinStrength.id} score={joinStrength.score} />
-          )}
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {(phraseNeeded || joinPhrase || joinRoomId) && (
+          <motion.div
+            key="join-phrase-block"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: DUR.medium, ease: EASE.outExpo }}
+            className="overflow-hidden"
+          >
+            <label htmlFor="join-phrase" className="text-xs font-semibold text-ink">
+              {t('roomsPhraseLabel')}
+            </label>
+            <div className="mt-2">
+              <SecretPhraseInput
+                id="join-phrase"
+                value={joinPhrase}
+                onChange={setJoinPhrase}
+                visible={showJoinPhrase}
+                onToggleVisible={() => setShowJoinPhrase((v) => !v)}
+              />
+            </div>
+            {showStrength && (
+              <PassphraseStrengthBar id={joinStrength.id} score={joinStrength.score} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {joinRoomId && joinPhrase && (
         <div>
@@ -168,6 +175,7 @@ export function JoinRoomForm({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: DUR.medium, ease: EASE.outExpo }}
                 className="overflow-hidden"
               >
                 <div className="pt-2">
@@ -178,7 +186,7 @@ export function JoinRoomForm({
                     id="join-alias"
                     value={joinAlias}
                     onChange={(e) => setJoinAlias(e.target.value)}
-                    className="mt-2 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                    className="input-base mt-2"
                     placeholder={t('roomsAliasPlaceholder')}
                   />
                 </div>

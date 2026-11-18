@@ -159,28 +159,31 @@ export function ForumWorkspace({
 
         <AnimatePresence>
           {topicsOpen && (
-            <motion.div
-              className="fixed inset-0 z-50 lg:hidden"
+            <motion.button
+              key="topics-scrim"
+              type="button"
+              className="fixed inset-0 z-50 bg-scrim lg:hidden"
+              aria-label={t('sidebarCloseTopics')}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setTopicsOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {topicsOpen && (
+            <motion.div
+              key="topics-panel"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="fixed inset-y-0 left-0 z-50 w-[min(100%,360px)] overflow-y-auto bg-bg p-4 shadow-xl lg:hidden"
+              style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
             >
-              <button
-                type="button"
-                className="absolute inset-0 bg-black/50"
-                aria-label={t('sidebarCloseTopics')}
-                onClick={() => setTopicsOpen(false)}
-              />
-              <motion.div
-                initial={{ x: '-100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '-100%' }}
-                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                className="absolute inset-y-0 left-0 w-[min(100%,360px)] overflow-y-auto bg-bg p-4 shadow-xl"
-                style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
-              >
-                <RoomSidebar {...sidebarProps} mobileSheet onCloseSheet={() => setTopicsOpen(false)} />
-              </motion.div>
+              <RoomSidebar {...sidebarProps} mobileSheet onCloseSheet={() => setTopicsOpen(false)} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -203,56 +206,75 @@ export function ForumWorkspace({
             </AlertBanner>
           )}
 
-          {isComposingThread ? (
-            <div className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
-              <ThreadComposer
-                identity={profile}
-                isBusy={isBusy}
-                onCancel={() => setIsComposingThread(false)}
-                onSubmitThread={onCreateThread}
-              />
-            </div>
-          ) : isSyncing && messages.length === 0 ? (
-            <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
-              <div className="h-32 animate-pulse rounded-2xl border border-border bg-surface-raised" />
-              <div className="h-24 animate-pulse rounded-2xl border border-border bg-surface-raised" />
-            </div>
-          ) : activeThread ? (
-            <ThreadReader
-              thread={activeThread}
-              identity={profile}
-              selfUserId={selfUserId}
-              presenceAliases={presenceAliases}
-              authorVisuals={authorVisuals}
-              onAuthorVisuals={setAuthorVisuals}
-              isBusy={isBusy}
-              onReplyThread={onReplyThread}
-            />
-          ) : (
-            <div className="rounded-2xl border border-border bg-surface-raised p-8 text-center sm:p-10">
-              <MessageSquare className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-              <h2 className="mt-4 font-display text-lg font-semibold text-ink">
-                {hasAnyThreads && searchQuery.trim() ? t('forumNoResults') : t('forumEmptyThreads')}
-              </h2>
-              {hasAnyThreads && searchQuery.trim() ? (
-                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-                  {t('forumNoResultsHint', { q: searchQuery.trim() })}
-                </p>
-              ) : null}
-              {!(hasAnyThreads && searchQuery.trim()) && (
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={() => setIsComposingThread(true)}
-                  aria-label={t('forumStartFirst')}
-                  className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
-                >
-                  <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only">{t('forumStartFirst')}</span>
-                </motion.button>
-              )}
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {isComposingThread ? (
+              <motion.div
+                key="composer"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18 }}
+                className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+              >
+                <ThreadComposer
+                  identity={profile}
+                  isBusy={isBusy}
+                  onCancel={() => setIsComposingThread(false)}
+                  onSubmitThread={onCreateThread}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key={activeThread?.threadId ?? (isSyncing && messages.length === 0 ? 'syncing' : 'empty')}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18 }}
+              >
+                {isSyncing && messages.length === 0 ? (
+                  <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
+                    <div className="panel-surface h-32 animate-pulse" />
+                    <div className="panel-surface h-24 animate-pulse" />
+                  </div>
+                ) : activeThread ? (
+                  <ThreadReader
+                    thread={activeThread}
+                    identity={profile}
+                    selfUserId={selfUserId}
+                    presenceAliases={presenceAliases}
+                    authorVisuals={authorVisuals}
+                    onAuthorVisuals={setAuthorVisuals}
+                    isBusy={isBusy}
+                    onReplyThread={onReplyThread}
+                  />
+                ) : (
+                  <div className="panel-surface p-8 text-center sm:p-10">
+                    <MessageSquare className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
+                    <h2 className="mt-4 font-display text-lg font-semibold text-ink">
+                      {hasAnyThreads && searchQuery.trim() ? t('forumNoResults') : t('forumEmptyThreads')}
+                    </h2>
+                    {hasAnyThreads && searchQuery.trim() ? (
+                      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+                        {t('forumNoResultsHint', { q: searchQuery.trim() })}
+                      </p>
+                    ) : null}
+                    {!(hasAnyThreads && searchQuery.trim()) && (
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        type="button"
+                        onClick={() => setIsComposingThread(true)}
+                        aria-label={t('forumStartFirst')}
+                        className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                      >
+                        <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
+                        <span className="sr-only sm:not-sr-only">{t('forumStartFirst')}</span>
+                      </motion.button>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
       </div>
     </main>

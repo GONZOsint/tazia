@@ -17,7 +17,7 @@ export function KeyChangeAlert({
   const t = useT();
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-danger-border bg-danger-bg p-4">
+    <div className="flex items-start gap-3 rounded-[var(--radius-panel)] border border-danger-border bg-danger-bg p-4">
       <ShieldAlert
         className="mt-0.5 h-7 w-7 shrink-0 text-danger motion-safe:animate-pulse"
         aria-hidden="true"
@@ -30,7 +30,7 @@ export function KeyChangeAlert({
             onClick={onRepin}
             aria-label={t('trustRepin')}
             title={t('trustRepin')}
-            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-danger-border px-3 py-1 text-xs font-semibold text-danger-ink focus-visible:outline-2 focus-visible:outline-accent"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-danger-border px-3 py-1.5 text-xs font-semibold text-danger-ink focus-visible:outline-2 focus-visible:outline-accent"
           >
             <Pin className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">{t('trustRepin')}</span>
@@ -40,7 +40,7 @@ export function KeyChangeAlert({
             onClick={onDisconnect}
             aria-label={t('trustDisconnect')}
             title={t('trustDisconnect')}
-            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-danger px-3 py-1 text-xs font-semibold text-white focus-visible:outline-2 focus-visible:outline-accent"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] bg-danger px-3 py-1.5 text-xs font-semibold text-on-danger focus-visible:outline-2 focus-visible:outline-accent"
           >
             <Unplug className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">{t('trustDisconnect')}</span>

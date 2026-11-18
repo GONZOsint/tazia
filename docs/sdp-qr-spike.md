@@ -1,10 +1,10 @@
 # Spike: manual SDP / QR signaling (P3)
 
-**Status:** spike only — does **not** block P0–P2. Not wired into the app.
+**Status:** spike only — does **not** block shipping work. Not wired into the app.
 
 ## Goal
 
-Bypass Trystero/Nostr signaling for a 1:1 (or tiny) mesh by exchanging SDP offers/answers out-of-band (QR / copy-paste), then upgrading to the same DataChannel protocol.
+Bypass Trystero/Nostr signaling for a 1:1 (or tiny) mesh by exchanging SDP offers/answers out-of-band (QR / copy-paste), then upgrading to the same DataChannel protocol (`forumMsg` / `directMsg` / sync framing).
 
 ## Why deferred
 
@@ -27,10 +27,11 @@ Bypass Trystero/Nostr signaling for a 1:1 (or tiny) mesh by exchanging SDP offer
 ## Non-goals for this spike
 
 - Replacing Nostr for multi-peer rooms.
-- Shipping in the same PR as single-file release or DM v2.
+- Shipping in the same PR as single-file release or Susurro pairwise seal.
 - Claiming anonymity from QR exchange (camera / screenshots leak).
 
 ## Related
 
 - Live mesh remains Trystero 0.27 (`leave` / `join`; no `restartIce` API).
-- Mobile resilience today: Wake Lock + `visibilitychange` / `online` → `nudgeTransport` + Nostr fallback.
+- Mobile resilience today: Wake Lock + `visibilitychange` / `online` → `nudgeTransport` + encrypted Nostr data-plane fallback.
+- Threat model: [`SECURITY.md`](../SECURITY.md). Wire format: [`PROTOCOL.md`](../PROTOCOL.md).

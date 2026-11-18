@@ -47,10 +47,13 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
   const particlesRef = useRef<Particle[]>([]);
   const rafRef = useRef<number | null>(null);
   const doneRef = useRef(false);
+  const abortedRef = useRef(false);
 
   useEffect(() => {
     if (!play) return;
     doneRef.current = false;
+    abortedRef.current = false;
+    const timeouts: number[] = [];
     const canvas = canvasRef.current;
     if (!canvas) {
       onComplete();
@@ -71,7 +74,7 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     window.addEventListener('resize', resize);
 
     const finish = () => {
-      if (doneRef.current) return;
+      if (doneRef.current || abortedRef.current) return;
       doneRef.current = true;
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -83,11 +86,16 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
     if (prefersReducedMotion()) {
       markTargets('front');
-      window.setTimeout(() => {
-        markTargets('collapse');
-        window.setTimeout(finish, 160);
-      }, 80);
+      timeouts.push(
+        window.setTimeout(() => {
+          if (abortedRef.current) return;
+          markTargets('collapse');
+          timeouts.push(window.setTimeout(finish, 160));
+        }, 80)
+      );
       return () => {
+        abortedRef.current = true;
+        for (const id of timeouts) window.clearTimeout(id);
         window.removeEventListener('resize', resize);
         markTargets('clear');
       };
@@ -124,6 +132,7 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     for (const r of rects) spawnBurst(r, 70);
 
     const tick = () => {
+      if (abortedRef.current) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const list = particlesRef.current;
       for (let i = list.length - 1; i >= 0; i--) {
@@ -163,17 +172,20 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     };
     rafRef.current = requestAnimationFrame(tick);
 
-    const t1 = window.setTimeout(() => {
-      for (const r of rects) spawnBurst(r, 40);
-      if (rafRef.current === null) rafRef.current = requestAnimationFrame(tick);
-      markTargets('collapse');
-    }, 180);
+    timeouts.push(
+      window.setTimeout(() => {
+        if (abortedRef.current) return;
+        for (const r of rects) spawnBurst(r, 40);
+        if (rafRef.current === null) rafRef.current = requestAnimationFrame(tick);
+        markTargets('collapse');
+      }, 180)
+    );
 
-    const t2 = window.setTimeout(finish, 820);
+    timeouts.push(window.setTimeout(finish, 820));
 
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      abortedRef.current = true;
+      for (const id of timeouts) window.clearTimeout(id);
       window.removeEventListener('resize', resize);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       markTargets('clear');

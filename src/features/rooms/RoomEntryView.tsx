@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyRound, LogOut, PlusCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { identiconMatrixFromHex } from '../../core/crypto/identity';
@@ -15,7 +15,7 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { TaziaLogo } from '../../components/brand/TaziaLogo';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { probeBrowserSupportSync } from '../../core/utils/browserSupport';
-import { EASE, zoneCardExit } from '../../motion/tokens';
+import { DUR, EASE, zoneCardExit } from '../../motion/tokens';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { TurnRelaySettings } from './TurnRelaySettings';
@@ -53,7 +53,9 @@ export function RoomEntryView({
   const [entryTab, setEntryTab] = useState<'create' | 'join' | null>(() =>
     hasInvite ? 'join' : hasZones ? null : null
   );
+  const [createFormKey, setCreateFormKey] = useState(0);
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
+  const prevJoinedCountRef = useRef(joinedRooms.length);
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
 
@@ -65,9 +67,25 @@ export function RoomEntryView({
     if (showIceHint && hasZones) setEntryTab((cur) => cur ?? 'join');
   }, [showIceHint, hasZones]);
 
+  // After a successful join, collapse the form and mint a fresh create session
+  // so "Abrir" cannot reuse the previous zone id while the tab stays mounted.
+  useEffect(() => {
+    const prev = prevJoinedCountRef.current;
+    prevJoinedCountRef.current = joinedRooms.length;
+    if (joinedRooms.length > prev) {
+      setEntryTab(null);
+      setCreateFormKey((k) => k + 1);
+    }
+  }, [joinedRooms.length]);
+
   const openEntry = (tab: 'create' | 'join') => {
     if (atCap) return;
-    setEntryTab((cur) => (cur === tab ? null : tab));
+    if (entryTab === tab) {
+      setEntryTab(null);
+      return;
+    }
+    if (tab === 'create') setCreateFormKey((k) => k + 1);
+    setEntryTab(tab);
   };
 
   const enterZone = (roomId: string) => {
@@ -87,11 +105,8 @@ export function RoomEntryView({
       )}
 
       {!hasZones && (
-        <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface-raised px-5 py-10 sm:px-10 sm:py-14">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,color-mix(in_oklab,var(--color-accent)_18%,transparent),transparent_55%)]"
-          />
+        <section className="panel-surface relative overflow-hidden px-5 py-10 sm:px-10 sm:py-14">
+          <div className="hero-glow" aria-hidden="true" />
           <div className="relative mx-auto flex max-w-lg flex-col items-center text-center">
             <TaziaLogo size={72} />
             <h1 className="mt-5 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl [text-wrap:balance]">
@@ -105,10 +120,10 @@ export function RoomEntryView({
                 type="button"
                 disabled={browserBlocked}
                 onClick={() => openEntry('create')}
-                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
                   entryTab === 'create'
                     ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink'
+                    : 'border border-border bg-bg text-ink hover:border-ink/30'
                 }`}
               >
                 <PlusCircle className="h-5 w-5" aria-hidden="true" />
@@ -119,10 +134,10 @@ export function RoomEntryView({
                 type="button"
                 disabled={browserBlocked}
                 onClick={() => openEntry('join')}
-                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
                   entryTab === 'join'
                     ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink'
+                    : 'border border-border bg-bg text-ink hover:border-ink/30'
                 }`}
               >
                 <KeyRound className="h-5 w-5" aria-hidden="true" />
@@ -134,11 +149,16 @@ export function RoomEntryView({
       )}
 
       {hasZones && (
-        <section className="rounded-[var(--radius-panel)] border border-border bg-surface-raised p-4 sm:p-5">
+        <section className="panel-surface p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
-              {t('roomsJoinedTitle')}
-            </h2>
+            <div className="min-w-0">
+              <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+                {t('roomsJoinedTitle')}
+              </h2>
+              {joinedRooms.length < MAX_ROOMS && (
+                <p className="mt-0.5 text-xs text-muted">{t('roomsActiveHint')}</p>
+              )}
+            </div>
             <CapacityDots filled={joinedRooms.length} max={MAX_ROOMS} label={t('roomsCapacityAria', { n: joinedRooms.length, max: MAX_ROOMS })} />
           </div>
 
@@ -150,14 +170,17 @@ export function RoomEntryView({
                 return (
                   <motion.li
                     key={room.roomId}
-                    layout
                     initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      transition: { duration: DUR.medium, ease: EASE.outExpo },
+                    }}
                     exit={zoneCardExit.exit}
-                    transition={{ duration: 0.22, ease: EASE.outExpo }}
                     className={`session-burn-target flex items-stretch gap-1 overflow-hidden rounded-[var(--radius-ctrl)] border ${
                       isActive
-                        ? 'border-2 border-accent bg-accent-soft'
+                        ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                         : 'border-border bg-bg'
                     }`}
                     aria-current={isActive ? 'true' : undefined}
@@ -232,37 +255,45 @@ export function RoomEntryView({
             </AnimatePresence>
           </ul>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <motion.button
-              whileTap={{ scale: atCap ? 1 : 0.98 }}
-              type="button"
-              disabled={atCap || browserBlocked}
-              onClick={() => openEntry('create')}
-              aria-pressed={entryTab === 'create'}
-              className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
-                entryTab === 'create'
-                  ? 'bg-accent text-on-accent'
-                  : 'border border-border bg-bg text-ink'
-              }`}
-            >
-              <PlusCircle className="h-4 w-4" aria-hidden="true" />
-              {t('roomsCreate')}
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: atCap ? 1 : 0.98 }}
-              type="button"
-              disabled={atCap || browserBlocked}
-              onClick={() => openEntry('join')}
-              aria-pressed={entryTab === 'join'}
-              className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
-                entryTab === 'join'
-                  ? 'bg-accent text-on-accent'
-                  : 'border border-border bg-bg text-ink'
-              }`}
-            >
-              <KeyRound className="h-4 w-4" aria-hidden="true" />
-              {t('roomsJoin')}
-            </motion.button>
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-ink">{t('roomsAnotherTitle')}</h3>
+              <p className="mt-0.5 text-xs text-muted">
+                {atCap ? t('roomsMaxReached', { n: MAX_ROOMS }) : t('roomsAnotherHint')}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <motion.button
+                whileTap={{ scale: atCap ? 1 : 0.98 }}
+                type="button"
+                disabled={atCap || browserBlocked}
+                onClick={() => openEntry('create')}
+                aria-pressed={entryTab === 'create'}
+                className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                  entryTab === 'create'
+                    ? 'bg-accent text-on-accent'
+                    : 'border border-border bg-bg text-ink'
+                }`}
+              >
+                <PlusCircle className="h-4 w-4" aria-hidden="true" />
+                {t('roomsCreate')}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: atCap ? 1 : 0.98 }}
+                type="button"
+                disabled={atCap || browserBlocked}
+                onClick={() => openEntry('join')}
+                aria-pressed={entryTab === 'join'}
+                className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                  entryTab === 'join'
+                    ? 'bg-accent text-on-accent'
+                    : 'border border-border bg-bg text-ink'
+                }`}
+              >
+                <KeyRound className="h-4 w-4" aria-hidden="true" />
+                {t('roomsJoin')}
+              </motion.button>
+            </div>
           </div>
         </section>
       )}
@@ -275,7 +306,7 @@ export function RoomEntryView({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.18 }}
-            className="rounded-[var(--radius-panel)] border border-border bg-surface-raised p-4 sm:p-5"
+            className="panel-surface p-4 sm:p-5"
           >
             {errorMsg && (
               <AlertBanner tone="error" className="mb-4">
@@ -291,7 +322,11 @@ export function RoomEntryView({
 
             <AnimatePresence mode="wait">
               {entryTab === 'create' ? (
-                <CreateRoomForm key="create" isJoining={isJoining} onJoinRoom={onJoinRoom} />
+                <CreateRoomForm
+                  key={`create-${createFormKey}`}
+                  isJoining={isJoining}
+                  onJoinRoom={onJoinRoom}
+                />
               ) : (
                 <JoinRoomForm
                   key="join"

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { FileText, Loader2, Send, X } from 'lucide-react';
-import { motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import { MAX_BODY_CHARS, MAX_TITLE_CHARS } from '../../core/protocol';
@@ -39,11 +38,7 @@ export function ThreadComposer({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-border bg-surface-raised p-6 sm:p-8"
-    >
+    <div className="panel-surface p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
         <div>
           <h2 className="inline-flex items-center gap-2 font-display text-lg font-semibold text-ink">
@@ -73,7 +68,7 @@ export function ThreadComposer({
             maxLength={MAX_TITLE_CHARS}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('composerTitlePlaceholder')}
-            className="mt-2 w-full min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="input-base mt-2"
             required
           />
         </div>
@@ -88,14 +83,14 @@ export function ThreadComposer({
             onChange={(e) => setBody(e.target.value)}
             rows={6}
             placeholder={t('composerBodyPlaceholder')}
-            className="mt-2 w-full rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="input-base mt-2 min-h-[7.5rem] resize-y"
             required
           />
         </div>
         <button
           type="submit"
           disabled={overLimit || isBusy}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isBusy ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -107,6 +102,6 @@ export function ThreadComposer({
           {isBusy ? t('composerPublishing') : t('composerPublish')}
         </button>
       </form>
-    </motion.div>
+    </div>
   );
 }

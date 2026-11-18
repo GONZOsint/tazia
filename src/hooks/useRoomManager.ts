@@ -95,7 +95,17 @@ export function useRoomManager(
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<SessionError>(null);
-  const [burnNotice, setBurnNotice] = useState(false);
+  const [burnNotice, setBurnNotice] = useState(() => {
+    try {
+      if (sessionStorage.getItem('tazia-burn-notice') === '1') {
+        sessionStorage.removeItem('tazia-burn-notice');
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  });
   const [ipConsentNeeded, setIpConsentNeeded] = useState(false);
   const pendingJoinRef = useRef<RoomJoinParams | null>(null);
   const burnTimerRef = useRef<number | null>(null);
@@ -124,6 +134,15 @@ export function useRoomManager(
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId;
   }, [activeRoomId]);
+
+  useEffect(() => {
+    if (!burnNotice) return;
+    if (burnTimerRef.current !== null) window.clearTimeout(burnTimerRef.current);
+    burnTimerRef.current = window.setTimeout(() => setBurnNotice(false), 4000);
+    return () => {
+      if (burnTimerRef.current !== null) window.clearTimeout(burnTimerRef.current);
+    };
+  }, [burnNotice]);
 
   useEffect(() => {
     return () => {
@@ -463,6 +482,12 @@ export function useRoomManager(
     setJoinError(null);
     try {
       sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
+    try {
+      // Set after clear so the post-reload notice banner can animate once.
+      sessionStorage.setItem('tazia-burn-notice', '1');
     } catch {
       /* ignore */
     }

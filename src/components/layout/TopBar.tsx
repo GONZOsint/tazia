@@ -76,10 +76,18 @@ export function TopBar({
           {activeZone && (
             <button
               type="button"
-              onClick={() => onSelectTab('forum')}
-              title={activeZone.roomId}
-              aria-label={`${t('roomsActiveLabel')}: ${activeZone.roomId}`}
-              className="session-burn-target flex min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
+              onClick={() => onSelectTab(roomsCount > 1 ? 'rooms' : 'forum')}
+              title={
+                roomsCount > 1
+                  ? `${activeZone.roomId} · ${roomsCount}`
+                  : activeZone.roomId
+              }
+              aria-label={
+                roomsCount > 1
+                  ? `${t('roomsActiveLabel')}: ${activeZone.roomId} — ${t('navRooms')} (${roomsCount})`
+                  : `${t('roomsActiveLabel')}: ${activeZone.roomId}`
+              }
+              className="session-burn-target flex min-h-[36px] min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
             >
               <Identicon
                 matrix={identiconMatrixFromHex(activeZone.roomId)}
@@ -89,6 +97,11 @@ export function TopBar({
               <span className="min-w-0 truncate font-mono text-[11px] font-medium text-ink">
                 {shortId}
               </span>
+              {roomsCount > 1 && (
+                <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-on-accent">
+                  {roomsCount}
+                </span>
+              )}
               <span className="hidden shrink-0 md:inline">
                 <MeshStatusBadge
                   status={activeZone.meshStatus}
@@ -172,7 +185,7 @@ export function TopBar({
               disabled={burnHeating}
               aria-label={t('leaveTab')}
               title={t('leaveTab')}
-              className={`burn-heat inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap ${
+              className={`burn-heat inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap ${
                 burnHeating ? 'is-heating' : ''
               }`}
             >

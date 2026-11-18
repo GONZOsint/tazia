@@ -12,7 +12,7 @@ Spanish README: [`README.es.md`](README.es.md).
 
 1. Open the site (local or static host).
 2. **Open a zone** and generate a memorable phrase.
-3. Say the phrase in person / on paper. Optional: put it in the `#` link (riskier).
+3. Say the phrase in person / on paper. Optional: put it in the `#` link (more convenient, riskier).
 4. Share link or QR (QR is generated **in the browser**; you can also **scan** a QR to join).
 5. First join asks for **network address consent**.
 6. When done: **Burn session**.
@@ -25,6 +25,7 @@ You must be **online at the same time**. No async mailbox.
 - Whispers (signed; pairwise sealed when both peers advertise X25519) scoped to the active zone
 - TOFU trust + 6-emoji safety codes bound to `roomId` (Tribe)
 - Optional self-hosted TURN (ICE fallback / hide IP) — see [`TURN.md`](TURN.md)
+- Encrypted Nostr data-plane fallback when ICE fails (ciphertext only; not true P2P)
 
 ### Several zones
 
@@ -35,7 +36,7 @@ Join zone A, then open or enter zone B without dropping A (wait until the first 
 If Firefox shows `WebRTC: ICE failed, add a TURN server`, STUN alone cannot punch through your NAT (common on residential CGNAT). Options:
 
 1. Meet on the **same Wi‑Fi** (host / mDNS candidates) — on GitHub Pages, allow **Local network** if Chrome asks; disable AP/client isolation; leave **Force relay** off.
-2. Run your own **coturn** and enable TURN under Zones (both peers need it).
+2. Run your own **coturn** and enable TURN under Zones → **Fix** (both peers need it).
 
 JS-side helpers: `iceCandidatePoolSize`, Trystero `turnConfig`, LNA priming, and an **encrypted Nostr data-plane fallback** when ICE fails so chat still works on Pages without TURN (not true P2P; relays see ciphertext). Self-hosted TURN remains the path for a real mesh. Details: [`TURN.md`](TURN.md).
 
@@ -57,10 +58,12 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 
 ## Docs
 
-- [`SECURITY.md`](SECURITY.md) — threat model, TOFU, CSP, honest limits. Spanish.
-- [`PROTOCOL.md`](PROTOCOL.md) — `agora-forum-v1` wire format. Spanish.
-- [`TURN.md`](TURN.md) — self-hosted coturn + ICE failed checklist.
-- [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) — manual SDP/QR signaling spike (not shipped).
+| Doc | Language | Contents |
+| --- | --- | --- |
+| [`SECURITY.md`](SECURITY.md) | ES | Threat model, TOFU, CSP, honest limits |
+| [`PROTOCOL.md`](PROTOCOL.md) | ES | `agora-forum-v1` wire format |
+| [`TURN.md`](TURN.md) | EN | Self-hosted coturn + ICE failed checklist |
+| [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) | EN | Manual SDP/QR signaling spike (not shipped) |
 
 ## Papers / readings
 

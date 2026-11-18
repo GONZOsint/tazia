@@ -300,7 +300,7 @@ export function ThreadReader({
 
       <form
         onSubmit={(e) => void handleSubmitReply(e)}
-        className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 shadow-[0_-2px_8px_rgba(0,0,0,0.05)] backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-sheet)] md:border md:p-3 md:shadow-none"
+        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-sheet)] md:border md:p-3"
       >
         <div className="mx-auto max-w-[1280px]">
           <AnimatePresence initial={false}>
@@ -339,7 +339,7 @@ export function ThreadReader({
               onChange={(e) => setReplyBody(e.target.value)}
               rows={2}
               placeholder={t('readerComposePlaceholder')}
-              className="min-h-[44px] flex-1 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
+              className="input-base flex-1"
               required
             />
             <motion.button

@@ -52,22 +52,24 @@ export function ConfirmModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: DUR.micro }}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-scrim p-4 sm:items-center"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="confirm-title"
-          ref={dialogRef}
-          tabIndex={-1}
+          onClick={onCancel}
         >
           <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
             initial={{ opacity: 0, y: 12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: DUR.modal, ease: EASE.outExpo }}
-            className={`w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised p-5 shadow-lg sm:p-6 ${
+            className={`w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised p-5 shadow-lg outline-none sm:p-6 ${
               danger ? 'border-danger-border' : 'border-border'
             }`}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
               <Icon
@@ -98,8 +100,8 @@ export function ConfirmModal({
                 onClick={onConfirm}
                 className={`min-h-[44px] rounded-[var(--radius-ctrl)] px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
                   danger
-                    ? 'border border-danger-border bg-danger-bg text-danger-ink hover:opacity-90'
-                    : 'bg-accent text-on-accent hover:opacity-90'
+                    ? 'border border-danger-border bg-danger-bg text-danger-ink hover:border-danger hover:bg-danger/15'
+                    : 'bg-accent text-on-accent hover:bg-accent-hover'
                 }`}
               >
                 {confirmLabel ?? t('consentAccept')}

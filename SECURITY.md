@@ -1,6 +1,6 @@
 # Seguridad — TAZIA
 
-Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=tazia.app`). Detalle de wire format en [`PROTOCOL.md`](PROTOCOL.md).
+Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=tazia.app`). Wire format: [`PROTOCOL.md`](PROTOCOL.md). TURN / ICE: [`TURN.md`](TURN.md).
 
 ## Qué es (y qué no)
 
@@ -24,15 +24,15 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 3. **Autoría en vivo** — `forumMsg` solo se acepta si `authorUserId` coincide con el `userId` Trystero del peer (handshake de identidad de la librería).
 4. **Sync verificable** — Cada evento lleva firma **Ed25519** sobre el payload canónico. La pubkey se publica en `makeUserState('presence')`. Snapshots sin firma válida o sin clave conocida se **descartan** (contador discreto en Presentes).
 5. **Reloj** — mensajes en vivo ±5 min (`LIVE_CLOCK_SKEW_MS`); sync histórico ±24 h (`SYNC_CLOCK_SKEW_MS`).
-6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer (local), con `pruneStale` en sesiones largas.
-7. **Límite de sync** — respuestas sync > 2 MB se rechazan (`MAX_SYNC_TOTAL_BYTES`), también en el path Nostr fallback; rate-limit de respuestas sync por peer.
-8. **TOFU + SAS emoji** — se pinnea la clave de firma al primer uso; código de **6 emojis** (SHA-256 de claves ordenadas + `roomId`) para verificación OOB; alerta si la clave cambia. Alineado con [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) / [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826).
+6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer (local), con `pruneStale` en sesiones largas; máx. 12 respuestas sync/minuto por peer.
+7. **Límite de sync** — respuestas sync > 2 MB se rechazan (`MAX_SYNC_TOTAL_BYTES`), también en el path Nostr fallback.
+8. **TOFU + SAS emoji** — se pinnea la clave de firma al primer uso; código de **6 emojis** (pool de 256 → ~48 bits; SHA-256 de claves ordenadas + `roomId`) para verificación OOB; alerta si la clave cambia. Alineado con [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) / [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826).
 9. **Consentimiento IP** — Modal la primera vez (`localStorage` `tazia-ip-consent`). Quemar sesión **no** borra el consentimiento; «Olvidar este dispositivo» en Ayuda sí.
-10. **Scrub de frase en URL** — `public/scrub-phrase.js` + React: tras `#zona~frase`, el hash queda en `#zona` antes/durante el boot. El `roomId` en `#` no es secreto.
-11. **TURN opcional** — STUN por defecto; TURN self-hosted como fallback ICE o `relay`-only ([`TURN.md`](TURN.md)).
-12. **CSP / fuentes** — Meta CSP + [`public/_headers`](public/_headers); `connect-src 'self' wss:`; `font-src 'self' data:`; sin Google Fonts.
-13. **Fallback Nostr** — AES-GCM con material PBKDF2/HKDF (`tazia.fallback.v2`) + padding de blob; topic derivado por KDF (no `SHA-256(frase)` crudo). Relés ven metadatos y ciphertext.
-14. **Susurros** — firmados Ed25519; cuando ambos peers publican clave X25519 en presencia, el cuerpo va cifrado pairwise (AES-GCM). Sin esa clave, el cuerpo viaja en claro sobre DTLS / bajo AES de sala en fallback.
+10. **Scrub de frase en URL** — `public/scrub-phrase.js` (antes del bundle) + React: tras `#zona~frase`, el hash queda en `#zona` antes/durante el boot. El `roomId` en `#` no es secreto.
+11. **TURN opcional** — STUN por defecto; TURN self-hosted como fallback ICE o `relay`-only ([`TURN.md`](TURN.md)). Credenciales solo en `localStorage` del navegador.
+12. **CSP / fuentes** — Meta CSP en `index.html` + [`public/_headers`](public/_headers); `connect-src 'self' wss:`; `font-src 'self' data:`; sin Google Fonts. `frame-ancestors` solo aplica por cabecera HTTP.
+13. **Fallback Nostr** — AES-GCM con material PBKDF2 (210k) + HKDF (`tazia.fallback.v2`) + padding de blob `0x02`; topic derivado por KDF (no `SHA-256(frase)` crudo). Relés ven metadatos y ciphertext.
+14. **Susurros (`directMsg`)** — firmados Ed25519; cuando ambos peers publican clave X25519 en presencia, el cuerpo va cifrado pairwise (AES-GCM, `seal: 2`). Sin esa clave, el cuerpo viaja en claro sobre DTLS / bajo AES de sala en fallback.
 15. **Quemar sesión** — cierra meshes, limpia trust, intenta wipe de secretos `@noble` en claro, `sessionStorage.clear`, y **recarga** la pestaña. No es borrado seguro de `CryptoKey` SubtleCrypto ni wipe de disco.
 
 ## Límites honestos (no-goals)
@@ -51,7 +51,7 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 
 - Hosting estático (`npm run build` → `dist/`).
 - **Single-file (P3):** `npm run build:single` → `release/tazia-single.html` + `.sha256` (artefacto verificable; no sustituye Pages multi-asset por defecto).
-- Spike SDP/QR manual: [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) (no mezclar con P0–P2).
+- Spike SDP/QR manual: [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) (no empaquetado; no sustituye Trystero).
 - Cabeceras sugeridas (además o en lugar del meta CSP):
 
 ```

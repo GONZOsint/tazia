@@ -115,6 +115,7 @@ export default function App() {
 
   const finishBurnChoreography = useCallback(() => {
     setDmPeerId(null);
+    setBurnPlaying(false);
     void burnSession();
   }, [burnSession]);
 
@@ -193,9 +194,6 @@ export default function App() {
   });
 
   const roomList = [...rooms.values()];
-
-  const tabClass = (id: ActiveTab) =>
-    activeTab === id ? 'block tab-panel-enter' : 'hidden';
 
   return (
     <MotionConfig reducedMotion="user">
@@ -306,148 +304,158 @@ export default function App() {
 
         <div ref={mainContentRef} id="main-content" tabIndex={-1} className="outline-none">
           <Suspense fallback={<TabSkeleton />}>
-            <div className={tabClass('forum')}>
-              {isInRoom && roomId && profile && selfUserId ? (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={roomId}
-                    initial={contentSwitch.initial}
-                    animate={contentSwitch.animate}
-                    exit={contentSwitch.exit}
-                    transition={contentSwitch.transition}
-                  >
-                    <ForumWorkspace
-                      roomId={roomId}
-                      phrase={phrase}
-                      profile={profile}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activeTab}
+                initial={contentSwitch.initial}
+                animate={contentSwitch.animate}
+                exit={contentSwitch.exit}
+                transition={contentSwitch.transition}
+              >
+                {activeTab === 'forum' &&
+                  (isInRoom && roomId && profile && selfUserId ? (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={roomId}
+                        initial={contentSwitch.initial}
+                        animate={contentSwitch.animate}
+                        exit={contentSwitch.exit}
+                        transition={contentSwitch.transition}
+                      >
+                        <ForumWorkspace
+                          roomId={roomId}
+                          phrase={phrase}
+                          profile={profile}
+                          selfUserId={selfUserId}
+                          messages={messages}
+                          presenceAliases={presenceAliases}
+                          onlineCount={peerOnlineCount}
+                          meshStatus={meshStatus}
+                          isPublishing={isPublishing}
+                          isSyncing={isSyncing}
+                          roomError={roomErrorMsg}
+                          roomErrorTone="error"
+                          onDismissRoomError={dismissRoomError}
+                          onSyncNow={async () => {
+                            await syncNow();
+                          }}
+                          onCreateThread={async (title, body) => {
+                            const ok = await publish({
+                              type: 'NEW_THREAD',
+                              threadId: crypto.randomUUID(),
+                              parentMsgId: null,
+                              title,
+                              body,
+                            });
+                            if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                            return ok;
+                          }}
+                          onReplyThread={async (threadId, parentMsgId, body) => {
+                            const ok = await publish({
+                              type: 'REPLY',
+                              threadId,
+                              parentMsgId,
+                              title: '',
+                              body,
+                            });
+                            if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                            return ok;
+                          }}
+                        />
+                      </motion.div>
+                    </AnimatePresence>
+                  ) : (
+                    <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
+                      <Radio className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
+                      <button
+                        type="button"
+                        onClick={() => selectTab('rooms')}
+                        aria-label={t('forumEmptyCta')}
+                        className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                      >
+                        <Radio className="h-5 w-5" aria-hidden="true" />
+                        <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
+                      </button>
+                    </main>
+                  ))}
+
+                {activeTab === 'rooms' && (
+                  <RoomEntryView
+                    initialRoomId={initialInvite?.roomId}
+                    initialPhrase={initialInvite?.phrase}
+                    isJoining={isJoining}
+                    errorMsg={joinErrorMsg}
+                    showIceHint={showIceHint}
+                    activeRoomId={roomId}
+                    joinedRooms={roomList}
+                    onJoinRoom={joinRoom}
+                    onSwitchRoom={switchRoom}
+                    onLeaveRoom={async (id) => {
+                      const wasActive = id === activeRoomId;
+                      await leaveRoom(id);
+                      if (wasActive) {
+                        toast.push({
+                          message: t('roomsLeftToast'),
+                          tone: 'info',
+                          dedupeKey: 'leave-zone',
+                        });
+                      }
+                    }}
+                  />
+                )}
+
+                {activeTab === 'presence' && (
+                  <PresenceView
+                    selfUserId={selfUserId}
+                    selfSignPubKeyB64={selfSignPubKeyB64}
+                    trustStore={trustStore}
+                    presence={presence}
+                    onlineUserIds={onlineUserIds}
+                    meshStatus={meshStatus}
+                    peerOnlineCount={peerOnlineCount}
+                    rejectedSyncCount={rejectedSyncCount}
+                    roomId={roomId}
+                    onSyncNow={syncNow}
+                    isSyncing={isSyncing}
+                    onGoToRooms={() => selectTab('rooms')}
+                  />
+                )}
+
+                {activeTab === 'dms' &&
+                  (dmPeerId && selfUserId ? (
+                    <DmConversationView
                       selfUserId={selfUserId}
-                      messages={messages}
-                      presenceAliases={presenceAliases}
-                      onlineCount={peerOnlineCount}
-                      meshStatus={meshStatus}
-                      isPublishing={isPublishing}
-                      isSyncing={isSyncing}
-                      roomError={roomErrorMsg}
-                      roomErrorTone="error"
-                      onDismissRoomError={dismissRoomError}
-                      onSyncNow={async () => {
-                        await syncNow();
-                      }}
-                      onCreateThread={async (title, body) => {
-                        const ok = await publish({
-                          type: 'NEW_THREAD',
-                          threadId: crypto.randomUUID(),
-                          parentMsgId: null,
-                          title,
-                          body,
-                        });
-                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                      peerId={dmPeerId}
+                      peerAlias={presence[dmPeerId]?.alias || dmPeerId}
+                      messages={dmMessages[dmPeerId] ?? []}
+                      onSend={async (body) => {
+                        const ok = await sendDm(dmPeerId, body);
+                        if (!ok) toast.push(t('toastDmFailed'), 'error');
                         return ok;
                       }}
-                      onReplyThread={async (threadId, parentMsgId, body) => {
-                        const ok = await publish({
-                          type: 'REPLY',
-                          threadId,
-                          parentMsgId,
-                          title: '',
-                          body,
-                        });
-                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                        return ok;
+                      onBack={() => {
+                        clearDmUnread(dmPeerId);
+                        setDmPeerId(null);
                       }}
                     />
-                  </motion.div>
-                </AnimatePresence>
-              ) : (
-                <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
-                  <Radio className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-                  <button
-                    type="button"
-                    onClick={() => selectTab('rooms')}
-                    aria-label={t('forumEmptyCta')}
-                    className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
-                  >
-                    <Radio className="h-5 w-5" aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
-                  </button>
-                </main>
-              )}
-            </div>
+                  ) : (
+                    <DmListView
+                      selfUserId={selfUserId}
+                      presence={presence}
+                      onlineUserIds={onlineUserIds}
+                      dmMessages={dmMessages}
+                      dmUnread={dmUnread}
+                      onGoToRooms={() => selectTab('rooms')}
+                      onSelectPeer={(peerId) => {
+                        clearDmUnread(peerId);
+                        setDmPeerId(peerId);
+                      }}
+                    />
+                  ))}
 
-            <div className={tabClass('rooms')}>
-              <RoomEntryView
-                initialRoomId={initialInvite?.roomId}
-                initialPhrase={initialInvite?.phrase}
-                isJoining={isJoining}
-                errorMsg={joinErrorMsg}
-                showIceHint={showIceHint}
-                activeRoomId={roomId}
-                joinedRooms={roomList}
-                onJoinRoom={joinRoom}
-                onSwitchRoom={switchRoom}
-                onLeaveRoom={async (id) => {
-                  const wasActive = id === activeRoomId;
-                  await leaveRoom(id);
-                  if (wasActive) {
-                    toast.push({ message: t('roomsLeftToast'), tone: 'info', dedupeKey: 'leave-zone' });
-                  }
-                }}
-              />
-            </div>
-
-            <div className={tabClass('presence')}>
-              <PresenceView
-                selfUserId={selfUserId}
-                selfSignPubKeyB64={selfSignPubKeyB64}
-                trustStore={trustStore}
-                presence={presence}
-                onlineUserIds={onlineUserIds}
-                meshStatus={meshStatus}
-                peerOnlineCount={peerOnlineCount}
-                rejectedSyncCount={rejectedSyncCount}
-                roomId={roomId}
-                onSyncNow={syncNow}
-                isSyncing={isSyncing}
-                onGoToRooms={() => selectTab('rooms')}
-              />
-            </div>
-
-            <div className={tabClass('dms')}>
-              {dmPeerId && selfUserId ? (
-                <DmConversationView
-                  selfUserId={selfUserId}
-                  peerId={dmPeerId}
-                  peerAlias={presence[dmPeerId]?.alias || dmPeerId}
-                  messages={dmMessages[dmPeerId] ?? []}
-                  onSend={async (body) => {
-                    const ok = await sendDm(dmPeerId, body);
-                    if (!ok) toast.push(t('toastDmFailed'), 'error');
-                    return ok;
-                  }}
-                  onBack={() => {
-                    clearDmUnread(dmPeerId);
-                    setDmPeerId(null);
-                  }}
-                />
-              ) : (
-                <DmListView
-                  selfUserId={selfUserId}
-                  presence={presence}
-                  onlineUserIds={onlineUserIds}
-                  dmMessages={dmMessages}
-                  dmUnread={dmUnread}
-                  onGoToRooms={() => selectTab('rooms')}
-                  onSelectPeer={(peerId) => {
-                    clearDmUnread(peerId);
-                    setDmPeerId(peerId);
-                  }}
-                />
-              )}
-            </div>
-
-            <div className={tabClass('how')}>
-              <HowItWorksView />
-            </div>
+                {activeTab === 'how' && <HowItWorksView />}
+              </motion.div>
+            </AnimatePresence>
           </Suspense>
         </div>
 

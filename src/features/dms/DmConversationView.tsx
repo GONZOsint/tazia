@@ -70,7 +70,7 @@ export function DmConversationView({
               className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                className={`max-w-[80%] rounded-[var(--radius-msg)] px-4 py-2.5 text-sm ${
                   isSelf
                     ? 'bg-accent text-on-accent'
                     : 'bg-surface-raised border border-border text-ink'
@@ -103,7 +103,7 @@ export function DmConversationView({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={t('dmsPlaceholder')}
-          className="flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
+          className="input-base flex-1"
         />
         <button
           type="submit"
