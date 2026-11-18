@@ -12,6 +12,7 @@ interface DmListViewProps {
   dmMessages: Record<string, DirectMessage[]>;
   dmUnread: Record<string, number>;
   onSelectPeer: (peerId: string) => void;
+  onGoToRooms?: () => void;
 }
 
 export function DmListView({
@@ -21,6 +22,7 @@ export function DmListView({
   dmMessages,
   dmUnread,
   onSelectPeer,
+  onGoToRooms,
 }: DmListViewProps) {
   const t = useT();
   const [visuals, setVisuals] = useState<
@@ -54,6 +56,15 @@ export function DmListView({
         <MessageCircle className="mx-auto h-8 w-8 text-faint" aria-hidden="true" />
         <h1 className="mt-4 font-display text-xl font-semibold text-ink">{t('dmsTitle')}</h1>
         <p className="mt-2 text-sm text-muted">{t('dmsEmpty')}</p>
+        {onGoToRooms && (
+          <button
+            type="button"
+            onClick={onGoToRooms}
+            className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+          >
+            {t('dmsEmptyCta')}
+          </button>
+        )}
       </main>
     );
   }

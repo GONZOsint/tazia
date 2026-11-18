@@ -13,6 +13,8 @@ interface TopBarProps {
   onSelectTab: (tab: ActiveTab) => void;
   hasActiveRoom: boolean;
   onBurnSession: () => void;
+  forumUnread?: number;
+  dmUnread?: number;
 }
 
 export function TopBar({
@@ -20,6 +22,8 @@ export function TopBar({
   onSelectTab,
   hasActiveRoom,
   onBurnSession,
+  forumUnread = 0,
+  dmUnread = 0,
 }: TopBarProps) {
   const t = useT();
 
@@ -51,11 +55,18 @@ export function TopBar({
         >
           {DESKTOP_NAV_ITEMS.map(({ id, labelKey, Icon }) => {
             const isActive = activeTab === id;
+            const badge =
+              id === 'forum' ? forumUnread : id === 'dms' ? dmUnread : 0;
             return (
               <button
                 key={id}
                 type="button"
                 aria-current={isActive ? 'page' : undefined}
+                aria-label={
+                  badge > 0
+                    ? `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
+                    : undefined
+                }
                 onClick={() => onSelectTab(id)}
                 className={`relative inline-flex h-full items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
                   isActive ? 'font-semibold text-ink' : 'text-muted hover:text-ink'
@@ -66,6 +77,11 @@ export function TopBar({
                   aria-hidden="true"
                 />
                 <span>{t(labelKey)}</span>
+                {badge > 0 && (
+                  <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-on-accent">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
                 {isActive && (
                   <motion.span
                     layoutId="topbar-active-underline"

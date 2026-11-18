@@ -21,6 +21,20 @@ export const es: Messages = {
 
   leaveTab: 'Quemar sesión',
   liveHint: 'En directo',
+  burnConfirmTitle: '¿Quemar esta sesión?',
+  burnConfirmBody:
+    'Cierra todas las salas de esta pestaña. Aquí desaparecen los mensajes. Solo vuelves con la frase.',
+  burnConfirmAction: 'Quemar sesión',
+  leaveRoomConfirmTitle: '¿Salir de esta sala?',
+  leaveRoomConfirmBody: 'Dejas el mesh de esta sala. El resto sigue.',
+  leaveRoomConfirmAction: 'Salir de la sala',
+  toastPublished: 'Mensaje enviado',
+  toastPublishFailed: 'No se pudo enviar',
+  toastDmSent: 'Mensaje directo enviado',
+  toastDmFailed: 'No se pudo enviar el DM',
+  toastSynced: 'Sincronizado con el grupo',
+  dismissAlert: 'Cerrar',
+  navUnreadAria: '{n} sin leer',
 
   burnNotice: 'Sesión quemada. Para volver, crea o entra de nuevo con la frase.',
 
@@ -124,6 +138,8 @@ export const es: Messages = {
 
   presenceEmptyTitle: 'Nadie en la sala',
   presenceEmptyBody: 'Entra o crea una sala para ver quién está conectado.',
+  presenceEmptyCta: 'Ir a salas',
+  dmsEmptyCta: 'Ir a salas',
   presenceTitle: 'Presentes',
   presenceCount: '{n} persona conectada ahora',
   presenceCountPlural: '{n} personas conectadas ahora',

@@ -68,7 +68,11 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 | [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | WebRTC security; TOFU weak without OOB |
 | [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN still needed as fallback |
 | [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Why residential ICE fails without TURN |
+| [Chrome LNA](https://developer.chrome.com/blog/local-network-access) | Public origin → LAN permission (same Wi‑Fi on Pages) |
+| [WebTransport](https://developer.chrome.com/docs/capabilities/web-apis/webtransport) | Client–server only — not a P2P mesh substitute |
 | OpenMLS / WASM | Future groups roadmap |
+
+**Browsers:** Chrome / Firefox / Brave share Chromium or Gecko WebRTC — Brave is not a better P2P path (often more IP obfuscation). Keep **Trystero**; do not fork Nostr/Trystero for Pages.
 
 ## GitHub Pages
 

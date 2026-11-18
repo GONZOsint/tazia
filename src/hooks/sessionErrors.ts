@@ -1,5 +1,5 @@
 import type { MessageKey } from '../i18n';
-import type { P2pRoomErrorCode } from '../core/p2p/p2pRoom';
+import type { P2pRoomErrorCode } from '../core/p2p/p2pTypes';
 import { queryLocalNetworkAccess } from '../core/p2p/localNetworkAccess';
 
 export type SessionError =

@@ -5,6 +5,7 @@ import type { RoomJoinParams, RoomState } from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Card } from '../../components/ui/Card';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
@@ -44,6 +45,7 @@ export function RoomEntryView({
   const t = useT();
   const hasInvite = Boolean(initialRoomId);
   const [entryTab, setEntryTab] = useState<'create' | 'join'>(hasInvite ? 'join' : 'create');
+  const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
 
   return (
     <main className="mx-auto max-w-[1280px] px-4 py-6 sm:px-8 sm:py-8 lg:py-10">
@@ -104,9 +106,10 @@ export function RoomEntryView({
                   {onLeaveRoom && (
                     <button
                       type="button"
-                      onClick={() => void onLeaveRoom(room.roomId)}
+                      onClick={() => setLeaveTarget(room.roomId)}
                       className="min-h-[36px] rounded-lg border border-danger-border bg-danger-bg px-3 py-1 text-xs font-semibold text-danger-ink focus-visible:outline-2 focus-visible:outline-accent"
                       title={t('roomsLeaveRoom')}
+                      aria-label={t('roomsLeaveRoom')}
                     >
                       <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
@@ -198,6 +201,19 @@ export function RoomEntryView({
           <TurnRelaySettings forceOpen={showIceHint} />
         </div>
       </Card>
+
+      <ConfirmModal
+        open={leaveTarget !== null}
+        title={t('leaveRoomConfirmTitle')}
+        body={t('leaveRoomConfirmBody')}
+        confirmLabel={t('leaveRoomConfirmAction')}
+        onCancel={() => setLeaveTarget(null)}
+        onConfirm={() => {
+          const id = leaveTarget;
+          setLeaveTarget(null);
+          if (id && onLeaveRoom) void onLeaveRoom(id);
+        }}
+      />
     </main>
   );
 }

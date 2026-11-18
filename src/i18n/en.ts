@@ -19,6 +19,20 @@ export const en = {
 
   leaveTab: 'Burn session',
   liveHint: 'Live',
+  burnConfirmTitle: 'Burn this session?',
+  burnConfirmBody:
+    'Closes every room in this tab. Messages are gone here. Rejoin only with the phrase.',
+  burnConfirmAction: 'Burn session',
+  leaveRoomConfirmTitle: 'Leave this room?',
+  leaveRoomConfirmBody: 'You leave the mesh for this room. Others stay.',
+  leaveRoomConfirmAction: 'Leave room',
+  toastPublished: 'Message sent',
+  toastPublishFailed: 'Could not send',
+  toastDmSent: 'Direct message sent',
+  toastDmFailed: 'Could not send DM',
+  toastSynced: 'Synced with the group',
+  dismissAlert: 'Dismiss',
+  navUnreadAria: '{n} unread',
 
   burnNotice: 'Session burned. To come back, create or join again with the phrase.',
 
@@ -122,6 +136,8 @@ export const en = {
 
   presenceEmptyTitle: 'Nobody in the room',
   presenceEmptyBody: 'Join or create a room to see who is connected.',
+  presenceEmptyCta: 'Go to rooms',
+  dmsEmptyCta: 'Go to rooms',
   presenceTitle: 'People',
   presenceCount: '{n} person connected now',
   presenceCountPlural: '{n} people connected now',

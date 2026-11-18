@@ -68,7 +68,11 @@ Para probar en la red local, Vite escucha en todas las interfaces (`host: true`)
 | [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | Seguridad WebRTC; TOFU débil sin OOB |
 | [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN sigue siendo fallback |
 | [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Por qué falla ICE residencial sin TURN |
+| [Chrome LNA](https://developer.chrome.com/blog/local-network-access) | Permiso red local (misma Wi‑Fi en Pages) |
+| [WebTransport](https://developer.chrome.com/docs/capabilities/web-apis/webtransport) | Solo cliente–servidor — no sustituye mesh P2P |
 | OpenMLS / WASM | Roadmap de grupos |
+
+**Navegadores:** Chrome / Firefox / Brave comparten WebRTC (Chromium/Gecko). Brave no mejora el mesh (suele ofuscar más). Seguimos con **Trystero**; sin fork de Nostr/Trystero para Pages.
 
 ## GitHub Pages
 

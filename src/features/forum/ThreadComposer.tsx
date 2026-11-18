@@ -9,7 +9,7 @@ interface ThreadComposerProps {
   identity: LocalProfile;
   isBusy: boolean;
   onCancel: () => void;
-  onSubmitThread: (title: string, body: string) => Promise<void>;
+  onSubmitThread: (title: string, body: string) => Promise<boolean>;
 }
 
 export function ThreadComposer({
@@ -28,9 +28,12 @@ export function ThreadComposer({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (overLimit || isBusy) return;
-    await onSubmitThread(title.trim(), body.trim());
-    setTitle('');
-    setBody('');
+    const ok = await onSubmitThread(title.trim(), body.trim());
+    if (ok) {
+      setTitle('');
+      setBody('');
+      onCancel();
+    }
   };
 
   return (

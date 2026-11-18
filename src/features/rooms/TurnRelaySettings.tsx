@@ -58,7 +58,7 @@ export function buildRtcConfig(turn: TurnConfig = loadTurnConfig()): {
 
   return {
     rtcConfig: {
-      iceCandidatePoolSize: 10,
+      iceCandidatePoolSize: 8,
       iceTransportPolicy: relayOnly ? 'relay' : 'all',
     },
     turnConfig,

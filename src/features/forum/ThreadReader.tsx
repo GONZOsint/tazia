@@ -22,7 +22,7 @@ interface ThreadReaderProps {
   authorVisuals: AuthorVisualCache;
   onAuthorVisuals: (next: AuthorVisualCache) => void;
   isBusy: boolean;
-  onReplyThread: (threadId: string, parentMsgId: string, body: string) => Promise<void>;
+  onReplyThread: (threadId: string, parentMsgId: string, body: string) => Promise<boolean>;
 }
 
 function PostCard({
@@ -118,9 +118,11 @@ export function ThreadReader({
     e.preventDefault();
     if (!replyBody.trim() || isBusy) return;
     const parentId = replyParent ? replyParent.msgId : thread.rootPost.msgId;
-    await onReplyThread(thread.threadId, parentId, replyBody.trim());
-    setReplyBody('');
-    setReplyParent(null);
+    const ok = await onReplyThread(thread.threadId, parentId, replyBody.trim());
+    if (ok) {
+      setReplyBody('');
+      setReplyParent(null);
+    }
   };
 
   return (
@@ -168,7 +170,11 @@ export function ThreadReader({
             </button>
           </div>
         )}
+        <label className="sr-only" htmlFor="thread-reply">
+          {t('readerReply')}
+        </label>
         <textarea
+          id="thread-reply"
           value={replyBody}
           maxLength={MAX_BODY_CHARS}
           onChange={(e) => setReplyBody(e.target.value)}

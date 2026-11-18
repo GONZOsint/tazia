@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { buildLocalProfile, type LocalProfile } from '../core/crypto/identity';
 import {
-  joinP2pRoom,
-  P2pActionError,
-  type JoinedP2pRoom,
-} from '../core/p2p/p2pRoom';
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from 'react';
+import { buildLocalProfile, type LocalProfile } from '../core/crypto/identity';
+import { P2pActionError, type JoinedP2pRoom } from '../core/p2p/p2pTypes';
 import {
   MAX_ALIAS_CHARS,
   MAX_BODY_CHARS,
@@ -19,7 +22,10 @@ import { acceptIpConsent, hasIpConsent } from '../core/utils/ipConsent';
 import { mapRoomError, mapRoomErrorAsync, type SessionError } from './sessionErrors';
 import type { TrustStore, TrustLevel } from '../core/trust/trustStore';
 import { buildRtcConfig } from '../features/rooms/TurnRelaySettings';
-import { primeLocalNetworkAccess } from '../core/p2p/localNetworkAccess';
+import {
+  primeLocalNetworkAccess,
+  queryLocalNetworkAccess,
+} from '../core/p2p/localNetworkAccess';
 
 export type { SessionError } from './sessionErrors';
 
@@ -45,16 +51,27 @@ export interface RoomState {
   isPublishing: boolean;
   isSyncing: boolean;
   roomError: SessionError;
+  transportNotice: SessionError;
   keyChangeAlerts: Array<{ userId: string; level: TrustLevel }>;
   unreadCount: number;
-  /** DM conversations keyed by the other userId. */
   dmMessages: Record<string, DirectMessage[]>;
   dmUnread: Record<string, number>;
 }
 
 const MAX_ROOMS = 5;
 
-export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presence') => void) {
+function deriveMeshStatus(r: {
+  isSyncing: boolean;
+  onlineUserIds: string[];
+}): MeshStatus {
+  if (r.isSyncing) return 'syncing';
+  return r.onlineUserIds.length <= 1 ? 'alone' : 'mesh';
+}
+
+export function useRoomManager(
+  onNavigateTab: (tab: 'forum' | 'rooms' | 'presence') => void,
+  options?: { forumTabFocusedRef?: MutableRefObject<boolean> }
+) {
   const [rooms, setRooms] = useState<Map<string, RoomState>>(new Map());
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -64,10 +81,17 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
   const pendingJoinRef = useRef<RoomJoinParams | null>(null);
   const burnTimerRef = useRef<number | null>(null);
   const roomsRef = useRef<Map<string, RoomState>>(rooms);
+  const activeRoomIdRef = useRef<string | null>(null);
+  const joinGenerationRef = useRef(0);
+  const forumFocusedRef = options?.forumTabFocusedRef;
 
   useEffect(() => {
     roomsRef.current = rooms;
   }, [rooms]);
+
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId;
+  }, [activeRoomId]);
 
   useEffect(() => {
     return () => {
@@ -82,8 +106,13 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
     setRooms((prev) => {
       const existing = prev.get(roomId);
       if (!existing) return prev;
+      const updated = updater(existing);
+      const meshStatus = deriveMeshStatus(updated);
+      const nextRoom =
+        meshStatus === updated.meshStatus ? updated : { ...updated, meshStatus };
+      if (nextRoom === existing) return prev;
       const next = new Map(prev);
-      next.set(roomId, updater(existing));
+      next.set(roomId, nextRoom);
       return next;
     });
   }, []);
@@ -108,13 +137,19 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
         return;
       }
 
+      const generation = ++joinGenerationRef.current;
       setIsJoining(true);
       setJoinError(null);
 
       try {
         const { rtcConfig, turnConfig, relayOnly } = buildRtcConfig();
-        // User gesture → warm host/mDNS candidates + LNA prompt (Chrome public→LAN).
-        await primeLocalNetworkAccess();
+        const lna = await queryLocalNetworkAccess();
+        if (lna !== 'granted') {
+          await primeLocalNetworkAccess(lna === 'unsupported' ? 250 : 400);
+        }
+
+        const { joinP2pRoom } = await import('../core/p2p/p2pRoom');
+        if (joinGenerationRef.current !== generation) return;
 
         const session = await joinP2pRoom({
           roomId: roomIdTrim,
@@ -123,14 +158,17 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
           turnConfig,
           relayOnly,
           onForumMessage: (message) => {
+            if (joinGenerationRef.current !== generation) return;
             updateRoom(roomIdTrim, (r) => {
               if (r.messages.some((m) => m.msgId === message.msgId)) return r;
               const msgs = [...r.messages, message].sort((a, b) => a.createdAtMs - b.createdAtMs);
-              const isActive = roomIdTrim === activeRoomId;
+              const roomIsActive = roomIdTrim === activeRoomIdRef.current;
+              const forumFocused = forumFocusedRef?.current !== false;
+              const bumpUnread = !(roomIsActive && forumFocused);
               return {
                 ...r,
                 messages: msgs,
-                unreadCount: isActive ? r.unreadCount : r.unreadCount + 1,
+                unreadCount: bumpUnread ? r.unreadCount + 1 : r.unreadCount,
               };
             });
           },
@@ -173,6 +211,7 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
             });
           },
           onError: (code) => {
+            if (code === 'publish-rate') return;
             void mapRoomErrorAsync(code).then((key) => {
               updateRoom(roomIdTrim, (r) => ({
                 ...r,
@@ -183,16 +222,26 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
           onRelayFallback: () => {
             updateRoom(roomIdTrim, (r) => ({
               ...r,
-              roomError: { key: 'infoRelayPath' },
+              transportNotice: { key: 'infoRelayPath' },
             }));
           },
         });
 
+        if (joinGenerationRef.current !== generation) {
+          await session.leave();
+          return;
+        }
+
         const localProfile = await buildLocalProfile(
           session.selfUserId,
-          params.customAlias?.trim().slice(0, MAX_ALIAS_CHARS),
+          params.customAlias?.trim().slice(0, MAX_ALIAS_CHARS)
         );
         await session.setPresenceAlias(localProfile.alias);
+
+        if (joinGenerationRef.current !== generation) {
+          await session.leave();
+          return;
+        }
 
         const roomState: RoomState = {
           roomId: roomIdTrim,
@@ -205,11 +254,15 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
           messages: [],
           presence: session.getPresenceMap(),
           onlineUserIds: session.getOnlineUserIds(),
-          meshStatus: 'mesh',
+          meshStatus: deriveMeshStatus({
+            isSyncing: false,
+            onlineUserIds: session.getOnlineUserIds(),
+          }),
           rejectedSyncCount: 0,
           isPublishing: false,
           isSyncing: false,
           roomError: null,
+          transportNotice: null,
           keyChangeAlerts: [],
           unreadCount: 0,
           dmMessages: {},
@@ -224,9 +277,9 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
         setActiveRoomId(roomIdTrim);
         onNavigateTab('forum');
 
-        // Schedule sync retries
         for (const delayMs of [800, 2500, 6000]) {
-          setTimeout(async () => {
+          window.setTimeout(async () => {
+            if (joinGenerationRef.current !== generation) return;
             const room = roomsRef.current.get(roomIdTrim);
             if (!room) return;
             updateRoom(roomIdTrim, (r) => ({ ...r, isSyncing: true }));
@@ -243,6 +296,7 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
           }, delayMs);
         }
       } catch (err) {
+        if (joinGenerationRef.current !== generation) return;
         if (err instanceof P2pActionError) {
           const key = mapRoomError(err.code);
           setJoinError(key === 'errGeneric' ? { key: 'errJoinFailed' } : { key });
@@ -250,10 +304,10 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
           setJoinError({ key: 'errJoinFailed' });
         }
       } finally {
-        setIsJoining(false);
+        if (joinGenerationRef.current === generation) setIsJoining(false);
       }
     },
-    [activeRoomId, onNavigateTab, updateRoom],
+    [forumFocusedRef, onNavigateTab, updateRoom]
   );
 
   const joinRoom = useCallback(
@@ -265,7 +319,7 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
       }
       await joinRoomInternal(params);
     },
-    [joinRoomInternal],
+    [joinRoomInternal]
   );
 
   const confirmIpConsent = useCallback(async () => {
@@ -286,22 +340,29 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
     if (!room) return;
     try {
       await room.session.leave();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setRooms((prev) => {
       const next = new Map(prev);
       next.delete(roomId);
+      roomsRef.current = next;
+      setActiveRoomId((cur) => {
+        if (cur !== roomId) return cur;
+        return [...next.keys()][0] ?? null;
+      });
       return next;
-    });
-    setActiveRoomId((prev) => {
-      if (prev !== roomId) return prev;
-      const remaining = [...roomsRef.current.keys()].filter((k) => k !== roomId);
-      return remaining[0] ?? null;
     });
   }, []);
 
   const burnSession = useCallback(async () => {
+    joinGenerationRef.current += 1;
     for (const room of roomsRef.current.values()) {
-      try { await room.session.leave(); } catch { /* ignore */ }
+      try {
+        await room.session.leave();
+      } catch {
+        /* ignore */
+      }
     }
     setRooms(new Map());
     setActiveRoomId(null);
@@ -312,12 +373,32 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
     burnTimerRef.current = window.setTimeout(() => setBurnNotice(false), 4000);
   }, [onNavigateTab]);
 
-  const switchRoom = useCallback((roomId: string) => {
-    if (!roomsRef.current.has(roomId)) return;
-    setActiveRoomId(roomId);
-    updateRoom(roomId, (r) => ({ ...r, unreadCount: 0 }));
-    onNavigateTab('forum');
-  }, [onNavigateTab, updateRoom]);
+  const switchRoom = useCallback(
+    (roomId: string) => {
+      if (!roomsRef.current.has(roomId)) return;
+      setActiveRoomId(roomId);
+      updateRoom(roomId, (r) => ({ ...r, unreadCount: 0 }));
+      onNavigateTab('forum');
+    },
+    [onNavigateTab, updateRoom]
+  );
+
+  const clearForumUnread = useCallback(() => {
+    if (!activeRoomIdRef.current) return;
+    updateRoom(activeRoomIdRef.current, (r) =>
+      r.unreadCount === 0 ? r : { ...r, unreadCount: 0 }
+    );
+  }, [updateRoom]);
+
+  const dismissRoomError = useCallback(() => {
+    if (!activeRoomIdRef.current) return;
+    updateRoom(activeRoomIdRef.current, (r) => ({ ...r, roomError: null }));
+  }, [updateRoom]);
+
+  const dismissTransportNotice = useCallback(() => {
+    if (!activeRoomIdRef.current) return;
+    updateRoom(activeRoomIdRef.current, (r) => ({ ...r, transportNotice: null }));
+  }, [updateRoom]);
 
   const publish = useCallback(
     async (input: {
@@ -326,13 +407,13 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
       parentMsgId: string | null;
       title: string;
       body: string;
-    }) => {
-      if (!activeRoomId) return;
+    }): Promise<boolean> => {
+      if (!activeRoomId) return false;
       const room = roomsRef.current.get(activeRoomId);
-      if (!room) return;
+      if (!room) return false;
       const title = input.title.slice(0, MAX_TITLE_CHARS);
       const body = input.body.slice(0, MAX_BODY_CHARS);
-      if (!body.trim()) return;
+      if (!body.trim()) return false;
 
       updateRoom(activeRoomId, (r) => ({ ...r, isPublishing: true, roomError: null }));
       try {
@@ -345,6 +426,7 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
           body,
           createdAtMs: Date.now(),
         });
+        return true;
       } catch (err) {
         if (err instanceof P2pActionError) {
           const key = mapRoomError(err.code);
@@ -355,11 +437,12 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
         } else {
           updateRoom(activeRoomId, (r) => ({ ...r, roomError: { key: 'errPublish' } }));
         }
+        return false;
       } finally {
         updateRoom(activeRoomId, (r) => ({ ...r, isPublishing: false }));
       }
     },
-    [activeRoomId, updateRoom],
+    [activeRoomId, updateRoom]
   );
 
   const syncNow = useCallback(async () => {
@@ -379,37 +462,17 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
     }
   }, [activeRoomId, updateRoom]);
 
-  const dismissKeyChange = useCallback((roomId: string, userId: string) => {
-    updateRoom(roomId, (r) => ({
-      ...r,
-      keyChangeAlerts: r.keyChangeAlerts.filter((a) => a.userId !== userId),
-    }));
-  }, [updateRoom]);
+  const dismissKeyChange = useCallback(
+    (roomId: string, userId: string) => {
+      updateRoom(roomId, (r) => ({
+        ...r,
+        keyChangeAlerts: r.keyChangeAlerts.filter((a) => a.userId !== userId),
+      }));
+    },
+    [updateRoom]
+  );
 
-  // Derive mesh status for each room
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRooms((prev) => {
-        let changed = false;
-        const next = new Map(prev);
-        for (const [id, room] of next) {
-          const newStatus: MeshStatus = room.isSyncing
-            ? 'syncing'
-            : room.onlineUserIds.length <= 1
-              ? 'alone'
-              : 'mesh';
-          if (room.meshStatus !== newStatus) {
-            next.set(id, { ...room, meshStatus: newStatus });
-            changed = true;
-          }
-        }
-        return changed ? next : prev;
-      });
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const active = activeRoomId ? rooms.get(activeRoomId) ?? null : null;
+  const active = activeRoomId ? (rooms.get(activeRoomId) ?? null) : null;
 
   const presenceAliases = useMemo(() => {
     if (!active) return {};
@@ -420,30 +483,50 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
     return map;
   }, [active]);
 
+  const totalForumUnread = useMemo(() => {
+    let n = 0;
+    for (const r of rooms.values()) n += r.unreadCount;
+    return n;
+  }, [rooms]);
+
+  const totalDmUnread = useMemo(() => {
+    if (!active) return 0;
+    return Object.values(active.dmUnread).reduce((a, b) => a + b, 0);
+  }, [active]);
+
   const sendDm = useCallback(
-    async (toUserId: string, body: string) => {
-      if (!activeRoomId) return;
+    async (toUserId: string, body: string): Promise<boolean> => {
+      if (!activeRoomId) return false;
       const room = roomsRef.current.get(activeRoomId);
-      if (!room) return;
-      const dm = await room.session.sendDirectMessage(toUserId, body);
-      updateRoom(activeRoomId, (r) => {
-        const prev = r.dmMessages[toUserId] ?? [];
-        return {
-          ...r,
-          dmMessages: { ...r.dmMessages, [toUserId]: [...prev, dm] },
-        };
-      });
+      if (!room) return false;
+      try {
+        const dm = await room.session.sendDirectMessage(toUserId, body);
+        updateRoom(activeRoomId, (r) => {
+          const prev = r.dmMessages[toUserId] ?? [];
+          return {
+            ...r,
+            dmMessages: { ...r.dmMessages, [toUserId]: [...prev, dm] },
+          };
+        });
+        return true;
+      } catch {
+        updateRoom(activeRoomId, (r) => ({ ...r, roomError: { key: 'errPublish' } }));
+        return false;
+      }
     },
-    [activeRoomId, updateRoom],
+    [activeRoomId, updateRoom]
   );
 
-  const clearDmUnread = useCallback((peerId: string) => {
-    if (!activeRoomId) return;
-    updateRoom(activeRoomId, (r) => ({
-      ...r,
-      dmUnread: { ...r.dmUnread, [peerId]: 0 },
-    }));
-  }, [activeRoomId, updateRoom]);
+  const clearDmUnread = useCallback(
+    (peerId: string) => {
+      if (!activeRoomId) return;
+      updateRoom(activeRoomId, (r) => ({
+        ...r,
+        dmUnread: { ...r.dmUnread, [peerId]: 0 },
+      }));
+    },
+    [activeRoomId, updateRoom]
+  );
 
   return {
     rooms,
@@ -454,6 +537,8 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
     joinError,
     burnNotice,
     ipConsentNeeded,
+    totalForumUnread,
+    totalDmUnread,
     confirmIpConsent,
     cancelIpConsent,
     joinRoom,
@@ -464,6 +549,9 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
     syncNow,
     sendDm,
     clearDmUnread,
+    clearForumUnread,
+    dismissRoomError,
+    dismissTransportNotice,
     dismissKeyChange,
   };
 }

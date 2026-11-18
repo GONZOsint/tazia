@@ -39,9 +39,10 @@ export function KeyChangeAlert({ peerAlias, onRepin, onDisconnect, onDismiss }: 
       <button
         type="button"
         onClick={onDismiss}
+        aria-label={t('dismissAlert')}
         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-danger-ink/60 focus-visible:outline-2 focus-visible:outline-accent"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );

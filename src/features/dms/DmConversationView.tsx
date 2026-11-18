@@ -9,7 +9,7 @@ interface DmConversationViewProps {
   peerId: string;
   peerAlias: string;
   messages: DirectMessage[];
-  onSend: (body: string) => Promise<void>;
+  onSend: (body: string) => Promise<boolean>;
   onBack: () => void;
 }
 
@@ -36,8 +36,8 @@ export function DmConversationView({
     if (!body.trim() || sending) return;
     setSending(true);
     try {
-      await onSend(body.trim());
-      setBody('');
+      const ok = await onSend(body.trim());
+      if (ok) setBody('');
     } finally {
       setSending(false);
     }
@@ -93,7 +93,11 @@ export function DmConversationView({
         onSubmit={(e) => void handleSubmit(e)}
         className="mt-4 flex gap-2 border-t border-border pt-4"
       >
+        <label className="sr-only" htmlFor="dm-body">
+          {t('dmsSend')}
+        </label>
         <input
+          id="dm-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={t('dmsSend')}
@@ -102,6 +106,7 @@ export function DmConversationView({
         <button
           type="submit"
           disabled={!body.trim() || sending}
+          aria-label={sending ? t('dmsSending') : t('dmsSend')}
           className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
         >
           {sending ? (

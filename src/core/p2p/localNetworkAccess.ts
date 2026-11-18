@@ -31,13 +31,15 @@ export async function queryLocalNetworkAccess(): Promise<LocalNetworkPermissionS
  * Warm ICE under a user gesture so the browser may show the LNA prompt
  * and start gathering host / mDNS candidates before the real room join.
  */
-export async function primeLocalNetworkAccess(timeoutMs = 500): Promise<void> {
+export async function primeLocalNetworkAccess(timeoutMs = 400): Promise<void> {
   if (typeof RTCPeerConnection === 'undefined') return;
+  const already = await queryLocalNetworkAccess();
+  if (already === 'granted') return;
   let pc: RTCPeerConnection | null = null;
   try {
     pc = new RTCPeerConnection({
       iceServers: [],
-      iceCandidatePoolSize: 8,
+      iceCandidatePoolSize: 4,
     });
     pc.createDataChannel('tazia-lna');
     const offer = await pc.createOffer();

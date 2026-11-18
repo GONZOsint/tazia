@@ -1,4 +1,4 @@
-import { joinRoom, type Room, type RoomErrorCode, type Unsubscribe } from 'trystero';
+import { joinRoom, type Room, type Unsubscribe } from 'trystero';
 import {
   generateSigningIdentity,
   importVerifyKey,
@@ -26,65 +26,23 @@ import {
 } from '../protocol';
 import { PeerRateLimiter } from './rateLimit';
 import { startNostrFallback, type NostrFallbackBus } from './nostrFallback';
-import { TrustStore, type TrustLevel } from '../trust/trustStore';
+import { TrustStore } from '../trust/trustStore';
+import {
+  P2pActionError,
+  type JoinP2pRoomOptions,
+  type JoinedP2pRoom,
+} from './p2pTypes';
 
-export type P2pRoomErrorCode = RoomErrorCode | 'publish-rate' | 'unknown';
-
-export class P2pActionError extends Error {
-  readonly code: P2pRoomErrorCode;
-
-  constructor(code: P2pRoomErrorCode, message = '') {
-    super(message || code);
-    this.name = 'P2pActionError';
-    this.code = code;
-  }
-}
-
-export interface JoinedP2pRoom {
-  selfUserId: string;
-  signPubKeySpkiB64: string;
-  trustStore: TrustStore;
-  leave: () => Promise<void>;
-  setPresenceAlias: (alias: string) => Promise<void>;
-  publishEvent: (partial: {
-    msgId: string;
-    type: ForumEvent['type'];
-    threadId: string;
-    parentMsgId: string | null;
-    title: string;
-    body: string;
-    createdAtMs: number;
-  }) => Promise<void>;
-  sendDirectMessage: (toUserId: string, body: string) => Promise<DirectMessage>;
-  requestSyncFromPeers: () => Promise<number>;
-  getPresenceMap: () => Record<string, PresenceState>;
-  getOnlineUserIds: () => string[];
-  getRejectedSyncCount: () => number;
-}
-
-export interface JoinP2pRoomOptions {
-  roomId: string;
-  password: string;
-  onForumMessage: (message: ForumEvent) => void;
-  onPresenceChange: (userId: string, state: PresenceState | null, removed: boolean) => void;
-  onPeerPresence: (onlineUserIds: string[]) => void;
-  onUserJoined?: (userId: string) => void;
-  onKeyChange?: (userId: string, level: TrustLevel) => void;
-  onDirectMessage?: (dm: DirectMessage) => void;
-  onError: (code: P2pRoomErrorCode, message: string) => void;
-  /** WebRTC ICE failed; encrypted Nostr fallback is carrying traffic. */
-  onRelayFallback?: () => void;
-  /** Optional RTCConfiguration (pool size, transport policy). Prefer turnConfig for TURN URLs. */
-  rtcConfig?: RTCConfiguration;
-  /** TURN servers merged by Trystero after default STUN (see peer.mjs iceServers). */
-  turnConfig?: RTCIceServer[];
-  /** If true, set iceTransportPolicy: 'relay' to force TURN-only. */
-  relayOnly?: boolean;
-}
+export type { JoinedP2pRoom, JoinP2pRoomOptions, P2pRoomErrorCode } from './p2pTypes';
+export { P2pActionError } from './p2pTypes';
 
 function emptyPresence(): PresenceState {
   return { alias: '', signPubKeySpkiB64: '' };
 }
+
+const PENDING_TTL_MS = 60_000;
+const FALLBACK_PEER_TTL_MS = 45_000;
+const NOSTR_SYNC_TIMEOUT_MS = 8_000;
 
 export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2pRoom> {
   const signing: SigningIdentity = await generateSigningIdentity();
@@ -93,20 +51,35 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const rateLimiter = new PeerRateLimiter();
   const syncAnswerLimiter = new PeerRateLimiter();
   const localMessages = new Map<string, ForumEvent>();
+  /** Reserved while verify is in flight — blocks dual-path double emit. */
+  const ingestingIds = new Set<string>();
+  const pendingLive = new Map<string, ForumEvent[]>();
+  const pendingDms = new Map<string, DirectMessage[]>();
   const trustStore = new TrustStore();
   const unsubs: Unsubscribe[] = [];
   const fallbackPeers = new Map<string, number>();
+  const pendingSync = new Map<
+    string,
+    { resolve: (n: number) => void; added: number; timer: number }
+  >();
   let fallback: NostrFallbackBus | null = null;
+  let fallbackStarting: Promise<void> | null = null;
   let fallbackPresenceTimer: ReturnType<typeof setInterval> | null = null;
   let rejectedSyncCount = 0;
   let left = false;
   let pruneTimer: ReturnType<typeof setInterval> | null = null;
   let relayFallbackNotified = false;
+  let lastPresence: PresenceState | null = null;
 
   pruneTimer = setInterval(() => {
     rateLimiter.pruneStale();
     syncAnswerLimiter.pruneStale();
   }, 5 * 60_000);
+
+  const mergeOnline = () => {
+    const ids = new Set([...Object.keys(room.getUsers()), ...fallbackPeers.keys()]);
+    options.onPeerPresence([...ids]);
+  };
 
   const cachePubKey = async (userId: string, spkiB64: string): Promise<CryptoKey | null> => {
     if (!userId || !spkiB64 || spkiB64.length < 32) return null;
@@ -118,10 +91,14 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     }
 
     const existing = verifyKeyCache.get(userId);
-    if (existing) return existing;
+    if (existing) {
+      await flushPendingForUser(userId);
+      return existing;
+    }
     try {
       const key = await importVerifyKey(spkiB64);
       verifyKeyCache.set(userId, key);
+      await flushPendingForUser(userId);
       return key;
     } catch {
       return null;
@@ -136,10 +113,111 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     return cachePubKey(userId, spki);
   };
 
+  const queuePendingLive = (event: ForumEvent) => {
+    const list = pendingLive.get(event.authorUserId) ?? [];
+    if (list.some((e) => e.msgId === event.msgId)) return;
+    list.push(event);
+    if (list.length > 40) list.shift();
+    pendingLive.set(event.authorUserId, list);
+    window.setTimeout(() => {
+      const cur = pendingLive.get(event.authorUserId);
+      if (!cur) return;
+      const next = cur.filter((e) => e.msgId !== event.msgId);
+      if (next.length) pendingLive.set(event.authorUserId, next);
+      else pendingLive.delete(event.authorUserId);
+    }, PENDING_TTL_MS);
+  };
+
+  const queuePendingDm = (dm: DirectMessage) => {
+    const list = pendingDms.get(dm.fromUserId) ?? [];
+    if (list.some((d) => d.msgId === dm.msgId)) return;
+    list.push(dm);
+    if (list.length > 20) list.shift();
+    pendingDms.set(dm.fromUserId, list);
+  };
+
+  const ingestSigned = async (
+    event: ForumEvent,
+    opts: { liveUserId: string | null; source: 'live' | 'sync' }
+  ): Promise<boolean> => {
+    if (!isValidForumEvent(event, { clockSource: opts.source })) {
+      if (opts.source === 'sync') rejectedSyncCount += 1;
+      return false;
+    }
+
+    if (opts.liveUserId) {
+      if (event.authorUserId !== opts.liveUserId) return false;
+      if (!rateLimiter.allow(opts.liveUserId, MAX_PUBLISH_PER_MINUTE)) {
+        return false;
+      }
+    }
+
+    if (localMessages.has(event.msgId) || ingestingIds.has(event.msgId)) return false;
+    ingestingIds.add(event.msgId);
+
+    try {
+      const verifyKey = await getVerifyKey(event.authorUserId);
+      if (!verifyKey) {
+        ingestingIds.delete(event.msgId);
+        if (opts.source === 'sync') {
+          rejectedSyncCount += 1;
+          return false;
+        }
+        queuePendingLive(event);
+        return false;
+      }
+
+      const ok = await verifyForumEvent(event, verifyKey);
+      if (!ok) {
+        if (opts.source === 'sync') rejectedSyncCount += 1;
+        return false;
+      }
+
+      if (localMessages.has(event.msgId)) return false;
+      localMessages.set(event.msgId, event);
+      options.onForumMessage(event);
+      return true;
+    } finally {
+      ingestingIds.delete(event.msgId);
+    }
+  };
+
+  const acceptDm = async (dm: DirectMessage, transportUserId: string | null): Promise<boolean> => {
+    if (!isValidDirectMessage(dm)) return false;
+    if (transportUserId && dm.fromUserId !== transportUserId) return false;
+    if (dm.toUserId !== self.userId) return false;
+    const verifyKey = await getVerifyKey(dm.fromUserId);
+    if (!verifyKey) {
+      queuePendingDm(dm);
+      return false;
+    }
+    const ok = await verifyDirectMessage(dm, verifyKey);
+    if (!ok) return false;
+    options.onDirectMessage?.(dm);
+    return true;
+  };
+
+  async function flushPendingForUser(userId: string) {
+    const events = pendingLive.get(userId);
+    if (events?.length) {
+      pendingLive.delete(userId);
+      for (const ev of events) {
+        await ingestSigned(ev, { liveUserId: ev.authorUserId, source: 'live' });
+      }
+    }
+    const dms = pendingDms.get(userId);
+    if (dms?.length) {
+      pendingDms.delete(userId);
+      for (const dm of dms) {
+        await acceptDm(dm, null);
+      }
+    }
+  }
+
   let room: Room;
   try {
     const rtcConfig: RTCConfiguration = {
-      iceCandidatePoolSize: 10,
+      iceCandidatePoolSize: 8,
       iceTransportPolicy: options.relayOnly ? 'relay' : 'all',
       ...options.rtcConfig,
       ...(options.relayOnly ? { iceTransportPolicy: 'relay' as const } : {}),
@@ -182,130 +260,139 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     },
   });
 
-  const ingestSigned = async (
-    event: ForumEvent,
-    opts: { liveUserId: string | null; source: 'live' | 'sync' }
-  ): Promise<boolean> => {
-    if (!isValidForumEvent(event, { clockSource: opts.source })) {
-      if (opts.source === 'sync') rejectedSyncCount += 1;
-      return false;
-    }
-
-    if (opts.liveUserId) {
-      if (event.authorUserId !== opts.liveUserId) return false;
-      if (!rateLimiter.allow(opts.liveUserId, MAX_PUBLISH_PER_MINUTE)) {
-        options.onError('publish-rate', 'Peer exceeded publish rate');
-        return false;
-      }
-    }
-
-    if (localMessages.has(event.msgId)) return false;
-
-    const verifyKey = await getVerifyKey(event.authorUserId);
-    if (!verifyKey) {
-      if (opts.source === 'sync') rejectedSyncCount += 1;
-      // En vivo sin pubkey aún: no aceptar (evita reenviar sync sin clave).
-      return false;
-    }
-
-    const ok = await verifyForumEvent(event, verifyKey);
-    if (!ok) {
-      if (opts.source === 'sync') rejectedSyncCount += 1;
-      return false;
-    }
-
-    localMessages.set(event.msgId, event);
-    options.onForumMessage(event);
-    return true;
-  };
-
-  unsubs.push(
-    forumMsg.onMessage((data, { userId }) => {
-      if (left) return;
-      void ingestSigned(data, { liveUserId: userId, source: 'live' });
-    })
-  );
-
-  unsubs.push(
-    directMsg.onMessage((data, { userId }) => {
-      if (left) return;
-      if (!isValidDirectMessage(data)) return;
-      if (data.fromUserId !== userId) return;
-      if (data.toUserId !== self.userId) return;
-      void (async () => {
-        const verifyKey = await getVerifyKey(userId);
-        if (!verifyKey) return;
-        const ok = await verifyDirectMessage(data, verifyKey);
-        if (!ok) return;
-        options.onDirectMessage?.(data);
-      })();
-    })
-  );
-
-  unsubs.push(
-    forumSync.onRequest((_data, context) => {
-      if (!syncAnswerLimiter.allow(context.userId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
-        return [];
-      }
-      return [...localMessages.values()]
-        .sort((a, b) => a.createdAtMs - b.createdAtMs)
-        .slice(-MAX_SYNC_MESSAGES);
-    })
-  );
-
-  unsubs.push(
-    presence.onChange(
-      (value, { userId, removed }) => {
-        if (left) return;
-        if (removed) {
-          options.onPresenceChange(userId, null, true);
-          return;
-        }
-        if (!value || !isValidPresenceState(value)) return;
-        void cachePubKey(userId, value.signPubKeySpkiB64);
-        options.onPresenceChange(userId, value, false);
-      },
-      { replay: true }
-    )
-  );
-
-  const emitOnline = () => {
-    options.onPeerPresence(Object.keys(room.getUsers()));
-  };
-
-  unsubs.push(
-    room.onUserJoin(({ userId }) => {
-      if (left) return;
-      emitOnline();
-      options.onUserJoined?.(userId);
-    }, { replay: true })
-  );
-  unsubs.push(
-    room.onUserLeave(() => {
-      if (left) return;
-      emitOnline();
-    })
-  );
-
-  unsubs.push(
-    room.onError((err) => {
-      if (left) return;
-      // ICE failed is expected on Pages/CGNAT; Nostr fallback carries chat.
-      if (err.code === 'peer-connect-failed') {
-        if (!relayFallbackNotified) {
-          relayFallbackNotified = true;
-          options.onRelayFallback?.();
-        }
-        return;
-      }
-      options.onError(err.code, err.message);
-    })
-  );
-
   const touchFallbackPeer = (userId: string) => {
+    if (userId === self.userId) return;
     fallbackPeers.set(userId, Date.now());
-    const ids = new Set([...Object.keys(room.getUsers()), ...fallbackPeers.keys()]);
-    options.onPeerPresence([...ids]);
+    mergeOnline();
+  };
+
+  const dropFallbackPeer = (userId: string) => {
+    if (!fallbackPeers.has(userId)) return;
+    fallbackPeers.delete(userId);
+    options.onPresenceChange(userId, null, true);
+    mergeOnline();
+  };
+
+  const snapshotForSync = (): ForumEvent[] => {
+    const list = [...localMessages.values()]
+      .sort((a, b) => a.createdAtMs - b.createdAtMs)
+      .slice(-MAX_SYNC_MESSAGES);
+    const raw = JSON.stringify(list);
+    if (new TextEncoder().encode(raw).byteLength > MAX_SYNC_TOTAL_BYTES) {
+      return list.slice(-Math.floor(list.length / 2));
+    }
+    return list;
+  };
+
+  const ensureFallback = async (): Promise<NostrFallbackBus | null> => {
+    if (left) return null;
+    if (fallback) return fallback;
+    if (fallbackStarting) {
+      await fallbackStarting;
+      return fallback;
+    }
+    fallbackStarting = (async () => {
+      try {
+        fallback = await startNostrFallback(
+          options.roomId.trim(),
+          options.password.trim(),
+          self.userId,
+          {
+            onForum: (event) => {
+              void ingestSigned(event, { liveUserId: event.authorUserId, source: 'live' });
+              touchFallbackPeer(event.authorUserId);
+            },
+            onPresence: (userId, state) => {
+              if (!isValidPresenceState(state)) return;
+              void cachePubKey(userId, state.signPubKeySpkiB64);
+              touchFallbackPeer(userId);
+              options.onPresenceChange(userId, state, false);
+            },
+            onGoodbye: (userId) => {
+              dropFallbackPeer(userId);
+            },
+            onDirectMessage: (dm) => {
+              void acceptDm(dm, null).then((ok) => {
+                if (ok) touchFallbackPeer(dm.fromUserId);
+              });
+            },
+            onSyncRequest: (fromUserId) => {
+              if (!syncAnswerLimiter.allow(fromUserId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
+                return [];
+              }
+              return snapshotForSync();
+            },
+            onSyncResponse: (reqId, events) => {
+              void (async () => {
+                const pending = pendingSync.get(reqId);
+                const raw = JSON.stringify(events);
+                if (new TextEncoder().encode(raw).byteLength > MAX_SYNC_TOTAL_BYTES) {
+                  rejectedSyncCount += 1;
+                  if (pending) {
+                    window.clearTimeout(pending.timer);
+                    pendingSync.delete(reqId);
+                    pending.resolve(pending.added);
+                  }
+                  return;
+                }
+                let added = 0;
+                for (const item of events.slice(0, MAX_SYNC_MESSAGES)) {
+                  const ok = await ingestSigned(item, { liveUserId: null, source: 'sync' });
+                  if (ok) added += 1;
+                }
+                if (pending) {
+                  window.clearTimeout(pending.timer);
+                  pendingSync.delete(reqId);
+                  pending.resolve(pending.added + added);
+                }
+              })();
+            },
+          }
+        );
+
+        if (!fallbackPresenceTimer) {
+          fallbackPresenceTimer = setInterval(() => {
+            if (left || !fallback) return;
+            const now = Date.now();
+            let pruned = false;
+            for (const [id, at] of fallbackPeers) {
+              if (now - at > FALLBACK_PEER_TTL_MS) {
+                fallbackPeers.delete(id);
+                options.onPresenceChange(id, null, true);
+                pruned = true;
+              }
+            }
+            if (pruned) mergeOnline();
+            if (lastPresence && isValidPresenceState(lastPresence)) {
+              void fallback.publish({
+                v: 1,
+                t: 'presence',
+                userId: self.userId,
+                state: lastPresence,
+                atMs: Date.now(),
+              });
+            }
+          }, 12_000);
+        }
+
+        if (lastPresence && isValidPresenceState(lastPresence)) {
+          await fallback.publish({
+            v: 1,
+            t: 'presence',
+            userId: self.userId,
+            state: lastPresence,
+            atMs: Date.now(),
+          });
+        }
+      } catch {
+        fallback = null;
+        options.onError('unknown', 'Nostr fallback failed to start');
+      } finally {
+        fallbackStarting = null;
+      }
+    })();
+    await fallbackStarting;
+    return fallback;
   };
 
   const publishPresenceFallback = async (state: PresenceState) => {
@@ -319,63 +406,98 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     });
   };
 
-  try {
-    fallback = await startNostrFallback(options.roomId.trim(), options.password.trim(), self.userId, {
-      onForum: (event) => {
-        void ingestSigned(event, { liveUserId: event.authorUserId, source: 'live' });
-        touchFallbackPeer(event.authorUserId);
+  const requestNostrSync = async (): Promise<number> => {
+    const bus = await ensureFallback();
+    if (!bus) return 0;
+    const reqId = crypto.randomUUID();
+    return new Promise<number>((resolve) => {
+      const timer = window.setTimeout(() => {
+        pendingSync.delete(reqId);
+        resolve(0);
+      }, NOSTR_SYNC_TIMEOUT_MS);
+      pendingSync.set(reqId, { resolve, added: 0, timer });
+      void bus.publish({ v: 1, t: 'sync-req', fromUserId: self.userId, reqId }).catch(() => {
+        window.clearTimeout(timer);
+        pendingSync.delete(reqId);
+        resolve(0);
+      });
+    });
+  };
+
+  unsubs.push(
+    forumMsg.onMessage((data, { userId }) => {
+      if (left) return;
+      void ingestSigned(data, { liveUserId: userId, source: 'live' });
+    })
+  );
+
+  unsubs.push(
+    directMsg.onMessage((data, { userId }) => {
+      if (left) return;
+      void acceptDm(data, userId);
+    })
+  );
+
+  unsubs.push(
+    forumSync.onRequest((_data, context) => {
+      if (!syncAnswerLimiter.allow(context.userId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
+        return [];
+      }
+      return snapshotForSync();
+    })
+  );
+
+  unsubs.push(
+    presence.onChange(
+      (value, { userId, removed }) => {
+        if (left) return;
+        if (removed) {
+          fallbackPeers.delete(userId);
+          options.onPresenceChange(userId, null, true);
+          mergeOnline();
+          return;
+        }
+        if (!value || !isValidPresenceState(value)) return;
+        void cachePubKey(userId, value.signPubKeySpkiB64);
+        options.onPresenceChange(userId, value, false);
       },
-      onPresence: (userId, state) => {
-        if (!isValidPresenceState(state)) return;
-        void cachePubKey(userId, state.signPubKeySpkiB64);
-        touchFallbackPeer(userId);
-        options.onPresenceChange(userId, state, false);
-      },
-      onDirectMessage: (dm) => {
-        if (!isValidDirectMessage(dm)) return;
+      { replay: true }
+    )
+  );
+
+  unsubs.push(
+    room.onUserJoin(({ userId }) => {
+      if (left) return;
+      mergeOnline();
+      options.onUserJoined?.(userId);
+    }, { replay: true })
+  );
+  unsubs.push(
+    room.onUserLeave(({ userId }) => {
+      if (left) return;
+      fallbackPeers.delete(userId);
+      mergeOnline();
+    })
+  );
+
+  unsubs.push(
+    room.onError((err) => {
+      if (left) return;
+      if (err.code === 'peer-connect-failed') {
         void (async () => {
-          const verifyKey = await getVerifyKey(dm.fromUserId);
-          if (!verifyKey) return;
-          const ok = await verifyDirectMessage(dm, verifyKey);
-          if (!ok) return;
-          touchFallbackPeer(dm.fromUserId);
-          options.onDirectMessage?.(dm);
-        })();
-      },
-      onSyncRequest: () =>
-        [...localMessages.values()]
-          .sort((a, b) => a.createdAtMs - b.createdAtMs)
-          .slice(-MAX_SYNC_MESSAGES),
-      onSyncResponse: (events) => {
-        void (async () => {
-          for (const item of events.slice(0, MAX_SYNC_MESSAGES)) {
-            await ingestSigned(item, { liveUserId: null, source: 'sync' });
+          await ensureFallback();
+          if (!relayFallbackNotified) {
+            relayFallbackNotified = true;
+            options.onRelayFallback?.();
           }
         })();
-      },
-    });
-  } catch {
-    fallback = null;
-  }
-
-  fallbackPresenceTimer = setInterval(() => {
-    if (left || !fallback) return;
-    const now = Date.now();
-    for (const [id, at] of fallbackPeers) {
-      if (now - at > 45_000) {
-        fallbackPeers.delete(id);
-        options.onPresenceChange(id, null, true);
+        return;
       }
-    }
-    const selfState = presence.get(self.userId);
-    if (selfState && isValidPresenceState(selfState)) {
-      void publishPresenceFallback(selfState);
-    }
-    const ids = new Set([...Object.keys(room.getUsers()), ...fallbackPeers.keys()]);
-    options.onPeerPresence([...ids]);
-  }, 12_000);
+      options.onError(err.code, err.message);
+    })
+  );
 
-  emitOnline();
+  mergeOnline();
 
   return {
     selfUserId: self.userId,
@@ -386,8 +508,25 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       left = true;
       if (pruneTimer) clearInterval(pruneTimer);
       if (fallbackPresenceTimer) clearInterval(fallbackPresenceTimer);
-      fallback?.stop();
-      fallback = null;
+      for (const pending of pendingSync.values()) {
+        window.clearTimeout(pending.timer);
+        pending.resolve(pending.added);
+      }
+      pendingSync.clear();
+      if (fallback) {
+        try {
+          await fallback.publish({
+            v: 1,
+            t: 'goodbye',
+            userId: self.userId,
+            atMs: Date.now(),
+          });
+        } catch {
+          /* ignore */
+        }
+        fallback.stop();
+        fallback = null;
+      }
       rateLimiter.clear();
       syncAnswerLimiter.clear();
       trustStore.clear();
@@ -409,6 +548,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         alias: alias.slice(0, 40),
         signPubKeySpkiB64: signing.publicKeySpkiB64,
       };
+      lastPresence = state;
       await presence.set(state);
       options.onPresenceChange(self.userId, state, false);
       await publishPresenceFallback(state);
@@ -416,7 +556,6 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     publishEvent: async (partial) => {
       if (left) throw new P2pActionError('unknown', 'P2P session already closed');
       if (!rateLimiter.allow(self.userId, MAX_PUBLISH_PER_MINUTE)) {
-        options.onError('publish-rate', 'Local publish rate limit');
         throw new P2pActionError('publish-rate', 'Local publish rate limit');
       }
 
@@ -442,9 +581,14 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       try {
         await forumMsg.send(signed);
       } catch {
-        /* WebRTC may be down — fallback still publishes */
+        /* WebRTC may be down */
       }
-      await fallback?.publish({ v: 1, t: 'forum', event: signed });
+      if (fallback) {
+        await fallback.publish({ v: 1, t: 'forum', event: signed });
+      } else if (relayFallbackNotified) {
+        const bus = await ensureFallback();
+        await bus?.publish({ v: 1, t: 'forum', event: signed });
+      }
     },
     sendDirectMessage: async (toUserId: string, body: string): Promise<DirectMessage> => {
       if (left) throw new P2pActionError('unknown', 'P2P session already closed');
@@ -466,7 +610,10 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       } catch {
         /* fallback */
       }
-      await fallback?.publish({ v: 1, t: 'dm', dm: signed });
+      if (fallback || relayFallbackNotified) {
+        const bus = fallback ?? (await ensureFallback());
+        await bus?.publish({ v: 1, t: 'dm', dm: signed });
+      }
       return signed;
     },
     requestSyncFromPeers: async () => {
@@ -487,8 +634,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
               rejectedSyncCount += 1;
               continue;
             }
-            const capped = res.value.slice(0, MAX_SYNC_MESSAGES);
-            for (const item of capped) {
+            for (const item of res.value.slice(0, MAX_SYNC_MESSAGES)) {
               const ok = await ingestSigned(item, { liveUserId: null, source: 'sync' });
               if (ok) added += 1;
             }
@@ -501,9 +647,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         }
       }
 
-      if (fallback && (targets.length === 0 || added === 0)) {
-        const reqId = crypto.randomUUID();
-        await fallback.publish({ v: 1, t: 'sync-req', fromUserId: self.userId, reqId });
+      // Always also ask Nostr path when fallback is (or becomes) active / alone.
+      if (fallback || relayFallbackNotified || targets.length === 0) {
+        added += await requestNostrSync();
       }
 
       return added;

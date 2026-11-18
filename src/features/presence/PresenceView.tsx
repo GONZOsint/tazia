@@ -25,6 +25,7 @@ interface PresenceViewProps {
   rejectedSyncCount: number;
   onSyncNow: () => Promise<void>;
   isSyncing: boolean;
+  onGoToRooms?: () => void;
 }
 
 export function PresenceView({
@@ -37,6 +38,7 @@ export function PresenceView({
   rejectedSyncCount,
   onSyncNow,
   isSyncing,
+  onGoToRooms,
 }: PresenceViewProps) {
   const t = useT();
   const [visuals, setVisuals] = useState<
@@ -69,6 +71,15 @@ export function PresenceView({
           {t('presenceEmptyTitle')}
         </h1>
         <p className="mt-2 text-sm text-muted">{t('presenceEmptyBody')}</p>
+        {onGoToRooms && (
+          <button
+            type="button"
+            onClick={onGoToRooms}
+            className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+          >
+            {t('presenceEmptyCta')}
+          </button>
+        )}
       </main>
     );
   }

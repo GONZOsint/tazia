@@ -31,6 +31,13 @@ export function useSwipeTabs<T extends string>(
 
     const onTouchStart = (e: TouchEvent) => {
       if (optsRef.current.disabled) return;
+      const target = e.target;
+      if (
+        target instanceof Element &&
+        target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')
+      ) {
+        return;
+      }
       const touch = e.touches[0];
       if (!touch) return;
       startX = touch.clientX;

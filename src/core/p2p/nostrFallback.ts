@@ -10,6 +10,7 @@ import { decryptJson, deriveRoomKey, encryptJson, fallbackTopic } from './roomCr
 export type FallbackEnvelope =
   | { v: 1; t: 'forum'; event: ForumEvent }
   | { v: 1; t: 'presence'; userId: string; state: PresenceState; atMs: number }
+  | { v: 1; t: 'goodbye'; userId: string; atMs: number }
   | { v: 1; t: 'dm'; dm: DirectMessage }
   | { v: 1; t: 'sync-req'; fromUserId: string; reqId: string }
   | { v: 1; t: 'sync-res'; toUserId: string; reqId: string; events: ForumEvent[] };
@@ -17,15 +18,18 @@ export type FallbackEnvelope =
 export interface NostrFallbackHandlers {
   onForum: (event: ForumEvent) => void;
   onPresence: (userId: string, state: PresenceState) => void;
+  onGoodbye: (userId: string) => void;
   onDirectMessage: (dm: DirectMessage) => void;
   onSyncRequest: (fromUserId: string, reqId: string) => ForumEvent[];
-  onSyncResponse: (events: ForumEvent[]) => void;
+  onSyncResponse: (reqId: string, events: ForumEvent[]) => void;
 }
 
 export interface NostrFallbackBus {
   publish: (env: FallbackEnvelope) => Promise<void>;
   stop: () => void;
 }
+
+type SchnorrSigner = { secretKey: Uint8Array; publicKey: Uint8Array };
 
 const te = new TextEncoder();
 
@@ -39,9 +43,12 @@ function topicToKind(topic: string): number {
   return (h >>> 0) % 10_000 + 20_000;
 }
 
-async function createSignedEvent(topic: string, content: string): Promise<string> {
-  const { secretKey, publicKey } = schnorr.keygen();
-  const pubkey = toHex(publicKey);
+async function createSignedEvent(
+  topic: string,
+  content: string,
+  signer: SchnorrSigner
+): Promise<string> {
+  const pubkey = toHex(signer.publicKey);
   const created_at = Math.floor(Date.now() / 1000);
   const kind = topicToKind(topic);
   const tags = [['x', topic]];
@@ -52,7 +59,7 @@ async function createSignedEvent(topic: string, content: string): Promise<string
     )
   );
   const id = toHex(idBytes);
-  const sig = toHex(await schnorr.signAsync(idBytes, secretKey));
+  const sig = toHex(await schnorr.signAsync(idBytes, signer.secretKey));
   return JSON.stringify(['EVENT', { kind, tags, created_at, content, pubkey, id, sig }]);
 }
 
@@ -74,9 +81,11 @@ export async function startNostrFallback(
   const topic = await fallbackTopic(roomId, password);
   const kind = topicToKind(topic);
   const subId = `tazia-fb-${crypto.randomUUID().slice(0, 8)}`;
+  const signer = schnorr.keygen() as SchnorrSigner;
   const seenEventIds = new Set<string>();
-  const listeners: Array<{ ws: WebSocket; fn: (ev: MessageEvent) => void }> = [];
+  const listeners = new Map<WebSocket, (ev: MessageEvent) => void>();
   let stopped = false;
+  let attachTimer: number | null = null;
 
   const handlePayload = (env: FallbackEnvelope) => {
     if (stopped) return;
@@ -86,6 +95,9 @@ export async function startNostrFallback(
         break;
       case 'presence':
         if (env.userId !== selfUserId) handlers.onPresence(env.userId, env.state);
+        break;
+      case 'goodbye':
+        if (env.userId !== selfUserId) handlers.onGoodbye(env.userId);
         break;
       case 'dm':
         if (env.dm.toUserId === selfUserId) handlers.onDirectMessage(env.dm);
@@ -103,7 +115,7 @@ export async function startNostrFallback(
         break;
       }
       case 'sync-res':
-        if (env.toUserId === selfUserId) handlers.onSyncResponse(env.events);
+        if (env.toUserId === selfUserId) handlers.onSyncResponse(env.reqId, env.events);
         break;
       default:
         break;
@@ -135,29 +147,45 @@ export async function startNostrFallback(
   };
 
   const attach = () => {
+    if (stopped) return;
     for (const ws of openSockets()) {
-      if (listeners.some((l) => l.ws === ws)) continue;
+      if (listeners.has(ws)) continue;
       const fn = (ev: MessageEvent) => {
         void onWsMessage(ev);
       };
       ws.addEventListener('message', fn);
-      listeners.push({ ws, fn });
-      const since = Math.max(0, Math.floor(Date.now() / 1000) - 60);
+      listeners.set(ws, fn);
+      const since = Math.max(0, Math.floor(Date.now() / 1000) - 90);
       try {
         ws.send(JSON.stringify(['REQ', subId, { kinds: [kind], '#x': [topic], since }]));
       } catch {
         /* ignore */
       }
     }
+    // Drop dead sockets from the map
+    for (const ws of [...listeners.keys()]) {
+      if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+        const fn = listeners.get(ws);
+        if (fn) {
+          try {
+            ws.removeEventListener('message', fn);
+          } catch {
+            /* ignore */
+          }
+        }
+        listeners.delete(ws);
+      }
+    }
   };
 
   attach();
-  const attachTimer = window.setInterval(attach, 4000);
+  // Slow safety net for late-opening Trystero sockets (publish also calls attach).
+  attachTimer = window.setInterval(attach, 12_000);
 
   const publish = async (env: FallbackEnvelope) => {
     if (stopped) return;
     const content = await encryptJson(key, env);
-    const wire = await createSignedEvent(topic, content);
+    const wire = await createSignedEvent(topic, content, signer);
     attach();
     for (const ws of openSockets()) {
       try {
@@ -172,8 +200,8 @@ export async function startNostrFallback(
     publish,
     stop: () => {
       stopped = true;
-      window.clearInterval(attachTimer);
-      for (const { ws, fn } of listeners) {
+      if (attachTimer !== null) window.clearInterval(attachTimer);
+      for (const [ws, fn] of listeners) {
         try {
           ws.removeEventListener('message', fn);
           ws.send(JSON.stringify(['CLOSE', subId]));
@@ -181,7 +209,7 @@ export async function startNostrFallback(
           /* ignore */
         }
       }
-      listeners.length = 0;
+      listeners.clear();
     },
   };
 }

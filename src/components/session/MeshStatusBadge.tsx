@@ -52,7 +52,7 @@ export function MeshStatusBadge({ status, onlineCount }: MeshStatusBadgeProps) {
     >
       <span className="relative flex h-2 w-2 shrink-0">
         <span
-          className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${dotColor}`}
+          className={`absolute inline-flex h-full w-full rounded-full opacity-75 motion-safe:animate-ping ${dotColor}`}
         />
         <span className={`relative inline-flex h-2 w-2 rounded-full ${dotColor}`} />
       </span>
