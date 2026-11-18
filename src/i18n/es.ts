@@ -124,7 +124,9 @@ export const es: Messages = {
   composerAs: 'Como {alias}',
   composerCancel: 'Cancelar',
   composerTitleLabel: 'Título',
+  composerTitlePlaceholder: 'Título corto',
   composerBodyLabel: 'Mensaje',
+  composerBodyPlaceholder: 'Di algo…',
   composerPublish: 'Enviar',
   composerPublishing: 'Enviando…',
 
@@ -133,6 +135,7 @@ export const es: Messages = {
   readerUntitled: '(Sin título)',
   readerSend: 'Enviar',
   readerSending: 'Enviando…',
+  readerComposePlaceholder: 'Escribe una respuesta…',
   readerReplyingTo: 'Respondiendo a {alias}',
   readerClearQuote: 'Quitar cita',
   readerReplyToSnippet: 're: {snippet}',
@@ -242,11 +245,12 @@ export const es: Messages = {
 
   navDms: 'Chat',
   dmsTitle: 'Chat',
-  dmsEmpty: 'Sin conversaciones aún. Toca a una persona para empezar.',
+  dmsEmpty: 'Sin chats aún. Toca a alguien para empezar.',
   dmsStartChat: 'Mensaje',
   dmsSend: 'Enviar',
+  dmsPlaceholder: 'Mensaje…',
   dmsSending: 'Enviando…',
-  dmsNoOnline: 'Nadie más está aquí ahora.',
+  dmsNoOnline: 'Nadie más aquí ahora.',
   dmsUnread: '{n} sin leer',
 
   turnRelayTitle: '¿No llegáis a conectar?',

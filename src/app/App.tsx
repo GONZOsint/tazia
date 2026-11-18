@@ -143,7 +143,11 @@ export default function App() {
       return;
     }
     relayToastShownRef.current = stamp;
-    toast.push(t(transportNotice.key, transportNotice.vars), 'warning');
+    toast.push({
+      message: t(transportNotice.key, transportNotice.vars),
+      tone: 'warning',
+      dedupeKey: stamp,
+    });
     dismissTransportNotice();
   }, [transportNotice, activeRoomId, dismissTransportNotice, t, toast]);
 
@@ -158,7 +162,7 @@ export default function App() {
   const roomList = [...rooms.values()];
 
   const tabClass = (id: ActiveTab) =>
-    activeTab === id ? 'block' : 'hidden';
+    activeTab === id ? 'block tab-panel-enter' : 'hidden';
 
   return (
     <MotionConfig reducedMotion="user">
@@ -190,19 +194,27 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {hardIceFailed && activeTab !== 'rooms' && (
-          <div className="mx-auto mt-4 max-w-[1280px] px-4 sm:px-8">
-            <AlertBanner tone="warning" role="status" className="w-full">
-              <button
-                type="button"
-                className="text-left underline-offset-2 hover:underline"
-                onClick={() => selectTab('rooms')}
-              >
-                {t('errPeerConnect')}
-              </button>
-            </AlertBanner>
-          </div>
-        )}
+        <AnimatePresence>
+          {hardIceFailed && activeTab !== 'rooms' && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16 }}
+              className="mx-auto mt-4 max-w-[1280px] px-4 sm:px-8"
+            >
+              <AlertBanner tone="warning" role="status" className="w-full">
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:underline"
+                  onClick={() => selectTab('rooms')}
+                >
+                  {t('errPeerConnect')}
+                </button>
+              </AlertBanner>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <IpConsentModal
           open={ipConsentNeeded}
@@ -259,7 +271,6 @@ export default function App() {
                   onDismissRoomError={dismissRoomError}
                   onSyncNow={async () => {
                     await syncNow();
-                    toast.push(t('toastSynced'), 'success');
                   }}
                   onCreateThread={async (title, body) => {
                     const ok = await publish({
@@ -269,7 +280,7 @@ export default function App() {
                       title,
                       body,
                     });
-                    toast.push(ok ? t('toastPublished') : t('toastPublishFailed'), ok ? 'success' : 'error');
+                    if (!ok) toast.push(t('toastPublishFailed'), 'error');
                     return ok;
                   }}
                   onReplyThread={async (threadId, parentMsgId, body) => {
@@ -280,7 +291,7 @@ export default function App() {
                       title: '',
                       body,
                     });
-                    toast.push(ok ? t('toastPublished') : t('toastPublishFailed'), ok ? 'success' : 'error');
+                    if (!ok) toast.push(t('toastPublishFailed'), 'error');
                     return ok;
                   }}
                 />
@@ -343,7 +354,7 @@ export default function App() {
                   messages={dmMessages[dmPeerId] ?? []}
                   onSend={async (body) => {
                     const ok = await sendDm(dmPeerId, body);
-                    toast.push(ok ? t('toastDmSent') : t('toastDmFailed'), ok ? 'success' : 'error');
+                    if (!ok) toast.push(t('toastDmFailed'), 'error');
                     return ok;
                   }}
                   onBack={() => {

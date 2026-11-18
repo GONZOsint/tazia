@@ -6,6 +6,23 @@
 @import "tailwindcss";
 
 :root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --tap-min: 44px;
+  --type-xs: 11px;
+  --type-sm: 13px;
+  --type-base: 15px;
+  --type-lg: 18px;
+  --type-display: 26px;
+  --radius-ctrl: 10px;
+  --radius-msg: 14px;
+  --radius-sheet: 20px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+
   /* Warm-neutral light — not flat grey, not cream-AI */
   --color-bg: #e6e4df;
   --color-surface: #ddd9d2;
@@ -139,6 +156,11 @@ html.dark {
     outline: none;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
+
+  .tap-target {
+    min-height: var(--tap-min);
+    min-width: var(--tap-min);
+  }
 }
 
 .tabular-nums {
@@ -154,9 +176,25 @@ html.dark {
   scrollbar-width: none;
 }
 
+@keyframes tab-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tab-panel-enter {
+  animation: tab-fade-in 0.18s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none !important; }
   .animate-spin { animation: none !important; }
+  .tab-panel-enter {
+    animation: none;
+  }
 }
 
 .card-container {

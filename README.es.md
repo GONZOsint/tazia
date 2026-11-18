@@ -2,7 +2,7 @@
 
 **Zona Anónima Temporal en Acción** (*Temporary Anonymous Zone In Action*)
 
-Charla temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, **quema la sesión** al acabar.
+Charla temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, **quema la sesión** al acabar. En el móvil puedes **Instalar / Añadir a inicio** (PWA) para usarla como app.
 
 Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocolo: `agora-forum-v1` (eventos firmados Ed25519). App ID: `tazia.app`.
 
@@ -11,7 +11,7 @@ README principal (inglés): [`README.md`](README.md).
 ## Uso rápido
 
 1. Abre el sitio (local o hosting estático).
-2. **Crea una sala** y genera una frase memorable.
+2. **Abre una zona** y genera una frase memorable.
 3. Di la frase en persona / en papel. Opcional: meterla en el enlace `#` (más cómodo, más arriesgado).
 4. Comparte el enlace o el QR (el QR se genera **en el navegador**; también puedes **escanear** un QR para unirte).
 5. La primera entrada pide **consentimiento de dirección de red**.

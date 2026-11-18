@@ -1,4 +1,5 @@
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
 import type { MeshStatus } from '../../core/protocol';
 
@@ -47,7 +48,7 @@ export function MeshStatusBadge({ status, onlineCount }: MeshStatusBadgeProps) {
 
   return (
     <p
-      className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs font-medium ${tone}`}
+      className={`inline-flex items-center gap-2 rounded-[var(--radius-ctrl)] border px-2.5 py-1 text-xs font-medium ${tone}`}
       role="status"
     >
       <span className="relative flex h-2 w-2 shrink-0">
@@ -59,8 +60,19 @@ export function MeshStatusBadge({ status, onlineCount }: MeshStatusBadgeProps) {
       <StatusIcon
         className={`h-3.5 w-3.5 shrink-0 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
         aria-hidden="true"
+        strokeWidth={1.75}
       />
-      {label}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={label}
+          initial={{ opacity: 0, y: 2 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -2 }}
+          transition={{ duration: 0.16 }}
+        >
+          {label}
+        </motion.span>
+      </AnimatePresence>
     </p>
   );
 }

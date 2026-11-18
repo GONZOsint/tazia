@@ -16,11 +16,28 @@ interface ToastItem {
   id: string;
   message: string;
   tone: ToastTone;
+  dedupeKey?: string;
 }
 
+export type ToastPush =
+  | string
+  | {
+      message: string;
+      tone?: ToastTone;
+      dedupeKey?: string;
+      durationMs?: number;
+    };
+
 interface ToastApi {
-  push: (message: string, tone?: ToastTone) => void;
+  push: (messageOrOpts: ToastPush, tone?: ToastTone) => void;
 }
+
+const DURATION: Record<ToastTone, number> = {
+  success: 2500,
+  info: 2500,
+  warning: 4000,
+  error: 5000,
+};
 
 const ToastContext = createContext<ToastApi | null>(null);
 
@@ -48,10 +65,32 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const push = useCallback(
-    (message: string, tone: ToastTone = 'info') => {
+    (messageOrOpts: ToastPush, toneArg?: ToastTone) => {
+      const opts =
+        typeof messageOrOpts === 'string'
+          ? { message: messageOrOpts, tone: toneArg ?? ('info' as ToastTone) }
+          : messageOrOpts;
+      const tone = opts.tone ?? 'info';
+      const dedupeKey = opts.dedupeKey;
+      const duration = opts.durationMs ?? DURATION[tone];
       const id = crypto.randomUUID();
-      setItems((prev) => [...prev.slice(-3), { id, message, tone }]);
-      const timer = window.setTimeout(() => dismiss(id), 3800);
+
+      setItems((prev) => {
+        let next = prev;
+        if (dedupeKey) {
+          for (const old of prev) {
+            if (old.dedupeKey === dedupeKey) {
+              const t = timers.current.get(old.id);
+              if (t) window.clearTimeout(t);
+              timers.current.delete(old.id);
+            }
+          }
+          next = prev.filter((i) => i.dedupeKey !== dedupeKey);
+        }
+        return [...next.slice(-1), { id, message: opts.message, tone, dedupeKey }];
+      });
+
+      const timer = window.setTimeout(() => dismiss(id), duration);
       timers.current.set(id, timer);
     },
     [dismiss]
@@ -63,7 +102,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-[420px] flex-col gap-2 px-4 md:bottom-6"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(9rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-[420px] flex-col gap-2 px-4 md:bottom-6"
         aria-live="polite"
         aria-relevant="additions"
       >

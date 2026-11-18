@@ -43,8 +43,8 @@ export function TopBar({
             <span className="font-display text-xl font-bold tracking-tight text-ink">
               {t('brand')}
             </span>
-            <span className="mt-0.5 hidden text-[10px] font-medium text-muted sm:block">
-              {t('tagline')}
+            <span className="mt-0.5 hidden text-[11px] font-medium text-muted lg:block">
+              {t('liveHint')}
             </span>
           </span>
         </button>
@@ -73,14 +73,20 @@ export function TopBar({
                 }`}
               >
                 <Icon
-                  className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-ink' : 'text-faint'}`}
+                  className={`h-4 w-4 shrink-0 ${isActive ? 'text-ink' : 'text-faint'}`}
                   aria-hidden="true"
+                  strokeWidth={1.75}
                 />
                 <span>{t(labelKey)}</span>
                 {badge > 0 && (
-                  <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-on-accent">
+                  <motion.span
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.15 }}
+                    className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-on-accent"
+                  >
                     {badge > 9 ? '9+' : badge}
-                  </span>
+                  </motion.span>
                 )}
                 {isActive && (
                   <motion.span

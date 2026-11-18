@@ -156,10 +156,11 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
           </div>
 
           <motion.button
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.12 }}
             type="submit"
             disabled={!createStrength.isAcceptable || isJoining}
-            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {isJoining ? (
               <>
@@ -168,7 +169,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
               </>
             ) : (
               <>
-                <Radio className="h-4 w-4" aria-hidden="true" />
+                <Radio className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
                 {t('roomsOpen')}
               </>
             )}

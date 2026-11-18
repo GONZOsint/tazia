@@ -2,7 +2,7 @@
 
 **Temporary Anonymous Zone In Action**
 
-Live temporary chat in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, **burn the session** when done.
+Live temporary chat in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, **burn the session** when done. On phones you can **Install / Add to Home Screen** (PWA) for an app-like window.
 
 Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: `agora-forum-v1` (Ed25519-signed events). App ID: `tazia.app`.
 
@@ -11,7 +11,7 @@ Spanish README: [`README.es.md`](README.es.md).
 ## Quick start
 
 1. Open the site (local or static host).
-2. **Create room** and generate a memorable phrase.
+2. **Open a zone** and generate a memorable phrase.
 3. Say the phrase in person / on paper. Optional: put it in the `#` link (riskier).
 4. Share link or QR (QR is generated **in the browser**; you can also **scan** a QR to join).
 5. First join asks for **network address consent**.

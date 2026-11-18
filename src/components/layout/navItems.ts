@@ -7,7 +7,11 @@ export type ActiveTab = 'forum' | 'rooms' | 'presence' | 'dms' | 'how';
 export type NavItem = {
   id: ActiveTab;
   labelKey: Extract<MessageKey, 'navForum' | 'navRooms' | 'navPresence' | 'navDms' | 'navHelp'>;
-  Icon: ComponentType<{ className?: string }>;
+  Icon: ComponentType<{
+    className?: string;
+    'aria-hidden'?: boolean | 'true' | 'false';
+    strokeWidth?: number;
+  }>;
 };
 
 const FORUM: NavItem = { id: 'forum', labelKey: 'navForum', Icon: MessageSquare };

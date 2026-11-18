@@ -24,7 +24,8 @@ export function CopyButton({
 
   return (
     <motion.button
-      whileTap={{ scale: 0.96 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.12 }}
       type="button"
       onClick={() => void copyText(text, 'copy')}
       aria-label={iconOnly ? (copied ? copiedLabel : label) : undefined}

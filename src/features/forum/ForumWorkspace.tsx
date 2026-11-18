@@ -128,24 +128,28 @@ export function ForumWorkspace({
   };
 
   return (
-    <main className="card-container mx-auto flex max-w-[1280px] flex-col px-4 pt-3 sm:px-8 sm:pt-6 lg:min-h-0 lg:py-8">
+    <main className="card-container mx-auto flex max-w-[1280px] flex-col px-4 pt-3 sm:px-8 sm:pt-5 lg:min-h-0 lg:py-6">
       <div className="mb-3 flex shrink-0 items-center justify-between gap-3 lg:hidden">
-        <button
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          transition={{ duration: 0.12 }}
           type="button"
           onClick={() => setTopicsOpen(true)}
-          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink"
         >
-          <List className="h-4 w-4" aria-hidden="true" />
+          <List className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           {t('sidebarTopics')}
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          transition={{ duration: 0.12 }}
           type="button"
           onClick={() => setIsComposingThread(true)}
-          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-on-accent"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent"
         >
-          <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+          <MessageSquarePlus className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           {t('sidebarNewThread')}
-        </button>
+        </motion.button>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch">

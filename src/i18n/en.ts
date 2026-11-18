@@ -122,7 +122,9 @@ export const en = {
   composerAs: 'As {alias}',
   composerCancel: 'Cancel',
   composerTitleLabel: 'Title',
+  composerTitlePlaceholder: 'Short title',
   composerBodyLabel: 'Message',
+  composerBodyPlaceholder: 'Say something…',
   composerPublish: 'Send',
   composerPublishing: 'Sending…',
 
@@ -131,6 +133,7 @@ export const en = {
   readerUntitled: '(Untitled)',
   readerSend: 'Send',
   readerSending: 'Sending…',
+  readerComposePlaceholder: 'Write a reply…',
   readerReplyingTo: 'Replying to {alias}',
   readerClearQuote: 'Clear quote',
   readerReplyToSnippet: 're: {snippet}',
@@ -240,11 +243,12 @@ export const en = {
 
   navDms: 'Chat',
   dmsTitle: 'Chat',
-  dmsEmpty: 'No conversations yet. Tap a person to start.',
+  dmsEmpty: 'No chats yet. Tap someone to start.',
   dmsStartChat: 'Message',
   dmsSend: 'Send',
+  dmsPlaceholder: 'Message…',
   dmsSending: 'Sending…',
-  dmsNoOnline: 'Nobody else is here right now.',
+  dmsNoOnline: 'Nobody else here right now.',
   dmsUnread: '{n} unread',
 
   turnRelayTitle: "Can't reach each other?",

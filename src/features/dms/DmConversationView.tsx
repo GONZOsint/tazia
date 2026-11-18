@@ -100,14 +100,14 @@ export function DmConversationView({
           id="dm-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder={t('dmsSend')}
-          className="flex-1 min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+          placeholder={t('dmsPlaceholder')}
+          className="flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
         <button
           type="submit"
           disabled={!body.trim() || sending}
           aria-label={sending ? t('dmsSending') : t('dmsSend')}
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent text-on-accent hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
         >
           {sending ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

@@ -176,7 +176,8 @@ export function JoinRoomForm({
       )}
 
       <motion.button
-        whileTap={{ scale: 0.98 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.12 }}
         type="submit"
         disabled={!joinRoomId.trim() || !joinPhrase.trim() || isJoining}
         className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
