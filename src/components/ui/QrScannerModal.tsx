@@ -81,6 +81,7 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
             className="h-full w-full object-cover"
             playsInline
             muted
+            autoPlay
           />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="h-48 w-48 rounded-2xl border-2 border-accent/60" />

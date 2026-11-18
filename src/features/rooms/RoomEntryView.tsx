@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { KeyRound, LogOut, MessageSquare, PlusCircle, Radio } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -12,6 +12,8 @@ import { Card } from '../../components/ui/Card';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { TaziaLogo } from '../../components/brand/TaziaLogo';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
+import { probeBrowserSupportSync } from '../../core/utils/browserSupport';
+import { EASE, zoneCardExit } from '../../motion/tokens';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { TurnRelaySettings } from './TurnRelaySettings';
@@ -50,18 +52,35 @@ export function RoomEntryView({
   const hasInvite = Boolean(initialRoomId);
   const [entryTab, setEntryTab] = useState<'create' | 'join'>(hasInvite ? 'join' : 'create');
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
+  const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
+  const browserBlocked = browserSupport.level === 'blocked';
 
   return (
     <main className="mx-auto max-w-[1280px] px-4 py-3 sm:px-8 sm:py-5 lg:py-6">
+      {browserBlocked && (
+        <AlertBanner tone="error" className="mb-3">
+          <p className="font-semibold">{t('browserBlockedTitle')}</p>
+          <p className="mt-1 font-normal opacity-90">{t('browserBlockedBody')}</p>
+          {!browserSupport.secureContext && (
+            <p className="mt-1 font-normal opacity-90">{t('browserHttpsHint')}</p>
+          )}
+        </AlertBanner>
+      )}
       {joinedRooms.length > 0 && (
         <div className="mb-3 space-y-2">
           <h2 className="text-xs font-semibold text-muted">{t('roomsJoinedTitle')}</h2>
+          <AnimatePresence initial={false}>
           {joinedRooms.map((room) => {
             const isActive = room.roomId === activeRoomId;
             return (
-              <div
+              <motion.div
                 key={room.roomId}
-                className={`flex items-center gap-3 rounded-[var(--radius-ctrl)] border p-2.5 sm:p-3 ${
+                layout
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={zoneCardExit.exit}
+                transition={{ duration: 0.22, ease: EASE.outExpo }}
+                className={`flex items-center gap-3 overflow-hidden rounded-[var(--radius-ctrl)] border p-2.5 sm:p-3 ${
                   isActive
                     ? 'border-accent/40 bg-accent-soft/10'
                     : 'border-border bg-surface-raised'
@@ -76,7 +95,7 @@ export function RoomEntryView({
                       </span>
                     )}
                   </p>
-                  <div className="mt-1 flex items-center gap-2">
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
                     <MeshStatusBadge
                       status={room.meshStatus}
                       onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
@@ -86,7 +105,24 @@ export function RoomEntryView({
                         {t('roomsUnread', { n: room.unreadCount })}
                       </span>
                     )}
+                    {Object.values(room.dmUnread).reduce((a, b) => a + b, 0) > 0 && (
+                      <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[10px] font-semibold text-muted">
+                        {t('roomsDmUnread', {
+                          n: Object.values(room.dmUnread).reduce((a, b) => a + b, 0),
+                        })}
+                      </span>
+                    )}
                   </div>
+                  {room.roomError && (
+                    <p className="mt-1 truncate text-[11px] text-danger-ink">
+                      {t(room.roomError.key, room.roomError.vars)}
+                    </p>
+                  )}
+                  {!room.roomError && room.transportNotice && (
+                    <p className="mt-1 truncate text-[11px] text-warn-ink">
+                      {t(room.transportNotice.key, room.transportNotice.vars)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   {!isActive && onSwitchRoom && (
@@ -124,9 +160,10 @@ export function RoomEntryView({
                     </button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
       )}
 
@@ -209,21 +246,23 @@ export function RoomEntryView({
             </AlertBanner>
           )}
 
-          <AnimatePresence mode="wait">
-            {entryTab === 'create' ? (
-              <CreateRoomForm key="create" isJoining={isJoining} onJoinRoom={onJoinRoom} />
-            ) : (
-              <JoinRoomForm
-                key="join"
-                initialRoomId={initialRoomId}
-                initialPhrase={initialPhrase}
-                isJoining={isJoining}
-                onJoinRoom={onJoinRoom}
-              />
-            )}
-          </AnimatePresence>
+          {!browserBlocked && (
+            <AnimatePresence mode="wait">
+              {entryTab === 'create' ? (
+                <CreateRoomForm key="create" isJoining={isJoining} onJoinRoom={onJoinRoom} />
+              ) : (
+                <JoinRoomForm
+                  key="join"
+                  initialRoomId={initialRoomId}
+                  initialPhrase={initialPhrase}
+                  isJoining={isJoining}
+                  onJoinRoom={onJoinRoom}
+                />
+              )}
+            </AnimatePresence>
+          )}
 
-          <TurnRelaySettings forceOpen={showIceHint} />
+          {!browserBlocked && <TurnRelaySettings forceOpen={showIceHint} />}
         </div>
       </Card>
 
@@ -232,6 +271,7 @@ export function RoomEntryView({
         title={t('leaveRoomConfirmTitle')}
         body={t('leaveRoomConfirmBody')}
         confirmLabel={t('leaveRoomConfirmAction')}
+        danger
         onCancel={() => setLeaveTarget(null)}
         onConfirm={() => {
           const id = leaveTarget;

@@ -2,7 +2,7 @@
 
 **Zona Anónima Temporal en Acción** (*Temporary Anonymous Zone In Action*)
 
-Charla temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, **quema la sesión** al acabar. En el móvil puedes **Instalar / Añadir a inicio** (PWA) para usarla como app.
+Charla temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, **quema la sesión** al acabar. En el móvil puedes **Instalar / Añadir a inicio** (PWA) para un shell tipo app — las charlas siguen necesitando red y peers vivos.
 
 Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocolo: `agora-forum-v1` (eventos firmados Ed25519). App ID: `tazia.app`.
 
@@ -21,17 +21,21 @@ Tenéis que estar **online a la vez**. No hay buzón asíncrono.
 
 ### Funciones
 
-- Varias salas a la vez (cambiar / salir por sala)
-- Mensajes directos (firmados, dirigidos)
-- Confianza TOFU + códigos de 4 emojis (Presentes)
+- **Varias zonas a la vez** (máx. **5**): cada una mantiene su sesión P2P; **Zonas** las lista; cambia o sal de una; Charlas / Quién / Chat muestran la zona **activa**; **Quemar** borra todas en este dispositivo
+- Mensajes directos (firmados, dirigidos) en la zona activa
+- Confianza TOFU + códigos de 4 emojis (Quién)
 - TURN opcional autoalojado (rescate ICE / ocultar IP) — [`TURN.md`](TURN.md)
+
+### Varias zonas
+
+Entra a la zona A y luego abre o entra a la B sin tumbar A (espera a que termine el primer join). Usa **Cambiar** en la lista de Zonas. Salir quita solo esa zona; Quemar destruye todas en este navegador. El mesh va mejor en grupos pequeños (~5 peers).
 
 ### ICE failed / CGNAT / misma Wi‑Fi en Pages
 
 Si Firefox muestra `WebRTC: ICE failed, add a TURN server`, STUN no puede atravesar tu NAT (habitual con CGNAT residencial). Opciones:
 
 1. Misma **Wi‑Fi** (candidatos host/mDNS) — en Pages, permite **Red local** si Chrome lo pide; sin aislamiento de AP; **Forzar relay** apagado.
-2. Tu propio **coturn** y activar TURN en Salas (ambos peers).
+2. Tu propio **coturn** y activar TURN en Zonas (ambos peers).
 
 Helpers en JS: `iceCandidatePoolSize`, `turnConfig`, priming LNA, y **fallback de datos cifrado por Nostr** si falla ICE para que el chat siga en Pages sin TURN (no es P2P puro; los relés ven ciphertext). TURN propio sigue siendo el camino para mesh real. Detalle: [`TURN.md`](TURN.md).
 
@@ -68,11 +72,14 @@ Para probar en la red local, Vite escucha en todas las interfaces (`host: true`)
 | [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | Seguridad WebRTC; TOFU débil sin OOB |
 | [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN sigue siendo fallback |
 | [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Por qué falla ICE residencial sin TURN |
+| [SnoW serverless n-party WebRTC](https://arxiv.org/pdf/2206.12762) | El mesh completo degrada >~4–6 peers — zonas pequeñas |
+| [CRDT P2P WebRTC VR](https://arxiv.org/html/2503.17826v1) | Sync tipado eventual por data channels (futuro; hoy merge firmado) |
+| [Delta Chat realtime P2P](https://delta.chat/en/2024-11-20-webxdc-realtime) | Canales efímeros — varias zonas independientes encajan |
 | [Chrome LNA](https://developer.chrome.com/blog/local-network-access) | Permiso red local (misma Wi‑Fi en Pages) |
 | [WebTransport](https://developer.chrome.com/docs/capabilities/web-apis/webtransport) | Solo cliente–servidor — no sustituye mesh P2P |
 | OpenMLS / WASM | Roadmap de grupos |
 
-**Navegadores:** Chrome / Firefox / Brave comparten WebRTC (Chromium/Gecko). Brave no mejora el mesh (suele ofuscar más). Seguimos con **Trystero**; sin fork de Nostr/Trystero para Pages.
+**Navegadores:** Chrome, Brave, Firefox y Safari (HTTPS). Ed25519 usa Web Crypto nativo si existe; si no, `@noble/ed25519`. La política WebRTC de Brave y los host ICE ocultos de Safari pueden empeorar el mesh en la misma Wi‑Fi — TURN o el fallback Nostr cifrado lo cubren. Seguimos con **Trystero**; sin fork de Nostr/Trystero para Pages.
 
 ## GitHub Pages
 

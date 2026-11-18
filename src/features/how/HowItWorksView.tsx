@@ -57,6 +57,20 @@ export function HowItWorksView() {
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpGroupBody')}</p>
         </li>
+        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+            <Radio className="h-4 w-4 text-muted" aria-hidden="true" />
+            {t('helpZonesTitle')}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpZonesBody')}</p>
+        </li>
+        <li className="rounded-2xl border border-border bg-surface-raised p-5">
+          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+            <WifiOff className="h-4 w-4 text-muted" aria-hidden="true" />
+            {t('helpRelayTitle')}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpRelayBody')}</p>
+        </li>
         <li className="rounded-2xl border border-warn-border bg-warn-bg p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-warn-ink">
             <ShieldAlert className="h-4 w-4 text-warn" aria-hidden="true" />

@@ -111,6 +111,13 @@ export function PresenceView({
               <p className="text-[11px] text-muted">{rejectedLabel}</p>
             )}
           </div>
+          {(peerOnlineCount ?? Math.max(0, onlineUserIds.length - 1)) >= 5 && (
+            <p className="mt-2 text-[11px] text-warn-ink" role="status">
+              {t('roomsMeshLargeWarn', {
+                n: peerOnlineCount ?? Math.max(0, onlineUserIds.length - 1),
+              })}
+            </p>
+          )}
         </div>
         <button
           type="button"

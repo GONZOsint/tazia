@@ -39,7 +39,7 @@ docker run -d \
 
 ## Configure in TAZIA
 
-1. Open the **Rooms** tab.
+1. Open the **Zones** tab.
 2. Expand **TURN (connection help)**.
 3. Check **Use TURN as fallback** (fixes ICE failed).
 4. Enter your server details:
@@ -79,7 +79,7 @@ TAZIA still carries **encrypted** forum/DM/presence over Nostr discovery relays 
 ### Different networks / CGNAT
 
 1. Open `about:webrtc` (Firefox) or `chrome://webrtc-internals` — look for missing `relay` candidates.
-2. In TAZIA → **Rooms** → expand **TURN (connection help)** (auto-opens after peer-connect errors).
+2. In TAZIA → **Zones** → expand **TURN (connection help)** (auto-opens after peer-connect errors).
 3. Enable **Use TURN as fallback**, enter your coturn URL/user/password.
 4. **Both** peers must use the same TURN settings, then rejoin.
 5. Do **not** enable **Force relay only** until TURN is confirmed working.

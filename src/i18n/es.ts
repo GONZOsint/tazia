@@ -165,7 +165,13 @@ export const es: Messages = {
     'Os conectáis entre navegadores. Unos servicios públicos solo ayudan a encontraros la primera vez; después la conversación va de persona a persona.',
   helpGroupTitle: 'Grupo pequeño, todos online',
   helpGroupBody:
-    'Pensado para una reunión o fiesta. Si se cierran todas las pestañas, el historial desaparece. Quien llega tarde puede pedir una copia a quien siga conectado.',
+    'Pensado para una reunión o fiesta (el mesh va mejor con ~5 personas más como máximo). Si se cierran todas las pestañas, el historial desaparece. Quien llega tarde puede pedir una copia a quien siga conectado.',
+  helpZonesTitle: 'Varias zonas',
+  helpZonesBody:
+    'Puedes estar en hasta 5 zonas a la vez. Cambia o sal de una en Zonas; Charlas / Quién / Chat muestran la zona activa. Quemar borra todas las zonas en este dispositivo.',
+  helpRelayTitle: 'Si falla lo directo',
+  helpRelayBody:
+    'Si los navegadores no logran un camino WebRTC, el chat puede seguir por un fallback cifrado vía relés (solo ciphertext). Preferid la misma Wi‑Fi o vuestro TURN para un mesh real.',
   helpSafetyTitle: 'Qué protege y qué no',
   helpSafety1: 'Los demás en la zona pueden ver vuestras direcciones de red. No es Tor.',
   helpSafety2:
@@ -189,7 +195,11 @@ export const es: Messages = {
   helpSteps5: 'Al acabar, quema la sesión.',
   helpFixTitle: '¿No llegáis a conectar?',
   helpFixBody:
-    'Misma Wi‑Fi: permite Red local si el navegador lo pide; evita aislamiento de AP. Entre redes, añade tu propio TURN en Zonas → Arreglar.',
+    'Misma Wi‑Fi: permite Red local si Chrome/Brave lo pide; evita aislamiento de AP. Safari a menudo necesita TURN o el fallback cifrado en la misma Wi‑Fi. Entre redes, añade tu propio TURN en Zonas → Arreglar.',
+  browserBlockedTitle: 'Este navegador no puede ejecutar TAZIA',
+  browserBlockedBody:
+    'Hace falta HTTPS (o localhost), WebRTC, Web Crypto y WebSockets. Prueba Chrome, Brave, Firefox o Safari actuales.',
+  browserHttpsHint: 'Abre el sitio por HTTPS. HTTP plano bloquea WebRTC y Web Crypto.',
 
   errMissingFields: 'Faltan el código de zona o la frase.',
   errJoinFailed: 'No se pudo entrar a la zona.',
@@ -205,6 +215,8 @@ export const es: Messages = {
   errPublish: 'No se pudo enviar.',
   errSync: 'No se pudieron traer mensajes.',
   errGeneric: 'Error de red ({code}).',
+  errMaxRooms: 'Límite de zonas alcanzado (máx. {n}).',
+  errJoinBusy: 'Ya estás entrando a una zona — espera un momento.',
 
   copyDefault: 'Copiar',
   copiedDefault: 'Copiado',
@@ -240,8 +252,11 @@ export const es: Messages = {
   roomsMaxReached: 'Límite de zonas alcanzado (máx. {n}).',
   roomsActiveLabel: 'Activa',
   roomsUnread: '{n} nuevos',
+  roomsDmUnread: '{n} chat',
   roomsCustomize: 'Más opciones',
   roomsGoToChat: 'A charlas',
+  roomsMeshLargeWarn:
+    'Mesh grande ({n} más). Mejor en grupos pequeños — la calidad puede bajar.',
 
   navDms: 'Chat',
   dmsTitle: 'Chat',

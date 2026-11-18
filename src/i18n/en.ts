@@ -163,7 +163,13 @@ export const en = {
     'You connect browser to browser. Public helpers only help you find each other once; then the conversation goes person to person.',
   helpGroupTitle: 'Small group, everyone online',
   helpGroupBody:
-    'Built for a meetup or party. If every tab closes, history disappears. Late arrivals can ask someone still online for a copy.',
+    'Built for a meetup or party (mesh works best under ~5 others). If every tab closes, history disappears. Late arrivals can ask someone still online for a copy.',
+  helpZonesTitle: 'Several zones',
+  helpZonesBody:
+    'You can join up to 5 zones at once. Switch or leave one in Zones; Charlas / Who / Chat show the active zone. Burn clears all zones on this device.',
+  helpRelayTitle: 'When direct fails',
+  helpRelayBody:
+    'If browsers cannot punch a WebRTC path, chat may continue over an encrypted relay fallback (ciphertext only). Prefer same Wi‑Fi or your own TURN for a real mesh.',
   helpSafetyTitle: 'What it protects — and what it does not',
   helpSafety1: 'Others in the zone can see your network addresses. This is not Tor.',
   helpSafety2:
@@ -187,7 +193,11 @@ export const en = {
   helpSteps5: 'When done, burn the session.',
   helpFixTitle: "Can't reach each other?",
   helpFixBody:
-    'Same Wi‑Fi: allow Local network if the browser asks; avoid AP isolation. Across networks, add your own TURN under Zones → Fix.',
+    'Same Wi‑Fi: allow Local network if Chrome/Brave asks; avoid AP isolation. Safari often needs TURN or the encrypted relay fallback on the same Wi‑Fi. Across networks, add your own TURN under Zones → Fix.',
+  browserBlockedTitle: 'This browser cannot run TAZIA',
+  browserBlockedBody:
+    'Need HTTPS (or localhost), WebRTC, Web Crypto, and WebSockets. Try current Chrome, Brave, Firefox, or Safari.',
+  browserHttpsHint: 'Open the site over HTTPS. Plain HTTP blocks WebRTC and Web Crypto.',
 
   errMissingFields: 'Zone code or phrase is missing.',
   errJoinFailed: 'Could not enter the zone.',
@@ -203,6 +213,8 @@ export const en = {
   errPublish: 'Could not send.',
   errSync: 'Could not pull messages.',
   errGeneric: 'Network error ({code}).',
+  errMaxRooms: 'Zone limit reached (max {n}).',
+  errJoinBusy: 'Already joining a zone — wait a moment.',
 
   copyDefault: 'Copy',
   copiedDefault: 'Copied',
@@ -238,8 +250,11 @@ export const en = {
   roomsMaxReached: 'Zone limit reached (max {n}).',
   roomsActiveLabel: 'Active',
   roomsUnread: '{n} new',
+  roomsDmUnread: '{n} chat',
   roomsCustomize: 'More options',
   roomsGoToChat: 'To talks',
+  roomsMeshLargeWarn:
+    'Large mesh ({n} others). Best for small groups — quality may drop.',
 
   navDms: 'Chat',
   dmsTitle: 'Chat',

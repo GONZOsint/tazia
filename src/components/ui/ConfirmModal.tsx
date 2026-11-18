@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
+import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -9,6 +10,8 @@ interface ConfirmModalProps {
   body: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Destructive confirm (burn / leave) — danger styling. */
+  danger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -19,6 +22,7 @@ export function ConfirmModal({
   body,
   confirmLabel,
   cancelLabel,
+  danger = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -45,7 +49,7 @@ export function ConfirmModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
+          transition={{ duration: DUR.micro }}
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           role="dialog"
@@ -55,14 +59,20 @@ export function ConfirmModal({
           tabIndex={-1}
         >
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.18 }}
-            className="w-full max-w-md rounded-[var(--radius-sheet)] border border-border bg-surface-raised p-5 shadow-lg sm:p-6"
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: DUR.modal, ease: EASE.outExpo }}
+            className={`w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised p-5 shadow-lg sm:p-6 ${
+              danger ? 'border-danger-border' : 'border-border'
+            }`}
           >
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warn" aria-hidden="true" strokeWidth={1.75} />
+              <AlertTriangle
+                className={`mt-0.5 h-5 w-5 shrink-0 ${danger ? 'text-danger' : 'text-warn'}`}
+                aria-hidden="true"
+                strokeWidth={1.75}
+              />
               <div>
                 <h2 id="confirm-title" className="font-display text-lg font-semibold text-ink">
                   {title}
@@ -72,8 +82,8 @@ export function ConfirmModal({
             </div>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <motion.button
-                whileTap={{ scale: 0.97 }}
-                transition={{ duration: 0.12 }}
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 onClick={onCancel}
                 className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-4 py-2 text-sm font-medium text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
@@ -81,11 +91,15 @@ export function ConfirmModal({
                 {cancelLabel ?? t('consentCancel')}
               </motion.button>
               <motion.button
-                whileTap={{ scale: 0.97 }}
-                transition={{ duration: 0.12 }}
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 onClick={onConfirm}
-                className="min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:opacity-90 focus-visible:outline-2 focus-visible:outline-accent"
+                className={`min-h-[44px] rounded-[var(--radius-ctrl)] px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
+                  danger
+                    ? 'border border-danger-border bg-danger-bg text-danger-ink hover:opacity-90'
+                    : 'bg-accent text-on-accent hover:opacity-90'
+                }`}
               >
                 {confirmLabel ?? t('consentAccept')}
               </motion.button>

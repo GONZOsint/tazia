@@ -6,7 +6,7 @@ import {
   type PassphraseStrengthId,
 } from '../../core/crypto/passphraseWords';
 import { buildInviteUrl, parseInviteInput } from '../../core/utils/inviteLink';
-import type { RoomJoinParams } from '../../hooks/useTaziaSession';
+import type { RoomJoinParams } from '../../hooks/useRoomManager';
 import { useT, type MessageKey } from '../../i18n';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
 

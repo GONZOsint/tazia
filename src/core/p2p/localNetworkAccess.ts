@@ -1,6 +1,11 @@
 /**
- * Chrome/Edge Local Network Access (LNA) gates public→LAN WebRTC.
+ * Chrome/Edge/Brave Local Network Access (LNA) gates public→LAN WebRTC.
  * GitHub Pages is a public origin; same-LAN P2P needs host/.local candidates.
+ * Firefox and Safari do not expose `permissions.query({ name: 'local-network' })`
+ * — they return `unsupported` and priming is still best-effort ICE warm-up.
+ * Safari additionally withholds host ICE candidates until capture permission;
+ * TAZIA does not request mic/cam for chat, so same-LAN Safari relies more on
+ * srflx/TURN or the encrypted Nostr data-plane fallback.
  * @see https://developer.chrome.com/blog/local-network-access
  * @see https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Local_network_access
  */

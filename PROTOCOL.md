@@ -27,7 +27,8 @@ Versiones distintas de `1` se **rechazan**.
 | `forumSync` | `makeAction(..., { kind: 'request' })` | Snapshot RPC para late joiners |
 | `presence` | `makeUserState` | Alias + pubkey de firma |
 
-Sala: `joinRoom({ appId, password, identity: 'none', maxUsers }, roomId)`.
+Zona (API Trystero `roomId`): `joinRoom({ appId, password, identity: 'none', maxUsers }, roomId)`.
+La UI permite hasta 5 zonas concurrentes (`useRoomManager`); cada una es un `joinP2pRoom` aislado.
 
 ## Presencia
 
@@ -88,6 +89,11 @@ late joiner → forumSync.requestMany({ want: 'snapshot' })
 
 ## Implementación
 
-- Tipos: [`src/shared/protocol.ts`](src/shared/protocol.ts)
-- Firmas: [`src/crypto/messageSigning.ts`](src/crypto/messageSigning.ts)
-- Mesh: [`src/services/p2pRoom.ts`](src/services/p2pRoom.ts)
+- Tipos: [`src/core/protocol.ts`](src/core/protocol.ts)
+- Firmas / identidad: [`src/core/crypto/`](src/core/crypto/)
+- Mesh: [`src/core/p2p/p2pRoom.ts`](src/core/p2p/p2pRoom.ts)
+- Multi-zona: [`src/hooks/useRoomManager.ts`](src/hooks/useRoomManager.ts)
+
+## Roadmap de sync
+
+Hoy: merge de eventos firmados + snapshot RPC. Un sync tipado eventual (p. ej. CRDT sobre data channels, cf. [arXiv:2503.17826](https://arxiv.org/html/2503.17826v1)) es futuro — no sustituye la firma Ed25519 de autoría.

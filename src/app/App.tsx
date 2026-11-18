@@ -12,6 +12,7 @@ import { IpConsentModal } from '../features/rooms/IpConsentModal';
 import { RoomEntryView } from '../features/rooms/RoomEntryView';
 import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useT } from '../i18n';
+import { DUR, EASE, contentSwitch } from '../motion/tokens';
 import { parseInviteInput, scrubPhraseFromLocationHash } from '../core/utils/inviteLink';
 
 const ForumWorkspace = lazy(() => import('../features/forum/ForumWorkspace'));
@@ -95,8 +96,12 @@ export default function App() {
     if (activeTab === 'dms' && dmPeerId) clearDmUnread(dmPeerId);
   }, [activeTab, activeRoomId, dmPeerId, clearForumUnread, clearDmUnread]);
 
+  const prevActiveRoomIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!activeRoomId) setDmPeerId(null);
+    if (prevActiveRoomIdRef.current !== activeRoomId) {
+      prevActiveRoomIdRef.current = activeRoomId;
+      setDmPeerId(null);
+    }
   }, [activeRoomId]);
 
   useEffect(() => {
@@ -200,9 +205,10 @@ export default function App() {
         <AnimatePresence>
           {burnNotice && (
             <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: DUR.medium, ease: EASE.outExpo }}
               className="mx-auto mt-4 flex max-w-[1280px] items-center px-4 sm:px-8"
             >
               <AlertBanner tone="success" role="status" className="w-full">
@@ -245,6 +251,7 @@ export default function App() {
           title={t('burnConfirmTitle')}
           body={t('burnConfirmBody')}
           confirmLabel={t('burnConfirmAction')}
+          danger
           onCancel={() => setBurnConfirmOpen(false)}
           onConfirm={() => {
             setBurnConfirmOpen(false);
@@ -263,7 +270,10 @@ export default function App() {
                   trustStore?.repin(alert.userId);
                   dismissKeyChange(activeRoomId, alert.userId);
                 }}
-                onDisconnect={() => setBurnConfirmOpen(true)}
+                onDisconnect={() => {
+                  dismissKeyChange(activeRoomId, alert.userId);
+                  void leaveRoom(activeRoomId);
+                }}
                 onDismiss={() => dismissKeyChange(activeRoomId, alert.userId)}
               />
             ))}
@@ -274,46 +284,56 @@ export default function App() {
           <Suspense fallback={<TabSkeleton />}>
             <div className={tabClass('forum')}>
               {isInRoom && roomId && profile && selfUserId ? (
-                <ForumWorkspace
-                  roomId={roomId}
-                  phrase={phrase}
-                  profile={profile}
-                  selfUserId={selfUserId}
-                  messages={messages}
-                  presenceAliases={presenceAliases}
-                  onlineCount={peerOnlineCount}
-                  meshStatus={meshStatus}
-                  isPublishing={isPublishing}
-                  isSyncing={isSyncing}
-                  roomError={roomErrorMsg}
-                  roomErrorTone="error"
-                  onDismissRoomError={dismissRoomError}
-                  onSyncNow={async () => {
-                    await syncNow();
-                  }}
-                  onCreateThread={async (title, body) => {
-                    const ok = await publish({
-                      type: 'NEW_THREAD',
-                      threadId: crypto.randomUUID(),
-                      parentMsgId: null,
-                      title,
-                      body,
-                    });
-                    if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                    return ok;
-                  }}
-                  onReplyThread={async (threadId, parentMsgId, body) => {
-                    const ok = await publish({
-                      type: 'REPLY',
-                      threadId,
-                      parentMsgId,
-                      title: '',
-                      body,
-                    });
-                    if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                    return ok;
-                  }}
-                />
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={roomId}
+                    initial={contentSwitch.initial}
+                    animate={contentSwitch.animate}
+                    exit={contentSwitch.exit}
+                    transition={contentSwitch.transition}
+                  >
+                    <ForumWorkspace
+                      roomId={roomId}
+                      phrase={phrase}
+                      profile={profile}
+                      selfUserId={selfUserId}
+                      messages={messages}
+                      presenceAliases={presenceAliases}
+                      onlineCount={peerOnlineCount}
+                      meshStatus={meshStatus}
+                      isPublishing={isPublishing}
+                      isSyncing={isSyncing}
+                      roomError={roomErrorMsg}
+                      roomErrorTone="error"
+                      onDismissRoomError={dismissRoomError}
+                      onSyncNow={async () => {
+                        await syncNow();
+                      }}
+                      onCreateThread={async (title, body) => {
+                        const ok = await publish({
+                          type: 'NEW_THREAD',
+                          threadId: crypto.randomUUID(),
+                          parentMsgId: null,
+                          title,
+                          body,
+                        });
+                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                        return ok;
+                      }}
+                      onReplyThread={async (threadId, parentMsgId, body) => {
+                        const ok = await publish({
+                          type: 'REPLY',
+                          threadId,
+                          parentMsgId,
+                          title: '',
+                          body,
+                        });
+                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                        return ok;
+                      }}
+                    />
+                  </motion.div>
+                </AnimatePresence>
               ) : (
                 <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
                   <Radio className="mx-auto h-8 w-8 text-faint" aria-hidden="true" />

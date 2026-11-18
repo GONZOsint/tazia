@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { copyTextToClipboard } from '../core/utils/clipboard';
 
 export function useCopyFeedback(resetDelayMs = 1800) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -14,19 +15,17 @@ export function useCopyFeedback(resetDelayMs = 1800) {
 
   const copyText = useCallback(
     async (text: string, key = 'default') => {
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopiedKey(key);
-        if (timerRef.current !== null) {
-          window.clearTimeout(timerRef.current);
-        }
-        timerRef.current = window.setTimeout(() => {
-          setCopiedKey(null);
-          timerRef.current = null;
-        }, resetDelayMs);
-      } catch {
-        // Silencio si el portapapeles no está disponible
+      const ok = await copyTextToClipboard(text);
+      if (!ok) return false;
+      setCopiedKey(key);
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
       }
+      timerRef.current = window.setTimeout(() => {
+        setCopiedKey(null);
+        timerRef.current = null;
+      }, resetDelayMs);
+      return true;
     },
     [resetDelayMs]
   );

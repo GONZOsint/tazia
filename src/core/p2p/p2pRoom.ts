@@ -7,6 +7,7 @@ import {
   verifyDirectMessage,
   verifyForumEvent,
   type SigningIdentity,
+  type VerifyKey,
 } from '../crypto/messageSigning';
 import {
   APP_ID,
@@ -46,7 +47,7 @@ const NOSTR_SYNC_TIMEOUT_MS = 8_000;
 
 export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2pRoom> {
   const signing: SigningIdentity = await generateSigningIdentity();
-  const verifyKeyCache = new Map<string, CryptoKey>();
+  const verifyKeyCache = new Map<string, VerifyKey>();
   const knownPubKeys = new Map<string, string>();
   const rateLimiter = new PeerRateLimiter();
   const syncAnswerLimiter = new PeerRateLimiter();
@@ -81,7 +82,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     options.onPeerPresence([...ids]);
   };
 
-  const cachePubKey = async (userId: string, spkiB64: string): Promise<CryptoKey | null> => {
+  const cachePubKey = async (userId: string, spkiB64: string): Promise<VerifyKey | null> => {
     if (!userId || !spkiB64 || spkiB64.length < 32) return null;
     knownPubKeys.set(userId, spkiB64);
 
@@ -105,7 +106,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     }
   };
 
-  const getVerifyKey = async (userId: string): Promise<CryptoKey | null> => {
+  const getVerifyKey = async (userId: string): Promise<VerifyKey | null> => {
     const cached = verifyKeyCache.get(userId);
     if (cached) return cached;
     const spki = knownPubKeys.get(userId);
@@ -573,7 +574,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         authorUserId: self.userId,
       };
 
-      const signed = await signForumEvent(unsigned, signing.keyPair.privateKey);
+      const signed = await signForumEvent(unsigned, signing);
       if (!isValidForumEvent(signed)) {
         throw new P2pActionError('unknown', 'Signed event failed local validation');
       }
@@ -606,7 +607,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         createdAtMs: Date.now(),
       };
 
-      const signed = await signDirectMessage(unsigned, signing.keyPair.privateKey);
+      const signed = await signDirectMessage(unsigned, signing);
       try {
         await directMsg.send(signed, { target: toUserId });
       } catch {

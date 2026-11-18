@@ -58,7 +58,7 @@ export interface RoomState {
   dmUnread: Record<string, number>;
 }
 
-const MAX_ROOMS = 5;
+export const MAX_ROOMS = 5;
 
 export function countOtherPeers(
   onlineUserIds: string[],
@@ -101,10 +101,21 @@ export function useRoomManager(
   const burnTimerRef = useRef<number | null>(null);
   const roomsRef = useRef<Map<string, RoomState>>(rooms);
   const activeRoomIdRef = useRef<string | null>(null);
-  const joinGenerationRef = useRef(0);
+  /** Per-room join tokens — only invalidate same-id rejoin / burn / unmount. */
+  const joinTokensRef = useRef<Map<string, number>>(new Map());
+  const isJoiningRef = useRef(false);
   const forumFocusedRef = options?.forumTabFocusedRef;
   const dmsFocusedRef = options?.dmsTabFocusedRef;
   const activeDmPeerIdRef = options?.activeDmPeerIdRef;
+
+  const bumpJoinToken = (roomId: string) => {
+    const next = (joinTokensRef.current.get(roomId) ?? 0) + 1;
+    joinTokensRef.current.set(roomId, next);
+    return next;
+  };
+
+  const isJoinTokenCurrent = (roomId: string, token: number) =>
+    joinTokensRef.current.get(roomId) === token;
 
   useEffect(() => {
     roomsRef.current = rooms;
@@ -154,11 +165,17 @@ export function useRoomManager(
       }
 
       if (roomsRef.current.size >= MAX_ROOMS) {
-        setJoinError({ key: 'errGeneric', vars: { code: 'max-rooms' } });
+        setJoinError({ key: 'errMaxRooms', vars: { n: MAX_ROOMS } });
         return;
       }
 
-      const generation = ++joinGenerationRef.current;
+      if (isJoiningRef.current) {
+        setJoinError({ key: 'errJoinBusy' });
+        return;
+      }
+
+      const token = bumpJoinToken(roomIdTrim);
+      isJoiningRef.current = true;
       setIsJoining(true);
       setJoinError(null);
 
@@ -170,7 +187,7 @@ export function useRoomManager(
         }
 
         const { joinP2pRoom } = await import('../core/p2p/p2pRoom');
-        if (joinGenerationRef.current !== generation) return;
+        if (!isJoinTokenCurrent(roomIdTrim, token)) return;
 
         const session = await joinP2pRoom({
           roomId: roomIdTrim,
@@ -179,7 +196,7 @@ export function useRoomManager(
           turnConfig,
           relayOnly,
           onForumMessage: (message) => {
-            if (joinGenerationRef.current !== generation) return;
+            if (!roomsRef.current.has(roomIdTrim)) return;
             updateRoom(roomIdTrim, (r) => {
               if (r.messages.some((m) => m.msgId === message.msgId)) return r;
               const msgs = [...r.messages, message].sort((a, b) => a.createdAtMs - b.createdAtMs);
@@ -196,6 +213,7 @@ export function useRoomManager(
             });
           },
           onPresenceChange: (userId, state, removed) => {
+            if (!roomsRef.current.has(roomIdTrim)) return;
             updateRoom(roomIdTrim, (r) => {
               const next = { ...r.presence };
               if (removed || !state) delete next[userId];
@@ -204,6 +222,7 @@ export function useRoomManager(
             });
           },
           onPeerPresence: (ids) => {
+            if (!roomsRef.current.has(roomIdTrim)) return;
             updateRoom(roomIdTrim, (r) => ({ ...r, onlineUserIds: ids }));
           },
           onUserJoined: () => {
@@ -218,12 +237,14 @@ export function useRoomManager(
             }
           },
           onKeyChange: (userId, level) => {
+            if (!roomsRef.current.has(roomIdTrim)) return;
             updateRoom(roomIdTrim, (r) => ({
               ...r,
               keyChangeAlerts: [...r.keyChangeAlerts, { userId, level }],
             }));
           },
           onDirectMessage: (dm) => {
+            if (!roomsRef.current.has(roomIdTrim)) return;
             const peerId = dm.fromUserId;
             updateRoom(roomIdTrim, (r) => {
               const prev = r.dmMessages[peerId] ?? [];
@@ -241,6 +262,7 @@ export function useRoomManager(
           },
           onError: (code) => {
             if (code === 'publish-rate') return;
+            if (!roomsRef.current.has(roomIdTrim)) return;
             void mapRoomErrorAsync(code).then((key) => {
               updateRoom(roomIdTrim, (r) => ({
                 ...r,
@@ -249,6 +271,7 @@ export function useRoomManager(
             });
           },
           onRelayFallback: () => {
+            if (!roomsRef.current.has(roomIdTrim)) return;
             updateRoom(roomIdTrim, (r) => ({
               ...r,
               transportNotice: { key: 'infoRelayPath' },
@@ -256,7 +279,7 @@ export function useRoomManager(
           },
         });
 
-        if (joinGenerationRef.current !== generation) {
+        if (!isJoinTokenCurrent(roomIdTrim, token)) {
           await session.leave();
           return;
         }
@@ -267,7 +290,7 @@ export function useRoomManager(
         );
         await session.setPresenceAlias(localProfile.alias);
 
-        if (joinGenerationRef.current !== generation) {
+        if (!isJoinTokenCurrent(roomIdTrim, token)) {
           await session.leave();
           return;
         }
@@ -302,6 +325,7 @@ export function useRoomManager(
         setRooms((prev) => {
           const next = new Map(prev);
           next.set(roomIdTrim, roomState);
+          roomsRef.current = next;
           return next;
         });
         setActiveRoomId(roomIdTrim);
@@ -309,7 +333,6 @@ export function useRoomManager(
 
         for (const delayMs of [800, 2500, 6000]) {
           window.setTimeout(async () => {
-            if (joinGenerationRef.current !== generation) return;
             const room = roomsRef.current.get(roomIdTrim);
             if (!room) return;
             updateRoom(roomIdTrim, (r) => ({ ...r, isSyncing: true }));
@@ -330,7 +353,7 @@ export function useRoomManager(
           }, delayMs);
         }
       } catch (err) {
-        if (joinGenerationRef.current !== generation) return;
+        if (!isJoinTokenCurrent(roomIdTrim, token)) return;
         if (err instanceof P2pActionError) {
           const key = mapRoomError(err.code);
           setJoinError(key === 'errGeneric' ? { key: 'errJoinFailed' } : { key });
@@ -338,10 +361,13 @@ export function useRoomManager(
           setJoinError({ key: 'errJoinFailed' });
         }
       } finally {
-        if (joinGenerationRef.current === generation) setIsJoining(false);
+        if (isJoinTokenCurrent(roomIdTrim, token)) {
+          isJoiningRef.current = false;
+          setIsJoining(false);
+        }
       }
     },
-    [forumFocusedRef, onNavigateTab, updateRoom]
+    [forumFocusedRef, onNavigateTab, updateRoom, dmsFocusedRef, activeDmPeerIdRef]
   );
 
   const joinRoom = useCallback(
@@ -372,26 +398,27 @@ export function useRoomManager(
   const leaveRoom = useCallback(async (roomId: string) => {
     const room = roomsRef.current.get(roomId);
     if (!room) return;
+    bumpJoinToken(roomId);
     try {
       await room.session.leave();
     } catch {
       /* ignore */
     }
-    setRooms((prev) => {
-      const next = new Map(prev);
-      next.delete(roomId);
-      roomsRef.current = next;
-      setActiveRoomId((cur) => {
-        if (cur !== roomId) return cur;
-        return [...next.keys()][0] ?? null;
-      });
-      return next;
+    const next = new Map(roomsRef.current);
+    next.delete(roomId);
+    roomsRef.current = next;
+    setRooms(next);
+    setActiveRoomId((cur) => {
+      if (cur !== roomId) return cur;
+      return [...next.keys()][0] ?? null;
     });
   }, []);
 
   const burnSession = useCallback(async () => {
-    joinGenerationRef.current += 1;
+    for (const id of joinTokensRef.current.keys()) bumpJoinToken(id);
+    joinTokensRef.current.clear();
     pendingJoinRef.current = null;
+    isJoiningRef.current = false;
     setIpConsentNeeded(false);
     setIsJoining(false);
     for (const room of roomsRef.current.values()) {
@@ -401,6 +428,7 @@ export function useRoomManager(
         /* ignore */
       }
     }
+    roomsRef.current = new Map();
     setRooms(new Map());
     setActiveRoomId(null);
     setJoinError(null);
@@ -531,9 +559,12 @@ export function useRoomManager(
   }, [rooms]);
 
   const totalDmUnread = useMemo(() => {
-    if (!active) return 0;
-    return Object.values(active.dmUnread).reduce((a, b) => a + b, 0);
-  }, [active]);
+    let n = 0;
+    for (const r of rooms.values()) {
+      for (const c of Object.values(r.dmUnread)) n += c;
+    }
+    return n;
+  }, [rooms]);
 
   const sendDm = useCallback(
     async (toUserId: string, body: string): Promise<boolean> => {
