@@ -1,34 +1,40 @@
-import { useState } from 'react';
 import { useT } from '../../i18n';
-import { Card } from '../../components/ui/Card';
 
-export function RoomHowAside() {
+/** Horizontal how-to steps for the rooms entry screen. */
+export function RoomHowSteps() {
   const t = useT();
-  const [howOpen, setHowOpen] = useState(false);
+  const steps = [
+    t('roomsHow1'),
+    t('roomsHow2'),
+    t('roomsHow3'),
+    t('roomsHow4'),
+    t('roomsHow5'),
+  ] as const;
 
   return (
-    <Card className="bg-bg lg:self-start" padded>
-      <button
-        type="button"
-        aria-expanded={howOpen}
-        onClick={() => setHowOpen((v) => !v)}
-        className="flex w-full min-h-[44px] items-center justify-between text-left font-display text-lg font-semibold text-ink lg:pointer-events-none focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        {t('roomsHowTitle')}
-        <span className="text-sm font-normal text-muted lg:hidden">{howOpen ? '−' : '+'}</span>
-      </button>
-      <div className={`${howOpen ? 'block' : 'hidden'} lg:block`}>
-        <ol className="mt-4 list-decimal space-y-2.5 pl-5 text-sm leading-relaxed text-muted">
-          <li>{t('roomsHow1')}</li>
-          <li>{t('roomsHow2')}</li>
-          <li>{t('roomsHow3')}</li>
-          <li>{t('roomsHow4')}</li>
-          <li>{t('roomsHow5')}</li>
-        </ol>
-        <p className="mt-5 rounded-xl border border-warn-border bg-warn-bg p-3 text-xs leading-relaxed text-warn-ink">
-          {t('roomsIpNote')}
-        </p>
-      </div>
-    </Card>
+    <section aria-label={t('roomsHowTitle')} className="w-full">
+      <h2 className="text-xs font-semibold text-muted">{t('roomsHowTitle')}</h2>
+      <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        {steps.map((label, i) => (
+          <li
+            key={label}
+            className="flex gap-2.5 rounded-xl border border-border bg-surface-raised px-3 py-3 text-sm leading-snug text-muted"
+          >
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-on-accent">
+              {i + 1}
+            </span>
+            <span className="min-w-0 pt-0.5">{label}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 rounded-xl border border-warn-border bg-warn-bg px-3 py-2.5 text-xs leading-relaxed text-warn-ink">
+        {t('roomsIpNote')}
+      </p>
+    </section>
   );
+}
+
+/** @deprecated Use RoomHowSteps */
+export function RoomHowAside() {
+  return <RoomHowSteps />;
 }

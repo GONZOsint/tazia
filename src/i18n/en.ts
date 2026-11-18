@@ -17,21 +17,21 @@ export const en = {
   themeLight: 'Light theme',
   themeDark: 'Dark theme',
 
-  leaveTab: 'Leave this tab',
+  leaveTab: 'Burn session',
   liveHint: 'Live',
 
-  burnNotice: 'Session closed on this tab. To come back, create or join again with the phrase.',
+  burnNotice: 'Session burned. To come back, create or join again with the phrase.',
 
   forumEmptyTitle: 'No conversations yet',
   forumEmptyBody: 'Join a room to see the chat.',
   forumEmptyCta: 'Go to rooms',
 
   roomsActivePrefix: 'You are already in room',
-  roomsActiveHint: 'Creating or joining another will close this one.',
+  roomsActiveHint: 'You can join several rooms and switch between them here.',
   roomsBackToChat: 'Back to chat',
   roomsHeroTitle: 'Temporary chat, no accounts',
   roomsHeroBody:
-    'Open a room, share the phrase in person, and talk while you are online. When every tab closes, it disappears.',
+    'Open a room, share the phrase in person, and talk while you are online. When you burn the session or every tab closes, it disappears.',
   roomsCreate: 'Create room',
   roomsJoin: 'Join',
   roomsPhraseLabel: 'Secret phrase',
@@ -58,7 +58,7 @@ export const en = {
   roomsHow2: 'Say the phrase in person or via a trusted channel.',
   roomsHow3: 'Share the link or QR.',
   roomsHow4: 'Everyone joins at the same time.',
-  roomsHow5: 'When done, leave this tab.',
+  roomsHow5: 'When done, burn the session.',
   roomsIpNote:
     'People in the room can see your network addresses. Meant for groups who already know each other.',
   roomsPhraseScrubbed:
@@ -158,13 +158,15 @@ export const en = {
   helpForgetDone: 'Network consent cleared in this browser.',
   helpForgetHint: 'You will see the address notice again next time you join a room.',
   helpNoServerTitle: 'No accounts, no message server of ours',
-  helpNoServerBody: 'Static hosting is enough. Create room → phrase in person → link/QR → leave when done.',
+  helpNoServerBody: 'Static hosting is enough. Create room → phrase in person → link/QR → burn session when done.',
 
   errMissingFields: 'Room code or secret phrase is missing.',
   errJoinFailed: 'Could not join the room.',
   errDecrypt: 'The phrase does not match the room. Check it with the group.',
   errRoomFull: 'The room is full.',
-  errPeerConnect: 'Could not connect to someone else. Try another Wi‑Fi or turn off a strict VPN.',
+  errPeerConnect:
+    'No WebRTC path (ICE failed). Common behind CGNAT. Try the same Wi‑Fi, or enable TURN under Rooms. Details: about:webrtc',
+  errIceHint: 'No P2P path. Configure your own TURN below, or meet on the same network.',
   errRelay: 'Could not reach discovery helpers. Try again in a few seconds.',
   errPublishRate: 'Too many messages in a short time. Wait a moment.',
   errPublish: 'Could not publish.',

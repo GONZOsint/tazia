@@ -86,6 +86,8 @@ export default function App() {
 
   const joinErrorMsg = joinError ? t(joinError.key, joinError.vars) : null;
   const roomErrorMsg = roomError ? t(roomError.key, roomError.vars) : null;
+  const iceFailed =
+    joinError?.key === 'errPeerConnect' || roomError?.key === 'errPeerConnect';
   const mainRef = useRef<HTMLDivElement>(null);
 
   const TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const;
@@ -122,6 +124,20 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {iceFailed && activeTab !== 'rooms' && (
+          <div className="mx-auto mt-4 max-w-[1280px] px-4 sm:px-8">
+            <AlertBanner tone="warning" role="status" className="w-full">
+              <button
+                type="button"
+                className="text-left underline-offset-2 hover:underline"
+                onClick={() => setActiveTab('rooms')}
+              >
+                {t('errIceHint')}
+              </button>
+            </AlertBanner>
+          </div>
+        )}
 
         <IpConsentModal
           open={ipConsentNeeded}
@@ -202,10 +218,10 @@ export default function App() {
             phraseWasScrubbed={phraseWasScrubbed}
             isJoining={isJoining}
             errorMsg={joinErrorMsg}
+            showIceHint={iceFailed}
             activeRoomId={roomId}
             joinedRooms={roomList}
             onGoToForum={() => setActiveTab('forum')}
-            onBurnSession={() => void burnSession()}
             onJoinRoom={joinRoom}
             onSwitchRoom={switchRoom}
             onLeaveRoom={leaveRoom}

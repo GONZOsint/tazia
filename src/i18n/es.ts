@@ -19,21 +19,21 @@ export const es: Messages = {
   themeLight: 'Tema claro',
   themeDark: 'Tema oscuro',
 
-  leaveTab: 'Salir de esta pestaña',
+  leaveTab: 'Quemar sesión',
   liveHint: 'En directo',
 
-  burnNotice: 'Sesión cerrada en esta pestaña. Para volver, crea o entra de nuevo con la frase.',
+  burnNotice: 'Sesión quemada. Para volver, crea o entra de nuevo con la frase.',
 
   forumEmptyTitle: 'Sin conversaciones aún',
   forumEmptyBody: 'Entra en una sala para ver el chat.',
   forumEmptyCta: 'Ir a salas',
 
   roomsActivePrefix: 'Ya estás en la sala',
-  roomsActiveHint: 'Crear o unirte a otra cerrará la actual.',
+  roomsActiveHint: 'Puedes unirte a varias salas; cambia entre ellas aquí.',
   roomsBackToChat: 'Volver al chat',
   roomsHeroTitle: 'Charla temporal sin cuentas',
   roomsHeroBody:
-    'Abre una sala, comparte la frase en persona y hablad mientras estéis conectados. Al cerrar todas las pestañas, desaparece.',
+    'Abre una sala, comparte la frase en persona y hablad mientras estéis conectados. Al quemar la sesión o cerrar todas las pestañas, desaparece.',
   roomsCreate: 'Crear sala',
   roomsJoin: 'Unirse',
   roomsPhraseLabel: 'Frase secreta',
@@ -60,7 +60,7 @@ export const es: Messages = {
   roomsHow2: 'Di la frase en persona o por un canal de confianza.',
   roomsHow3: 'Comparte el enlace o el QR.',
   roomsHow4: 'Entrad todos a la vez.',
-  roomsHow5: 'Al acabar, sal de esta pestaña.',
+  roomsHow5: 'Al acabar, quema la sesión.',
   roomsIpNote:
     'Quienes estén en la sala pueden ver vuestras direcciones de red. Pensado para grupos que ya se conocen.',
   roomsPhraseScrubbed:
@@ -160,13 +160,15 @@ export const es: Messages = {
   helpForgetDone: 'Consentimiento de red borrado en este navegador.',
   helpForgetHint: 'Vuelve a pedir aviso de dirección la próxima vez que entres a una sala.',
   helpNoServerTitle: 'Sin cuentas ni servidor nuestro',
-  helpNoServerBody: 'Hosting estático basta. Crear sala → frase en persona → enlace/QR → salir al acabar.',
+  helpNoServerBody: 'Hosting estático basta. Crear sala → frase en persona → enlace/QR → quemar sesión al acabar.',
 
   errMissingFields: 'Faltan el código de sala o la frase secreta.',
   errJoinFailed: 'No se pudo unir a la sala.',
   errDecrypt: 'La frase no coincide con la sala. Compruébala con el grupo.',
   errRoomFull: 'La sala está llena.',
-  errPeerConnect: 'No pudimos conectar con otra persona. Prueba otra Wi‑Fi o desactiva la VPN.',
+  errPeerConnect:
+    'No hay ruta WebRTC (ICE failed). Suele pasar con CGNAT. Prueba la misma Wi‑Fi, o activa TURN en Salas. Detalle: about:webrtc',
+  errIceHint: 'Sin conexión P2P. Configura un TURN propio abajo o reuníos en la misma red.',
   errRelay: 'No se pudo contactar con los servicios de encuentro. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes en poco tiempo. Espera un momento.',
   errPublish: 'No se pudo publicar.',

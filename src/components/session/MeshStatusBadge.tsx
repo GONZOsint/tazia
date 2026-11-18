@@ -1,4 +1,4 @@
-import { Loader2, Lock, Shield, Wifi, WifiOff } from 'lucide-react';
+import { Loader2, Wifi, WifiOff } from 'lucide-react';
 import { useT } from '../../i18n';
 import type { MeshStatus } from '../../core/protocol';
 

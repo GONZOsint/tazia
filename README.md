@@ -2,7 +2,7 @@
 
 **Temporary Anonymous Zone In Action**
 
-Live temporary chat in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, leave the tab when done.
+Live temporary chat in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, **burn the session** when done.
 
 Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: `agora-forum-v1` (Ed25519-signed events). App ID: `tazia.app`.
 
@@ -13,11 +13,27 @@ Spanish README: [`README.es.md`](README.es.md).
 1. Open the site (local or static host).
 2. **Create room** and generate a memorable phrase.
 3. Say the phrase in person / on paper. Optional: put it in the `#` link (riskier).
-4. Share link or QR (QR is generated **in the browser**).
+4. Share link or QR (QR is generated **in the browser**; you can also **scan** a QR to join).
 5. First join asks for **network address consent**.
-6. When done: **Leave this tab**.
+6. When done: **Burn session**.
 
 You must be **online at the same time**. No async mailbox.
+
+### Features
+
+- Multi-room sessions (switch / leave per room)
+- Direct messages (signed, targeted)
+- TOFU trust + 4-emoji safety codes (Presence)
+- Optional self-hosted TURN (ICE fallback / hide IP) — see [`TURN.md`](TURN.md)
+
+### ICE failed / CGNAT
+
+If Firefox shows `WebRTC: ICE failed, add a TURN server`, STUN alone cannot punch through your NAT (common on residential CGNAT). Options:
+
+1. Meet on the **same Wi‑Fi** (host candidates), or
+2. Run your own **coturn** and enable TURN under Rooms (both peers need it).
+
+GitHub Pages cannot host TURN. Details: [`TURN.md`](TURN.md).
 
 ## Development
 
@@ -36,8 +52,9 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 
 ## Docs
 
-- [`SECURITY.md`](SECURITY.md) — threat model, CSP, no-goals (Tor/MLS). Spanish.
+- [`SECURITY.md`](SECURITY.md) — threat model, TOFU, CSP, honest limits. Spanish.
 - [`PROTOCOL.md`](PROTOCOL.md) — `agora-forum-v1` wire format. Spanish.
+- [`TURN.md`](TURN.md) — self-hosted coturn + ICE failed checklist.
 
 ## Papers / readings
 
@@ -47,6 +64,10 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 | [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Metadata hiding (not implemented) |
 | [WebRTC IP leakage 2025](https://arxiv.org/abs/2510.16168) + [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html) | IP consent UX |
 | [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | Do not treat DTLS alone as authorship |
+| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Validates emoji verify; we use 4 emoji (~24 bit) — longer SAS is roadmap |
+| [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | WebRTC security; TOFU weak without OOB |
+| [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN still needed as fallback |
+| [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Why residential ICE fails without TURN |
 | OpenMLS / WASM | Future groups roadmap |
 
 ## GitHub Pages

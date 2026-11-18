@@ -11,13 +11,13 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #ffffff;
-  --color-surface: #f4f4f5;
-  --color-surface-raised: #ffffff;
+  --color-bg: #e8eaed;
+  --color-surface: #dde0e4;
+  --color-surface-raised: #f4f5f7;
   --color-ink: #0a0a0a;
   --color-muted: #52525b;
-  --color-faint: #a1a1aa;
-  --color-border: #e4e4e7;
+  --color-faint: #8b8f96;
+  --color-border: #c8ccd2;
   --color-accent: #b2ff41;
   --color-accent-hover: #9de039;
   --color-accent-soft: #c4ff6e;

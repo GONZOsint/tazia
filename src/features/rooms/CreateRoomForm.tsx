@@ -57,7 +57,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
-      className="mt-6 space-y-5"
+      className="mt-6"
       onSubmit={(e) => {
         e.preventDefault();
         if (!createStrength.isAcceptable) return;
@@ -68,39 +68,134 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
         });
       }}
     >
-      <div className="rounded-xl border border-border bg-bg p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-ink">{t('roomsInviteTitle')}</p>
-          <CopyButton
-            text={inviteUrl}
-            label={t('roomsCopyLink')}
-            copiedLabel={t('copiedDefault')}
-            className="min-h-[44px] rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
-          />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="space-y-5">
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
+                {t('roomsPhraseLabel')}
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatePhrase(generateMemorablePassphrase(4));
+                  setShowCreatePhrase(true);
+                  setDiceRotation((deg) => deg + 180);
+                }}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <motion.span animate={{ rotate: diceRotation }}>
+                  <Dices className="h-3.5 w-3.5" aria-hidden="true" />
+                </motion.span>
+                {t('roomsGeneratePhrase')}
+              </button>
+            </div>
+            <div className="mt-2">
+              <SecretPhraseInput
+                id="create-phrase"
+                value={createPhrase}
+                onChange={setCreatePhrase}
+                visible={showCreatePhrase}
+                onToggleVisible={() => setShowCreatePhrase((v) => !v)}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-muted">
+              <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
+              {t(strengthCopy.hint)}
+            </p>
+          </div>
+
+          <div>
+            <button
+              type="button"
+              aria-expanded={customizeOpen}
+              onClick={() => setCustomizeOpen((v) => !v)}
+              className="flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${customizeOpen ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+              {t('roomsCustomize')}
+            </button>
+            <AnimatePresence>
+              {customizeOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-2">
+                    <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
+                      {t('roomsAliasLabel')}
+                    </label>
+                    <input
+                      id="create-alias"
+                      value={createAlias}
+                      onChange={(e) => setCreateAlias(e.target.value)}
+                      className="mt-2 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                      placeholder={t('roomsAliasPlaceholder')}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!createStrength.isAcceptable || isJoining}
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            {isJoining ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                {t('roomsConnecting')}
+              </>
+            ) : (
+              <>
+                <Radio className="h-4 w-4" aria-hidden="true" />
+                {t('roomsOpen')}
+              </>
+            )}
+          </button>
         </div>
-        <p className="mt-2 break-all font-mono text-[11px] text-muted">{inviteUrl}</p>
 
-        <label className="mt-3 flex min-h-[44px] items-center gap-3 text-xs text-muted">
-          <input
-            type="checkbox"
-            className="h-5 w-5 rounded accent-accent"
-            checked={includePhraseInLink}
-            onChange={(e) => {
-              if (e.target.checked) {
-                setConfirmOpen(true);
-              } else {
-                setIncludePhraseInLink(false);
-              }
-            }}
-          />
-          <span className="flex-1">{t('roomsIncludePhrase')}</span>
-          {includePhraseInLink && (
-            <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
-          )}
-        </label>
+        <div className="rounded-xl border border-border bg-bg p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-ink">{t('roomsInviteTitle')}</p>
+            <CopyButton
+              text={inviteUrl}
+              label={t('roomsCopyLink')}
+              copiedLabel={t('copiedDefault')}
+              className="min-h-[44px] rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+            />
+          </div>
+          <p className="mt-2 break-all font-mono text-[11px] text-muted">{inviteUrl}</p>
 
-        <div className="mt-4">
-          <InviteQr inviteUrl={inviteUrl} includesSecret={includePhraseInLink} />
+          <label className="mt-3 flex min-h-[44px] items-center gap-3 text-xs text-muted">
+            <input
+              type="checkbox"
+              className="h-5 w-5 rounded accent-accent"
+              checked={includePhraseInLink}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setConfirmOpen(true);
+                } else {
+                  setIncludePhraseInLink(false);
+                }
+              }}
+            />
+            <span className="flex-1">{t('roomsIncludePhrase')}</span>
+            {includePhraseInLink && (
+              <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
+            )}
+          </label>
+
+          <div className="mt-4 flex justify-center lg:justify-start">
+            <InviteQr inviteUrl={inviteUrl} includesSecret={includePhraseInLink} />
+          </div>
         </div>
       </div>
 
@@ -114,97 +209,6 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
         }}
         onCancel={() => setConfirmOpen(false)}
       />
-
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
-            {t('roomsPhraseLabel')}
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setCreatePhrase(generateMemorablePassphrase(4));
-              setShowCreatePhrase(true);
-              setDiceRotation((deg) => deg + 180);
-            }}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            <motion.span animate={{ rotate: diceRotation }}>
-              <Dices className="h-3.5 w-3.5" aria-hidden="true" />
-            </motion.span>
-            {t('roomsGeneratePhrase')}
-          </button>
-        </div>
-        <div className="mt-2">
-          <SecretPhraseInput
-            id="create-phrase"
-            value={createPhrase}
-            onChange={setCreatePhrase}
-            visible={showCreatePhrase}
-            onToggleVisible={() => setShowCreatePhrase((v) => !v)}
-          />
-        </div>
-        <p className="mt-1.5 text-xs text-muted">
-          <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
-          {t(strengthCopy.hint)}
-        </p>
-      </div>
-
-      <div>
-        <button
-          type="button"
-          aria-expanded={customizeOpen}
-          onClick={() => setCustomizeOpen((v) => !v)}
-          className="flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${customizeOpen ? 'rotate-180' : ''}`}
-            aria-hidden="true"
-          />
-          {t('roomsCustomize')}
-        </button>
-        <AnimatePresence>
-          {customizeOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-2">
-                <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
-                  {t('roomsAliasLabel')}
-                </label>
-                <input
-                  id="create-alias"
-                  value={createAlias}
-                  onChange={(e) => setCreateAlias(e.target.value)}
-                  className="mt-2 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
-                  placeholder={t('roomsAliasPlaceholder')}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <button
-        type="submit"
-        disabled={!createStrength.isAcceptable || isJoining}
-        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >
-        {isJoining ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            {t('roomsConnecting')}
-          </>
-        ) : (
-          <>
-            <Radio className="h-4 w-4" aria-hidden="true" />
-            {t('roomsOpen')}
-          </>
-        )}
-      </button>
     </motion.form>
   );
 }

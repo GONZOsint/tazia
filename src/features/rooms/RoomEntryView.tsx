@@ -8,7 +8,7 @@ import { Card } from '../../components/ui/Card';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
-import { RoomHowAside } from './RoomHowAside';
+import { RoomHowSteps } from './RoomHowAside';
 import { TurnRelaySettings } from './TurnRelaySettings';
 
 interface RoomEntryViewProps {
@@ -17,10 +17,11 @@ interface RoomEntryViewProps {
   phraseWasScrubbed?: boolean;
   isJoining: boolean;
   errorMsg: string | null;
+  /** Expand TURN panel (ICE / peer-connect failures). */
+  showIceHint?: boolean;
   activeRoomId?: string | null;
   joinedRooms?: RoomState[];
   onGoToForum?: () => void;
-  onBurnSession?: () => void;
   onJoinRoom: (params: RoomJoinParams) => Promise<void>;
   onSwitchRoom?: (roomId: string) => void;
   onLeaveRoom?: (roomId: string) => Promise<void>;
@@ -32,10 +33,10 @@ export function RoomEntryView({
   phraseWasScrubbed = false,
   isJoining,
   errorMsg,
+  showIceHint = false,
   activeRoomId = null,
   joinedRooms = [],
   onGoToForum,
-  onBurnSession,
   onJoinRoom,
   onSwitchRoom,
   onLeaveRoom,
@@ -117,80 +118,86 @@ export function RoomEntryView({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-        <Card padded={false}>
-          <div className="p-5 sm:p-8">
-            <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-[28px] [text-wrap:balance]">
-              {t('roomsHeroTitle')}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{t('roomsHeroBody')}</p>
-            <p className="mt-1 text-xs font-medium text-muted">
-              {t('brand')} — {t('tagline')}
-            </p>
-
-            {phraseWasScrubbed && (
-              <AlertBanner tone="warning" role="status" className="mt-4">
-                {t('roomsPhraseScrubbed')}
-              </AlertBanner>
-            )}
-
-            <div
-              role="tablist"
-              aria-label={t('navRooms')}
-              className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={entryTab === 'create'}
-                onClick={() => setEntryTab('create')}
-                className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
-                  entryTab === 'create' ? 'bg-surface-raised text-ink shadow-xs' : 'text-muted'
-                }`}
-              >
-                <PlusCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                {t('roomsCreate')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={entryTab === 'join'}
-                onClick={() => setEntryTab('join')}
-                className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
-                  entryTab === 'join' ? 'bg-surface-raised text-ink shadow-xs' : 'text-muted'
-                }`}
-              >
-                <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
-                {t('roomsJoin')}
-              </button>
-            </div>
-
-            {errorMsg && (
-              <AlertBanner tone="error" className="mt-5">
-                {errorMsg}
-              </AlertBanner>
-            )}
-
-            <AnimatePresence mode="wait">
-              {entryTab === 'create' ? (
-                <CreateRoomForm key="create" isJoining={isJoining} onJoinRoom={onJoinRoom} />
-              ) : (
-                <JoinRoomForm
-                  key="join"
-                  initialRoomId={initialRoomId}
-                  initialPhrase={initialPhrase}
-                  isJoining={isJoining}
-                  onJoinRoom={onJoinRoom}
-                />
-              )}
-            </AnimatePresence>
-
-            <TurnRelaySettings />
-          </div>
-        </Card>
-
-        <RoomHowAside />
+      <div className="mb-6">
+        <RoomHowSteps />
       </div>
+
+      <Card padded={false}>
+        <div className="p-5 sm:p-8">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-[28px] [text-wrap:balance]">
+            {t('roomsHeroTitle')}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">{t('roomsHeroBody')}</p>
+          <p className="mt-1 text-xs font-medium text-muted">
+            {t('brand')} — {t('tagline')}
+          </p>
+
+          {phraseWasScrubbed && (
+            <AlertBanner tone="warning" role="status" className="mt-4">
+              {t('roomsPhraseScrubbed')}
+            </AlertBanner>
+          )}
+
+          <div
+            role="tablist"
+            aria-label={t('navRooms')}
+            className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={entryTab === 'create'}
+              onClick={() => setEntryTab('create')}
+              className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
+                entryTab === 'create' ? 'bg-surface-raised text-ink shadow-xs' : 'text-muted'
+              }`}
+            >
+              <PlusCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('roomsCreate')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={entryTab === 'join'}
+              onClick={() => setEntryTab('join')}
+              className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
+                entryTab === 'join' ? 'bg-surface-raised text-ink shadow-xs' : 'text-muted'
+              }`}
+            >
+              <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('roomsJoin')}
+            </button>
+          </div>
+
+          {errorMsg && (
+            <AlertBanner tone="error" className="mt-5">
+              {errorMsg}
+            </AlertBanner>
+          )}
+
+          {showIceHint && (
+            <AlertBanner tone="warning" role="status" className="mt-4">
+              {t('errIceHint')}
+            </AlertBanner>
+          )}
+
+          <AnimatePresence mode="wait">
+            {entryTab === 'create' ? (
+              <CreateRoomForm key="create" isJoining={isJoining} onJoinRoom={onJoinRoom} />
+            ) : (
+              <JoinRoomForm
+                key="join"
+                initialRoomId={initialRoomId}
+                initialPhrase={initialPhrase}
+                isJoining={isJoining}
+                onJoinRoom={onJoinRoom}
+              />
+            )}
+          </AnimatePresence>
+
+          <TurnRelaySettings forceOpen={showIceHint} />
+        </div>
+      </Card>
     </main>
   );
 }

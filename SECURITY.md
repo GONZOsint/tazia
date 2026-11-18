@@ -14,28 +14,33 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 | Peer malicioso *dentro* de la sala | Puede mentir en UI local; no debe forjar historial ajeno firmado |
 | Operador de relé Nostr público | Ve tráfico de *signaling* cifrado; no el foro DTLS |
 | Observador de red / STUN | Puede ver IPs de participantes WebRTC |
+| Operador TURN (si se configura) | Ve IP y tráfico WebRTC cifrado; no puede forjar firmas de app |
 | Hosting estático | Sirve JS/CSS; no almacena mensajes |
 
 ## Mitigaciones actuales
 
 1. **Frase de sala** — Trystero deriva cifrado del handshake de descubrimiento (`password`). Sin frase no hay mesh útil.
-2. **Identidad efímera** — `identity: 'none'`: cada pestaña es un `userId` nuevo; «quemar sesión» cierra el mesh.
+2. **Identidad efímera** — `identity: 'none'`: cada pestaña es un `userId` nuevo; **quemar sesión** cierra el mesh.
 3. **Autoría en vivo** — `forumMsg` solo se acepta si `authorUserId` coincide con el `userId` Trystero del peer (handshake de identidad de la librería).
 4. **Sync verificable** — Cada evento lleva firma **Ed25519** sobre el payload canónico. La pubkey se publica en `makeUserState('presence')`. Snapshots sin firma válida o sin clave conocida se **descartan** (contador discreto en Presentes).
-5. **Reloj** — `createdAtMs` fuera de ±24 h se rechaza (anti-spam básico).
-6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer (local).
-7. **Consentimiento IP** — Modal la primera vez (`localStorage` `tazia-ip-consent`). Salir de la pestaña **no** borra el consentimiento; «Olvidar este dispositivo» en Ayuda sí.
-8. **Scrub de frase en URL** — Tras parsear `#sala~frase`, el hash queda en `#sala`.
-9. **CSP / fuentes** — Meta CSP (sin `frame-ancestors`: el navegador lo ignora en `<meta>`) + [`public/_headers`](public/_headers) donde el host lo permita; `font-src 'self' data:` (self-hosted + data URIs); sin Google Fonts.
+5. **Reloj** — mensajes en vivo ±5 min (`LIVE_CLOCK_SKEW_MS`); sync histórico ±24 h (`SYNC_CLOCK_SKEW_MS`).
+6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer (local), con `pruneStale` en sesiones largas.
+7. **Límite de sync** — respuestas sync > 2 MB se rechazan (`MAX_SYNC_TOTAL_BYTES`).
+8. **TOFU + SAS emoji** — se pinnea la clave de firma al primer uso; código de 4 emojis (SHA-256 de claves ordenadas) para verificación OOB; alerta si la clave cambia. Alineado con [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) / [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826); 4 emojis ≈ 24 bit (roadmap: alargar).
+9. **Consentimiento IP** — Modal la primera vez (`localStorage` `tazia-ip-consent`). Quemar sesión **no** borra el consentimiento; «Olvidar este dispositivo» en Ayuda sí.
+10. **Scrub de frase en URL** — Tras parsear `#sala~frase`, el hash queda en `#sala`.
+11. **TURN opcional** — STUN por defecto; TURN self-hosted como fallback ICE o `relay`-only ([`TURN.md`](TURN.md)).
+12. **CSP / fuentes** — Meta CSP + [`public/_headers`](public/_headers); `connect-src 'self' wss:`; `font-src 'self' data:`; sin Google Fonts.
 
-## Límites honestos (no-goals de este ciclo)
+## Límites honestos (no-goals)
 
 - **Metadata / anonimato fuerte** — WebRTC filtra IP (y a veces LAN vía mDNS). No fingimos anonimato; ver [arXiv:2510.16168](https://arxiv.org/abs/2510.16168) y [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html).
-- **Anonymity Wrappers** — [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) describe ocultación genérica de metadata; **no** implementado aquí.
-- **Confiar ciegamente en DTLS-SRTP** — [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) muestra fallos de auth en ecosistemas WebRTC; mantenemos dependencia del handshake de identidad de Trystero y firmas de aplicación.
-- **Infra no confiable como Cwtch** — El diseño «banda + frase + sync documentado» se inspira en [Cwtch](https://cwtch.im/cwtch.pdf) / [docs](https://docs.cwtch.im/), pero sin su stack de transporte.
-- **MLS / OpenMLS** — Grupos con MLS (WASM) quedan como **roadmap** (Lupyd, hush-crypto, OpenMLS); no en este ciclo.
-- **Tor / TURN propio** — Fuera de alcance; NAT agresivo puede fallar sin TURN.
+- **CGNAT sin TURN** — STUN suele fallar detrás de CGNAT residencial ([arXiv:2311.04658](https://arxiv.org/html/2311.04658v2), [arXiv:2510.27500](https://arxiv.org/html/2510.27500)). GitHub Pages no sirve TURN.
+- **Anonymity Wrappers** — [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) **no** implementado.
+- **Confiar ciegamente en DTLS-SRTP** — [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf); mantenemos identidad Trystero + firmas de aplicación.
+- **Infra no confiable como Cwtch** — inspiración de diseño, sin su stack de transporte.
+- **MLS / OpenMLS** — roadmap; no en este ciclo.
+- **Tor** — fuera de alcance.
 
 ## Despliegue
 
@@ -43,10 +48,10 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 - Cabeceras sugeridas (además o en lugar del meta CSP):
 
 ```
-Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:;
+Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' wss:; worker-src 'self' blob:;
 Referrer-Policy: no-referrer
 X-Content-Type-Options: nosniff
+Permissions-Policy: camera=(self), microphone=(), geolocation=()
 ```
 
-
-Ajusta `connect-src` a los hosts concretos de relés Nostr si quieres una CSP más cerrada tras probar el mesh.
+Los relés Nostr de Trystero usan `wss:`; no hace falta `https:` en `connect-src` para el mesh.

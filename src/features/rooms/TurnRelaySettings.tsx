@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Shield } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
@@ -62,10 +62,19 @@ function saveTurnConfig(cfg: TurnConfig): void {
   localStorage.setItem(LS_KEY, JSON.stringify(cfg));
 }
 
-export function TurnRelaySettings() {
+interface TurnRelaySettingsProps {
+  /** When true, expand the panel (e.g. after ICE / peer-connect failure). */
+  forceOpen?: boolean;
+}
+
+export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(forceOpen);
   const [config, setConfig] = useState<TurnConfig>(loadTurnConfig);
+
+  useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
 
   const update = (patch: Partial<TurnConfig>) => {
     const next = { ...config, ...patch };
@@ -74,7 +83,12 @@ export function TurnRelaySettings() {
   };
 
   return (
-    <div className="mt-5 rounded-xl border border-border bg-bg p-4">
+    <div
+      id="turn-relay-settings"
+      className={`mt-5 rounded-xl border p-4 ${
+        forceOpen ? 'border-warn-border bg-warn-bg/40' : 'border-border bg-bg'
+      }`}
+    >
       <button
         type="button"
         aria-expanded={open}
