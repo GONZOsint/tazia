@@ -47,6 +47,12 @@ Para probar en la red local, `vite` escucha en todas las interfaces (`host: true
 | [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | No tratar DTLS solo como autoría |
 | OpenMLS / WASM | Roadmap de grupos |
 
+## GitHub Pages
+
+El sitio público está en `https://gonzosint.github.io/tazia/` (`base: '/tazia/'` en Vite). El workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) construye `dist/` y lo publica en cada push a `master`.
+
+No sirve el `index.html` fuente: hace falta el build. En desarrollo local la app queda en `http://localhost:5173/tazia/`.
+
 ## Cabeceras de despliegue
 
-Ver [`public/_headers`](public/_headers) (estilo Netlify). Preferir CSP por HTTP frente a meta; las fuentes van self-hosted.
+Ver [`public/_headers`](public/_headers) (estilo Netlify). Preferir CSP por HTTP frente a meta; las fuentes van self-hosted. `frame-ancestors` solo aplica por cabecera HTTP (GitHub Pages no la envía).
