@@ -128,12 +128,12 @@ export function ForumWorkspace({
   };
 
   return (
-    <main className="card-container mx-auto max-w-[1280px] px-4 py-6 sm:px-8 sm:py-8">
-      <div className="mb-4 flex items-center justify-between gap-3 lg:hidden">
+    <main className="card-container mx-auto flex max-w-[1280px] flex-col px-4 pt-3 sm:px-8 sm:pt-6 lg:min-h-0 lg:py-8">
+      <div className="mb-3 flex shrink-0 items-center justify-between gap-3 lg:hidden">
         <button
           type="button"
           onClick={() => setTopicsOpen(true)}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border bg-surface-raised px-4 py-2 text-sm font-semibold text-ink"
+          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink"
         >
           <List className="h-4 w-4" aria-hidden="true" />
           {t('sidebarTopics')}
@@ -141,14 +141,14 @@ export function ForumWorkspace({
         <button
           type="button"
           onClick={() => setIsComposingThread(true)}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-on-accent"
+          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-on-accent"
         >
           <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
           {t('sidebarNewThread')}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch">
         <div className="hidden lg:block">
           <RoomSidebar {...sidebarProps} />
         </div>
@@ -181,9 +181,9 @@ export function ForumWorkspace({
           )}
         </AnimatePresence>
 
-        <section className="min-w-0">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           {roomError && (
-            <AlertBanner tone={roomErrorTone} role="status" className="mb-5">
+            <AlertBanner tone={roomErrorTone} role="status" className="mb-3 shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <span>{roomError}</span>
                 {onDismissRoomError && (
@@ -200,16 +200,18 @@ export function ForumWorkspace({
           )}
 
           {isComposingThread ? (
-            <ThreadComposer
-              identity={profile}
-              isBusy={isBusy}
-              onCancel={() => setIsComposingThread(false)}
-              onSubmitThread={onCreateThread}
-            />
+            <div className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+              <ThreadComposer
+                identity={profile}
+                isBusy={isBusy}
+                onCancel={() => setIsComposingThread(false)}
+                onSubmitThread={onCreateThread}
+              />
+            </div>
           ) : isSyncing && messages.length === 0 ? (
-            <div className="space-y-6" aria-busy="true" aria-label={t('forumSyncing')}>
-              <div className="h-48 animate-pulse rounded-2xl border border-border bg-surface-raised" />
-              <div className="h-36 animate-pulse rounded-2xl border border-border bg-surface-raised" />
+            <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
+              <div className="h-32 animate-pulse rounded-2xl border border-border bg-surface-raised" />
+              <div className="h-24 animate-pulse rounded-2xl border border-border bg-surface-raised" />
             </div>
           ) : activeThread ? (
             <ThreadReader

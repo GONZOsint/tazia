@@ -460,6 +460,8 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         if (!value || !isValidPresenceState(value)) return;
         void cachePubKey(userId, value.signPubKeySpkiB64);
         options.onPresenceChange(userId, value, false);
+        // Count presence peers even when getUsers() lags (ICE / Pages).
+        touchFallbackPeer(userId);
       },
       { replay: true }
     )

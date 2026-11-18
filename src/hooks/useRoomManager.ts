@@ -64,8 +64,10 @@ function deriveMeshStatus(r: {
   isSyncing: boolean;
   onlineUserIds: string[];
 }): MeshStatus {
+  // onlineUserIds are other peers (not self). One peer => mesh, not alone.
+  if (r.onlineUserIds.length > 0) return 'mesh';
   if (r.isSyncing) return 'syncing';
-  return r.onlineUserIds.length <= 1 ? 'alone' : 'mesh';
+  return 'alone';
 }
 
 export function useRoomManager(
