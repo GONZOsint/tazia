@@ -36,10 +36,12 @@ La UI permite hasta 5 zonas concurrentes (`useRoomManager`); cada una es un `joi
 {
   alias: string;              // 1–40 chars
   signPubKeySpkiB64: string;  // SPKI Ed25519, base64
+  encPubKeyRawB64?: string;   // X25519 raw, base64 — Susurro pairwise v2
 }
 ```
 
 Sin `signPubKeySpkiB64` válida no se aceptan mensajes de ese autor en **sync** (ni en vivo hasta que la clave se conozca).
+Si ambos peers publican `encPubKeyRawB64`, los Susurros nuevos van sellados (AES-GCM); peers nuevos rechazan cuerpo en claro cuando ambas claves de cifrado están presentes.
 
 ## Evento de foro
 
@@ -76,6 +78,30 @@ UTF-8 → `crypto.subtle.sign({ name: 'Ed25519' }, …)`.
 - **Sync:** firma válida frente a pubkey de presencia/cache; si falta clave o falla verify → descartar (incrementa contador de rechazos).
 - Rate-limit: > `MAX_PUBLISH_PER_MINUTE` por peer en 60 s → ignorar exceso.
 - Snapshot: como máximo `MAX_SYNC_MESSAGES` (más recientes por `createdAtMs`).
+
+## Susurros (DM)
+
+```ts
+{
+  protocolVersion: 1;
+  msgId: string;
+  fromUserId: string;
+  toUserId: string;
+  body: string;              // plaintext legacy, or "" when seal===2
+  createdAtMs: number;
+  bodyCipherB64?: string;    // AES-GCM (iv||ct) base64 when seal===2
+  seal?: 2;
+  sig: string;
+}
+```
+
+Canónico firmado:
+
+```
+[protocolVersion, msgId, fromUserId, toUserId, body, createdAtMs, bodyCipherB64|'', seal|0]
+```
+
+Fallback Nostr de datos: AES-GCM sala `tazia.fallback.v2` (PBKDF2 210k + HKDF) con padding de blob versión `0x02`. Topic estable por `roomId`+frase (sin rotación horaria).
 
 ## Flujo
 

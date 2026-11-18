@@ -31,6 +31,8 @@ export interface JoinedP2pRoom {
   }) => Promise<void>;
   sendDirectMessage: (toUserId: string, body: string) => Promise<DirectMessage>;
   requestSyncFromPeers: () => Promise<number>;
+  /** Re-arm fallback + presence after background/offline (Trystero has no restartIce). */
+  nudgeTransport: () => Promise<void>;
   getPresenceMap: () => Record<string, PresenceState>;
   getOnlineUserIds: () => string[];
   getRejectedSyncCount: () => number;

@@ -9,6 +9,7 @@ interface EmojiVerifyModalProps {
   peerAlias: string;
   selfKeyB64: string;
   peerKeyB64: string;
+  roomId?: string;
   onVerify: () => void;
   onClose: () => void;
 }
@@ -18,6 +19,7 @@ export function EmojiVerifyModal({
   peerAlias,
   selfKeyB64,
   peerKeyB64,
+  roomId = '',
   onVerify,
   onClose,
 }: EmojiVerifyModalProps) {
@@ -28,11 +30,11 @@ export function EmojiVerifyModal({
   useEffect(() => {
     if (!open || !selfKeyB64 || !peerKeyB64) return;
     let cancelled = false;
-    void deriveEmojiSafetyCode(selfKeyB64, peerKeyB64).then((c) => {
+    void deriveEmojiSafetyCode(selfKeyB64, peerKeyB64, roomId).then((c) => {
       if (!cancelled) setCode(c);
     });
     return () => { cancelled = true; };
-  }, [open, selfKeyB64, peerKeyB64]);
+  }, [open, selfKeyB64, peerKeyB64, roomId]);
 
   useEffect(() => {
     if (!open) return;

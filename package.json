@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "build:single": "node scripts/release-singlefile.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",

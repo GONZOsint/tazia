@@ -5,7 +5,7 @@
 import { schnorr } from '@noble/secp256k1';
 import { getRelaySockets } from '@trystero-p2p/nostr';
 import type { DirectMessage, ForumEvent, PresenceState } from '../protocol';
-import { decryptJson, deriveRoomKey, encryptJson, fallbackTopic } from './roomCrypto';
+import { decryptJson, deriveSessionMaterial, encryptJson } from './roomCrypto';
 
 export type FallbackEnvelope =
   | { v: 1; t: 'forum'; event: ForumEvent }
@@ -77,8 +77,7 @@ export async function startNostrFallback(
   selfUserId: string,
   handlers: NostrFallbackHandlers
 ): Promise<NostrFallbackBus> {
-  const key = await deriveRoomKey(roomId, password);
-  const topic = await fallbackTopic(roomId, password);
+  const { roomKey: key, topicId: topic } = await deriveSessionMaterial(roomId, password);
   const kind = topicToKind(topic);
   const subId = `tazia-fb-${crypto.randomUUID().slice(0, 8)}`;
   const signer = schnorr.keygen() as SchnorrSigner;
@@ -183,6 +182,9 @@ export async function startNostrFallback(
   attachTimer = window.setInterval(attach, 12_000);
 
   const publish = async (env: FallbackEnvelope) => {
+    if (stopped) return;
+    // Optional jitter to reduce coarse timing correlation on public relays.
+    await new Promise((r) => window.setTimeout(r, Math.floor(Math.random() * 200)));
     if (stopped) return;
     const content = await encryptJson(key, env);
     const wire = await createSignedEvent(topic, content, signer);

@@ -32,6 +32,8 @@ export interface PresenceState {
   alias: string;
   /** Clave pública de firma (SPKI) en base64. */
   signPubKeySpkiB64: string;
+  /** Optional X25519 raw public key (base64) for Susurro pairwise seal. */
+  encPubKeyRawB64?: string;
 }
 
 export const APP_ID = 'tazia.app';
@@ -61,13 +63,21 @@ export interface DirectMessage {
   msgId: string;
   fromUserId: string;
   toUserId: string;
+  /**
+   * Plaintext body for legacy peers, or empty string when `bodyCipherB64` is set (v2 seal).
+   */
   body: string;
   createdAtMs: number;
+  /** AES-GCM ciphertext (base64) sealed with pairwise X25519 (Susurro v2). */
+  bodyCipherB64?: string;
+  /** Seal version; `2` when body is pairwise-encrypted. */
+  seal?: 2;
   /** Ed25519 signature over canonical DM payload. */
   sig: string;
 }
 
 export const MAX_DM_BODY_CHARS = 4000;
+export const MAX_DM_CIPHER_B64_CHARS = 12_000;
 
 export function canonicalDmPayload(dm: Omit<DirectMessage, 'sig'>): string {
   return JSON.stringify([
@@ -77,6 +87,8 @@ export function canonicalDmPayload(dm: Omit<DirectMessage, 'sig'>): string {
     dm.toUserId,
     dm.body,
     dm.createdAtMs,
+    dm.bodyCipherB64 ?? '',
+    dm.seal ?? 0,
   ]);
 }
 
@@ -87,7 +99,23 @@ export function isValidDirectMessage(value: unknown): value is DirectMessage {
   if (typeof v.msgId !== 'string' || v.msgId.length < 8 || v.msgId.length > 80) return false;
   if (typeof v.fromUserId !== 'string' || v.fromUserId.length < 4 || v.fromUserId.length > MAX_USER_ID_CHARS) return false;
   if (typeof v.toUserId !== 'string' || v.toUserId.length < 4 || v.toUserId.length > MAX_USER_ID_CHARS) return false;
-  if (typeof v.body !== 'string' || v.body.length === 0 || v.body.length > MAX_DM_BODY_CHARS) return false;
+  if (typeof v.body !== 'string' || v.body.length > MAX_DM_BODY_CHARS) return false;
+  const sealed =
+    typeof v.bodyCipherB64 === 'string' &&
+    v.bodyCipherB64.length > 0 &&
+    v.bodyCipherB64.length <= MAX_DM_CIPHER_B64_CHARS &&
+    v.seal === 2;
+  if (sealed) {
+    if (v.body.length !== 0) return false;
+  } else if (v.body.length === 0) {
+    return false;
+  }
+  if (v.bodyCipherB64 !== undefined) {
+    if (typeof v.bodyCipherB64 !== 'string' || v.bodyCipherB64.length > MAX_DM_CIPHER_B64_CHARS) {
+      return false;
+    }
+  }
+  if (v.seal !== undefined && v.seal !== 2) return false;
   if (typeof v.createdAtMs !== 'number' || !Number.isFinite(v.createdAtMs)) return false;
   if (typeof v.sig !== 'string' || v.sig.length < 16 || v.sig.length > MAX_SIG_B64_CHARS) return false;
   return true;
@@ -152,5 +180,10 @@ export function isValidPresenceState(value: unknown): value is PresenceState {
     return false;
   }
   if (typeof v.signPubKeySpkiB64 !== 'string' || v.signPubKeySpkiB64.length < 32) return false;
+  if (v.encPubKeyRawB64 !== undefined) {
+    if (typeof v.encPubKeyRawB64 !== 'string' || v.encPubKeyRawB64.length < 32 || v.encPubKeyRawB64.length > 128) {
+      return false;
+    }
+  }
   return true;
 }

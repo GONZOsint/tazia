@@ -11,6 +11,7 @@ import { KeyChangeAlert } from '../components/session/KeyChangeAlert';
 import { IpConsentModal } from '../features/rooms/IpConsentModal';
 import { RoomEntryView } from '../features/rooms/RoomEntryView';
 import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
+import { useWakeLock } from '../hooks/useWakeLock';
 import { useT } from '../i18n';
 import { DUR, EASE, contentSwitch } from '../motion/tokens';
 import { parseInviteInput, scrubPhraseFromLocationHash } from '../core/utils/inviteLink';
@@ -84,6 +85,8 @@ export default function App() {
     },
     { forumTabFocusedRef, dmsTabFocusedRef, activeDmPeerIdRef }
   );
+
+  useWakeLock(Boolean(activeRoomId));
 
   useEffect(() => {
     activeDmPeerIdRef.current = dmPeerId;
@@ -381,6 +384,7 @@ export default function App() {
                 meshStatus={meshStatus}
                 peerOnlineCount={peerOnlineCount}
                 rejectedSyncCount={rejectedSyncCount}
+                roomId={roomId}
                 onSyncNow={syncNow}
                 isSyncing={isSyncing}
                 onGoToRooms={() => selectTab('rooms')}

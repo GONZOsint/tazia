@@ -134,6 +134,32 @@ export function useRoomManager(
     };
   }, []);
 
+  // After background/offline, re-arm Nostr fallback + presence (Trystero has no restartIce).
+  useEffect(() => {
+    let debounce: number | null = null;
+    const kick = () => {
+      if (debounce !== null) window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => {
+        debounce = null;
+        for (const room of roomsRef.current.values()) {
+          void room.session.nudgeTransport().then(() => room.session.requestSyncFromPeers()).catch(() => {
+            /* ignore */
+          });
+        }
+      }, 900);
+    };
+    const onVis = () => {
+      if (document.visibilityState === 'visible') kick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('online', kick);
+    return () => {
+      if (debounce !== null) window.clearTimeout(debounce);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('online', kick);
+    };
+  }, []);
+
   const updateRoom = useCallback((roomId: string, updater: (prev: RoomState) => RoomState) => {
     setRooms((prev) => {
       const existing = prev.get(roomId);
@@ -432,11 +458,14 @@ export function useRoomManager(
     setRooms(new Map());
     setActiveRoomId(null);
     setJoinError(null);
-    setBurnNotice(true);
-    onNavigateTab('rooms');
-    if (burnTimerRef.current !== null) window.clearTimeout(burnTimerRef.current);
-    burnTimerRef.current = window.setTimeout(() => setBurnNotice(false), 4000);
-  }, [onNavigateTab]);
+    try {
+      sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
+    // Hard reload after tear-down so no room secrets linger in JS heap / UI state.
+    window.location.reload();
+  }, []);
 
   const switchRoom = useCallback(
     (roomId: string) => {

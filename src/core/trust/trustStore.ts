@@ -20,27 +20,42 @@ export interface TrustRecord {
   lastSeenMs: number;
 }
 
+/** 256 distinct symbols → 8 bits each; 6 symbols ≈ 48 bits of SAS. */
 const EMOJI_POOL = [
-  '🐶','🐱','🐻','🦊','🐸','🐵','🐙','🦋','🐝','🐢',
-  '🦈','🐬','🦉','🦜','🍎','🍋','🍇','🌻','🌈','⭐',
-  '🔥','💎','🎵','🎲','🚀','🛸','⚡','🌊','🍀','🎯',
-  '🗝️','🧩','🎨','🪐','❄️','🌙',
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔',
+  '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞',
+  '🐜', '🦟', '🦗', '🕷', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡',
+  '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪',
+  '🐫', '🦒', '🦘', '🦬', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩',
+  '🦮', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊', '🐇', '🦝', '🦨', '🦡', '🦫', '🦦', '🦥',
+  '🐁', '🐀', '🐿', '🦔', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑',
+  '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶', '🫑', '🌽', '🥕', '🫒', '🧄',
+  '🧅', '🥔', '🍠', '🫘', '🥐', '🥯', '🍞', '🥖', '🥨', '🧀', '🥚', '🍳', '🧈', '🥞', '🧇', '🥓',
+  '🥩', '🍗', '🍖', '🦴', '🌭', '🍔', '🍟', '🍕', '🫓', '🥪', '🥙', '🧆', '🌮', '🌯', '🫔', '🥗',
+  '🥘', '🫕', '🥫', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🦪', '🍤', '🍙', '🍚', '🍘', '🍥',
+  '🥠', '🥮', '🍢', '🍡', '🍧', '🍨', '🍦', '🥧', '🧁', '🍰', '🎂', '🍮', '🍭', '🍬', '🍫', '🍿',
+  '🍩', '🍪', '🌰', '🥜', '🍯', '🥛', '🍼', '🫖', '☕', '🍵', '🧃', '🥤', '🧋', '🍶', '🍺', '🍻',
+  '🥂', '🍷', '🥃', '🍸', '🍹', '🧉', '🍾', '🧊', '🥄', '🍴', '🍽', '🥣', '🥡', '🥢', '🧂', '🔥',
+  '💧', '🌊', '⭐', '🌟', '✨', '⚡', '☀️', '🌤', '⛅', '🌦', '☁', '🌧', '⛈', '🌩', '❄', '☃',
+  '⛄', '🌬', '💨', '🌪', '🌫', '🌈', '☂️', '☔', '⚡', '❄', '🔥', '💥', '☄️', '🌍', '🌎', '🌏',
 ];
 
+export const SAS_EMOJI_COUNT = 6;
+
 /**
- * Derive a 4-emoji safety code from two SPKI-b64 public keys.
- * Both sides will produce the same code regardless of who calls it,
- * because we sort the keys lexicographically before hashing.
+ * Derive a 6-emoji safety code from two SPKI-b64 keys + roomId (channel binding).
+ * Order-independent: keys are sorted lexicographically before hashing.
  */
 export async function deriveEmojiSafetyCode(
   keyA_b64: string,
   keyB_b64: string,
+  roomId = ''
 ): Promise<string> {
   const sorted = [keyA_b64, keyB_b64].sort();
-  const input = new TextEncoder().encode(sorted.join('|'));
+  const input = new TextEncoder().encode(`${sorted.join('|')}|${roomId}`);
   const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', input));
   const emojis: string[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < SAS_EMOJI_COUNT; i++) {
     const idx = hash[i]! % EMOJI_POOL.length;
     emojis.push(EMOJI_POOL[idx]!);
   }
@@ -60,7 +75,6 @@ export class TrustStore {
   observe(userId: string, keyB64: string): TrustLevel {
     const now = Date.now();
     const existing = this.records.get(userId);
-
     if (!existing) {
       this.records.set(userId, {
         userId,
@@ -70,67 +84,69 @@ export class TrustStore {
         firstSeenMs: now,
         lastSeenMs: now,
       });
-      this.notify();
+      this.emitChange();
       return 'new';
     }
 
     existing.lastSeenMs = now;
-
     if (existing.pinnedKeyB64 === keyB64) {
-      if (existing.currentKeyB64 !== null) {
+      if (existing.currentKeyB64) {
         existing.currentKeyB64 = null;
+        if (existing.level === 'changed') existing.level = 'trusted';
+        this.emitChange();
       }
-      this.notify();
       return existing.level;
     }
 
     existing.currentKeyB64 = keyB64;
     existing.level = 'changed';
-    this.notify();
+    this.emitChange();
     return 'changed';
-  }
-
-  /** Mark a peer as verified (after out-of-band emoji code check). */
-  verify(userId: string): void {
-    const record = this.records.get(userId);
-    if (!record) return;
-    record.level = 'verified';
-    if (record.currentKeyB64) {
-      record.pinnedKeyB64 = record.currentKeyB64;
-      record.currentKeyB64 = null;
-    }
-    this.notify();
-  }
-
-  /** Accept a key change and re-pin as "new" (user chose to trust the new key). */
-  repin(userId: string): void {
-    const record = this.records.get(userId);
-    if (!record || !record.currentKeyB64) return;
-    record.pinnedKeyB64 = record.currentKeyB64;
-    record.currentKeyB64 = null;
-    record.level = 'new';
-    this.notify();
   }
 
   get(userId: string): TrustRecord | undefined {
     return this.records.get(userId);
   }
 
-  getAll(): ReadonlyMap<string, TrustRecord> {
-    return this.records;
+  getLevel(userId: string): TrustLevel | null {
+    return this.records.get(userId)?.level ?? null;
   }
 
-  onChange(fn: () => void): () => void {
-    this.changeListeners.add(fn);
-    return () => { this.changeListeners.delete(fn); };
+  /** Promote a "new" or "trusted" peer to "verified" after OOB emoji check. */
+  markVerified(userId: string): void {
+    const rec = this.records.get(userId);
+    if (!rec) return;
+    if (rec.level === 'changed') return;
+    rec.level = 'verified';
+    this.emitChange();
   }
 
-  private notify(): void {
-    for (const fn of this.changeListeners) fn();
+  /** Alias used by UI. */
+  verify(userId: string): void {
+    this.markVerified(userId);
+  }
+
+  /** Accept a key change: re-pin to the new key. */
+  repin(userId: string): void {
+    const rec = this.records.get(userId);
+    if (!rec || !rec.currentKeyB64) return;
+    rec.pinnedKeyB64 = rec.currentKeyB64;
+    rec.currentKeyB64 = null;
+    rec.level = 'trusted';
+    this.emitChange();
   }
 
   clear(): void {
     this.records.clear();
-    this.notify();
+    this.emitChange();
+  }
+
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
+  }
+
+  private emitChange(): void {
+    for (const l of this.changeListeners) l();
   }
 }

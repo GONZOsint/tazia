@@ -24,6 +24,7 @@ interface PresenceViewProps {
   meshStatus: MeshStatus;
   peerOnlineCount?: number;
   rejectedSyncCount: number;
+  roomId?: string | null;
   onSyncNow: () => Promise<void>;
   isSyncing: boolean;
   onGoToRooms?: () => void;
@@ -38,6 +39,7 @@ export function PresenceView({
   meshStatus,
   peerOnlineCount,
   rejectedSyncCount,
+  roomId = null,
   onSyncNow,
   isSyncing,
   onGoToRooms,
@@ -212,6 +214,7 @@ export function PresenceView({
           peerAlias={verifyPeer.alias}
           selfKeyB64={selfSignPubKeyB64}
           peerKeyB64={verifyPeer.keyB64}
+          roomId={roomId ?? ''}
           onVerify={() => {
             trustStore?.verify(verifyPeer.userId);
             setVerifyPeer(null);

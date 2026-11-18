@@ -22,8 +22,8 @@ You must be **online at the same time**. No async mailbox.
 ### Features
 
 - **Several zones at once** (up to **5**): each keeps its own live P2P session; **Zones** lists them; switch or leave one; Plaza / Tribe / Whispers show the **active** zone; **Burn** clears all on this device
-- Whispers (signed, targeted DMs) scoped to the active zone
-- TOFU trust + 4-emoji safety codes (Tribe)
+- Whispers (signed; pairwise sealed when both peers advertise X25519) scoped to the active zone
+- TOFU trust + 6-emoji safety codes bound to `roomId` (Tribe)
 - Optional self-hosted TURN (ICE fallback / hide IP) — see [`TURN.md`](TURN.md)
 
 ### Several zones
@@ -49,6 +49,7 @@ npm run dev
 | Script | What |
 | --- | --- |
 | `npm run build` | Static build → `dist/` |
+| `npm run build:single` | Single-file HTML + SHA-256 under `release/` |
 | `npm run preview` | Serve build |
 | `npm run lint` | `tsc --noEmit` |
 
@@ -59,6 +60,7 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 - [`SECURITY.md`](SECURITY.md) — threat model, TOFU, CSP, honest limits. Spanish.
 - [`PROTOCOL.md`](PROTOCOL.md) — `agora-forum-v1` wire format. Spanish.
 - [`TURN.md`](TURN.md) — self-hosted coturn + ICE failed checklist.
+- [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) — manual SDP/QR signaling spike (not shipped).
 
 ## Papers / readings
 
@@ -68,7 +70,7 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 | [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Metadata hiding (not implemented) |
 | [WebRTC IP leakage 2025](https://arxiv.org/abs/2510.16168) + [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html) | IP consent UX |
 | [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | Do not treat DTLS alone as authorship |
-| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Validates emoji verify; we use 4 emoji (~24 bit) — longer SAS is roadmap |
+| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Validates emoji verify; we use 6 emoji from a ≥256 pool + `roomId` binding |
 | [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | WebRTC security; TOFU weak without OOB |
 | [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN still needed as fallback |
 | [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Why residential ICE fails without TURN |

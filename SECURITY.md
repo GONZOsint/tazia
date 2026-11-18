@@ -26,25 +26,32 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 5. **Reloj** — mensajes en vivo ±5 min (`LIVE_CLOCK_SKEW_MS`); sync histórico ±24 h (`SYNC_CLOCK_SKEW_MS`).
 6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer (local), con `pruneStale` en sesiones largas.
 7. **Límite de sync** — respuestas sync > 2 MB se rechazan (`MAX_SYNC_TOTAL_BYTES`), también en el path Nostr fallback; rate-limit de respuestas sync por peer.
-8. **TOFU + SAS emoji** — se pinnea la clave de firma al primer uso; código de 4 emojis (SHA-256 de claves ordenadas) para verificación OOB; alerta si la clave cambia. Alineado con [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) / [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826); 4 emojis ≈ 24 bit (roadmap: alargar).
+8. **TOFU + SAS emoji** — se pinnea la clave de firma al primer uso; código de **6 emojis** (SHA-256 de claves ordenadas + `roomId`) para verificación OOB; alerta si la clave cambia. Alineado con [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) / [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826).
 9. **Consentimiento IP** — Modal la primera vez (`localStorage` `tazia-ip-consent`). Quemar sesión **no** borra el consentimiento; «Olvidar este dispositivo» en Ayuda sí.
-10. **Scrub de frase en URL** — Tras parsear `#zona~frase` (`roomId` técnico), el hash queda en `#zona`.
+10. **Scrub de frase en URL** — `public/scrub-phrase.js` + React: tras `#zona~frase`, el hash queda en `#zona` antes/durante el boot. El `roomId` en `#` no es secreto.
 11. **TURN opcional** — STUN por defecto; TURN self-hosted como fallback ICE o `relay`-only ([`TURN.md`](TURN.md)).
 12. **CSP / fuentes** — Meta CSP + [`public/_headers`](public/_headers); `connect-src 'self' wss:`; `font-src 'self' data:`; sin Google Fonts.
+13. **Fallback Nostr** — AES-GCM con material PBKDF2/HKDF (`tazia.fallback.v2`) + padding de blob; topic derivado por KDF (no `SHA-256(frase)` crudo). Relés ven metadatos y ciphertext.
+14. **Susurros** — firmados Ed25519; cuando ambos peers publican clave X25519 en presencia, el cuerpo va cifrado pairwise (AES-GCM). Sin esa clave, el cuerpo viaja en claro sobre DTLS / bajo AES de sala en fallback.
+15. **Quemar sesión** — cierra meshes, limpia trust, intenta wipe de secretos `@noble` en claro, `sessionStorage.clear`, y **recarga** la pestaña. No es borrado seguro de `CryptoKey` SubtleCrypto ni wipe de disco.
 
 ## Límites honestos (no-goals)
 
 - **Metadata / anonimato fuerte** — WebRTC filtra IP (y a veces LAN vía mDNS). No fingimos anonimato; ver [arXiv:2510.16168](https://arxiv.org/abs/2510.16168) y [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html).
 - **CGNAT sin TURN** — STUN suele fallar detrás de CGNAT residencial ([arXiv:2311.04658](https://arxiv.org/html/2311.04658v2), [arXiv:2510.27500](https://arxiv.org/html/2510.27500)). GitHub Pages no sirve TURN.
 - **Anonymity Wrappers** — [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) **no** implementado.
-- **Confiar ciegamente en DTLS-SRTP** — [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf); mantenemos identidad Trystero + firmas de aplicación.
+- **Confiar ciegamente en DTLS-SRTP** — [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf); mantenemos identidad Trystero + firmas de aplicación. DTLS ≠ E2E de Susurros entre dos personas.
+- **Burn ≠ secure delete** — no se pueden zeroizar `CryptoKey` no extractables; la recarga reduce superficie en RAM de la pestaña.
 - **Infra no confiable como Cwtch** — inspiración de diseño, sin su stack de transporte.
 - **MLS / OpenMLS** — roadmap; no en este ciclo.
 - **Tor** — fuera de alcance.
+- **Wake Lock** — opcional; mantiene la pantalla encendida, **no** evita que iOS mate WebRTC al backgroundear.
 
 ## Despliegue
 
 - Hosting estático (`npm run build` → `dist/`).
+- **Single-file (P3):** `npm run build:single` → `release/tazia-single.html` + `.sha256` (artefacto verificable; no sustituye Pages multi-asset por defecto).
+- Spike SDP/QR manual: [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) (no mezclar con P0–P2).
 - Cabeceras sugeridas (además o en lugar del meta CSP):
 
 ```
@@ -86,6 +93,8 @@ Soporte objetivo: **Chrome**, **Brave**, **Firefox**, **Safari** (desktop + iOS 
 | `navigator.clipboard.writeText` | Copiar invite | Sí | Sí | Sí (gesto); fallback `execCommand` |
 | `getUserMedia` + QR (`cam2qr`) | Escanear invite | Sí | Sí | Sí (HTTPS + gesto; `playsInline`) |
 | `localStorage` | Consentimiento IP, tema, TURN | Sí | Sí | Sí |
+| Screen Wake Lock | Mantener pantalla (opcional) | Sí | Sí | Parcial |
+| `SubtleCrypto` X25519 | Susurro pairwise | Reciente; si no → plaintext firmado | Reciente | Reciente |
 
 - **WebRTC** sigue siendo la API peer-to-peer ([W3C WebRTC](https://www.w3.org/TR/webrtc), [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826)).
 - **WebTransport** es cliente↔servidor HTTP/3, no sustituye mesh entre navegadores ([Chrome WebTransport](https://developer.chrome.com/docs/capabilities/web-apis/webtransport)).

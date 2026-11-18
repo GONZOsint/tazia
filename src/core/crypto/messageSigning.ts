@@ -100,6 +100,13 @@ export async function generateSigningIdentity(): Promise<SigningIdentity> {
   };
 }
 
+/** Best-effort wipe of in-memory noble secrets. SubtleCrypto keys are non-extractable. */
+export function wipeSigningIdentity(identity: SigningIdentity | null | undefined): void {
+  if (!identity?.nobleSecret) return;
+  identity.nobleSecret.fill(0);
+  identity.nobleSecret = undefined;
+}
+
 export async function importVerifyKey(spkiB64: string): Promise<VerifyKey> {
   const spki = base64ToBytes(spkiB64);
 

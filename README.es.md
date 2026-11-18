@@ -23,7 +23,7 @@ Tenéis que estar **online a la vez**. No hay buzón asíncrono.
 
 - **Varias zonas a la vez** (máx. **5**): cada una mantiene su sesión P2P; **Zonas** las lista; cambia o sal de una; Plaza / Tribu / Susurros muestran la zona **activa**; **Quemar** borra todas en este dispositivo
 - Susurros (mensajes directos firmados) en la zona activa
-- Confianza TOFU + códigos de 4 emojis (Tribu)
+- Confianza TOFU + códigos de 6 emojis ligados a `roomId` (Tribu)
 - TURN opcional autoalojado (rescate ICE / ocultar IP) — [`TURN.md`](TURN.md)
 
 ### Varias zonas
@@ -49,6 +49,7 @@ npm run dev
 | Script | Qué hace |
 | --- | --- |
 | `npm run build` | Build estático → `dist/` |
+| `npm run build:single` | HTML único + SHA-256 en `release/` |
 | `npm run preview` | Sirve el build |
 | `npm run lint` | `tsc --noEmit` |
 
@@ -68,7 +69,7 @@ Para probar en la red local, Vite escucha en todas las interfaces (`host: true`)
 | [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Ocultación de metadata (no implementado) |
 | [WebRTC IP leakage 2025](https://arxiv.org/abs/2510.16168) + [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html) | UX de consentimiento IP |
 | [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | No tratar DTLS solo como autoría |
-| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Valida verify por emojis; usamos 4 (~24 bit) — alargar es roadmap |
+| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Valida verify por emojis; usamos 6 de un pool ≥256 + binding `roomId` |
 | [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | Seguridad WebRTC; TOFU débil sin OOB |
 | [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN sigue siendo fallback |
 | [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Por qué falla ICE residencial sin TURN |
