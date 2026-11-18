@@ -247,6 +247,8 @@ export const es: Messages = {
   trustEmojiLabel: 'Código de seguridad',
 
   roomsJoinedTitle: 'Tus zonas',
+  roomsAnotherTitle: 'Otra zona',
+  roomsAnotherHint: 'Abrir una nueva o entrar con frase / QR',
   roomsSwitchTo: 'Cambiar',
   roomsLeaveRoom: 'Salir de la zona',
   roomsMaxReached: 'Límite de zonas alcanzado (máx. {n}).',

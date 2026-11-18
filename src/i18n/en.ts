@@ -245,6 +245,8 @@ export const en = {
   trustEmojiLabel: 'Safety code',
 
   roomsJoinedTitle: 'Your zones',
+  roomsAnotherTitle: 'Another zone',
+  roomsAnotherHint: 'Open a new one or enter with phrase / QR',
   roomsSwitchTo: 'Switch',
   roomsLeaveRoom: 'Leave zone',
   roomsMaxReached: 'Zone limit reached (max {n}).',

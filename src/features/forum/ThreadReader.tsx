@@ -114,15 +114,19 @@ function PostCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18 }}
-      className={`relative rounded-[var(--radius-msg)] border border-border bg-surface-raised p-3 sm:p-4 ${
+      className={`relative rounded-[var(--radius-msg)] p-3 sm:p-4 ${
+        rail
+          ? 'border border-border/60 bg-bg'
+          : 'border border-border bg-surface-raised'
+      } ${isSelf ? 'border-l-[3px] border-l-accent' : ''} ${
         highlighted ? 'ring-2 ring-accent/50' : ''
       }`}
-      style={rail ? { marginLeft: Math.min(depth, MAX_DEPTH) * 14 } : undefined}
+      style={rail ? { marginLeft: Math.min(depth, MAX_DEPTH) * 10 } : undefined}
     >
       {rail && (
         <span
           aria-hidden="true"
-          className="absolute -left-3 top-0 bottom-3 w-3 border-l-2 border-b-2 border-accent/35 rounded-bl-lg"
+          className="absolute -left-2.5 top-1 bottom-4 w-2 border-l border-b border-accent/30 rounded-bl-md"
         />
       )}
       <header className="flex flex-wrap items-center gap-2">
@@ -143,10 +147,12 @@ function PostCard({
           transition={TAP_TRANSITION}
           type="button"
           onClick={onReply}
-          className="inline-flex min-h-[44px] items-center gap-1 rounded-[var(--radius-ctrl)] border border-border px-2.5 py-1 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
+          aria-label={replyLabel}
+          title={replyLabel}
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-[var(--radius-ctrl)] border border-border px-2.5 py-1 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent sm:min-w-0"
         >
           <CornerDownRight className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-          {replyLabel}
+          <span className="hidden sm:inline">{replyLabel}</span>
         </motion.button>
       </header>
       {parentSnippet && (

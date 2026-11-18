@@ -1,6 +1,13 @@
+import type { ComponentType } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCopyFeedback } from '../../hooks/useCopyFeedback';
+
+type IconComp = ComponentType<{
+  className?: string;
+  'aria-hidden'?: boolean | 'true' | 'false';
+  strokeWidth?: number;
+}>;
 
 interface CopyButtonProps {
   text: string;
@@ -9,6 +16,8 @@ interface CopyButtonProps {
   title?: string;
   className?: string;
   iconOnly?: boolean;
+  /** Idle icon (defaults to Copy). Copied state always uses Check. */
+  icon?: IconComp;
 }
 
 export function CopyButton({
@@ -18,6 +27,7 @@ export function CopyButton({
   title,
   className = '',
   iconOnly = false,
+  icon: IdleIcon = Copy,
 }: CopyButtonProps) {
   const { isCopied, copyText } = useCopyFeedback();
   const copied = isCopied('copy');
@@ -54,7 +64,7 @@ export function CopyButton({
             transition={{ duration: 0.12 }}
             className="inline-flex items-center gap-1.5"
           >
-            <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <IdleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" strokeWidth={1.75} />
             {!iconOnly && <span>{label}</span>}
           </motion.span>
         )}

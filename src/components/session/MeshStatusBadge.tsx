@@ -33,15 +33,6 @@ export function MeshStatusBadge({
           ? 'border-warn-border bg-warn-bg text-warn-ink'
           : 'border-border bg-surface text-muted';
 
-  const dotColor =
-    status === 'mesh'
-      ? 'bg-green-500'
-      : status === 'syncing'
-        ? 'bg-blue-400'
-        : status === 'alone'
-          ? 'bg-amber-400'
-          : 'bg-zinc-400';
-
   const StatusIcon =
     status === 'mesh'
       ? Wifi
@@ -52,6 +43,39 @@ export function MeshStatusBadge({
           : Loader2;
 
   const peerDots = Math.min(Math.max(onlineCount, 0), 5);
+
+  if (compact) {
+    return (
+      <p
+        className={`inline-flex items-center gap-1.5 rounded-[var(--radius-ctrl)] border px-2 py-1 text-xs font-medium ${tone}`}
+        role="status"
+        aria-label={label}
+        title={label}
+      >
+        <StatusIcon
+          className={`h-3.5 w-3.5 shrink-0 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
+          aria-hidden="true"
+          strokeWidth={1.75}
+        />
+        {peerDots > 0 && (
+          <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+            {Array.from({ length: peerDots }, (_, i) => (
+              <span key={i} className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+            ))}
+          </span>
+        )}
+      </p>
+    );
+  }
+
+  const dotColor =
+    status === 'mesh'
+      ? 'bg-green-500'
+      : status === 'syncing'
+        ? 'bg-blue-400'
+        : status === 'alone'
+          ? 'bg-amber-400'
+          : 'bg-zinc-400';
 
   return (
     <p
@@ -74,13 +98,7 @@ export function MeshStatusBadge({
         aria-hidden="true"
         strokeWidth={1.75}
       />
-      <span className="inline-flex items-center gap-0.5" aria-hidden="true">
-        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
-        {Array.from({ length: peerDots }, (_, i) => (
-          <span key={i} className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-        ))}
-      </span>
-      {!compact && <span>{label}</span>}
+      <span>{label}</span>
     </p>
   );
 }

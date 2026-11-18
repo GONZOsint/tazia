@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Dices, Loader2, Radio, ShieldAlert } from 'lucide-react';
+import { ChevronDown, Dices, KeyRound, Link2, Loader2, Radio, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { generateRandomHex } from '../../core/crypto/identity';
 import {
@@ -102,6 +102,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                 text={createPhrase}
                 label={t('roomsCopyPhrase')}
                 copiedLabel={t('copiedDefault')}
+                icon={KeyRound}
                 iconOnly
                 className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
               />
@@ -174,6 +175,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
               text={inviteUrl}
               label={t('roomsCopyLink')}
               copiedLabel={t('copiedDefault')}
+              icon={Link2}
               iconOnly
               className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
             />

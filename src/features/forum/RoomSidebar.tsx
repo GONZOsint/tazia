@@ -1,4 +1,4 @@
-import { MessageSquarePlus, RefreshCw, Search, X } from 'lucide-react';
+import { KeyRound, Link2, MessageSquarePlus, RefreshCw, Search, X } from 'lucide-react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
@@ -96,6 +96,7 @@ export function RoomSidebar({
             text={invite}
             label={t('roomsCopyLink')}
             copiedLabel={t('copiedDefault')}
+            icon={Link2}
             iconOnly
             className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
           />
@@ -104,6 +105,7 @@ export function RoomSidebar({
               text={phrase}
               label={t('roomsCopyPhrase')}
               copiedLabel={t('copiedDefault')}
+              icon={KeyRound}
               iconOnly
               className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
             />
@@ -159,25 +161,33 @@ export function RoomSidebar({
           )}
           {threads.map((thread) => {
             const active = !isComposingThread && thread.threadId === activeThreadId;
-            const replyLabel =
-              thread.replies.length === 1
-                ? t('sidebarReplies', { n: thread.replies.length })
-                : t('sidebarRepliesPlural', { n: thread.replies.length });
+            const replyCount = thread.replies.length;
             return (
               <li key={thread.threadId}>
                 <button
                   type="button"
                   onClick={() => onSelectThread(thread.threadId)}
-                  className={`w-full min-h-[44px] rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
-                    active ? 'bg-accent text-on-accent' : 'text-ink hover:bg-bg'
+                  className={`flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] px-3 py-2.5 text-left text-sm transition-colors ${
+                    active
+                      ? 'border border-accent/40 bg-accent-soft/15 font-semibold text-ink'
+                      : 'border border-transparent text-ink hover:bg-bg'
                   }`}
                 >
-                  <span className="line-clamp-2 font-medium">{thread.title}</span>
-                  <span
-                    className={`mt-1 block text-[11px] ${active ? 'text-on-accent/70' : 'text-muted'}`}
-                  >
-                    {replyLabel}
-                  </span>
+                  <span className="min-w-0 flex-1 line-clamp-2">{thread.title}</span>
+                  {replyCount > 0 && (
+                    <span
+                      className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                        active ? 'bg-accent text-on-accent' : 'bg-surface text-muted'
+                      }`}
+                      title={
+                        replyCount === 1
+                          ? t('sidebarReplies', { n: replyCount })
+                          : t('sidebarRepliesPlural', { n: replyCount })
+                      }
+                    >
+                      {replyCount > 99 ? '99+' : replyCount}
+                    </span>
+                  )}
                 </button>
               </li>
             );
