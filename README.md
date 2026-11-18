@@ -49,7 +49,7 @@ Para probar en la red local, `vite` escucha en todas las interfaces (`host: true
 
 ## GitHub Pages
 
-El sitio público está en `https://gonzosint.github.io/tazia/` (`base: '/tazia/'` en Vite). El workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) construye `dist/` y lo publica en cada push a `master`.
+El sitio público está en `https://gonzosint.github.io/tazia/` (`base: '/tazia/'` en Vite). El workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) construye `dist/` y lo publica en la rama `gh-pages` en cada push a `master`.
 
 No sirve el `index.html` fuente: hace falta el build. En desarrollo local la app queda en `http://localhost:5173/tazia/`.
 
