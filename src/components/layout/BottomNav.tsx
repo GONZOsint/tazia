@@ -38,7 +38,7 @@ export function BottomNav({
                 aria-label={
                   badge > 0
                     ? `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
-                    : undefined
+                    : t(labelKey)
                 }
                 onClick={() => onSelectTab(id)}
                 className={`relative flex w-full min-h-[48px] flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
@@ -59,7 +59,6 @@ export function BottomNav({
                   </motion.span>
                   <AnimateBadge count={badge} />
                 </span>
-                <span>{t(labelKey)}</span>
                 {active && (
                   <motion.span
                     layoutId="bottomnav-active-dot"

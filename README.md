@@ -2,7 +2,7 @@
 
 **Temporary Anonymous Zone In Action**
 
-Live temporary chat in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, **burn the session** when done. On phones you can **Install / Add to Home Screen** (PWA) for an app-like shell — chats still need the network and live peers.
+Live temporary zone in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, **burn the session** when done. On phones you can **Install / Add to Home Screen** (PWA) for an app-like shell — the plaza still needs the network and live peers.
 
 Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: `agora-forum-v1` (Ed25519-signed events). App ID: `tazia.app`.
 
@@ -21,9 +21,9 @@ You must be **online at the same time**. No async mailbox.
 
 ### Features
 
-- **Several zones at once** (up to **5**): each keeps its own live P2P session; **Zones** lists them; switch or leave one; Charlas / Who / Chat show the **active** zone; **Burn** clears all on this device
-- Direct messages (signed, targeted) scoped to the active zone
-- TOFU trust + 4-emoji safety codes (Who)
+- **Several zones at once** (up to **5**): each keeps its own live P2P session; **Zones** lists them; switch or leave one; Plaza / Tribe / Whispers show the **active** zone; **Burn** clears all on this device
+- Whispers (signed, targeted DMs) scoped to the active zone
+- TOFU trust + 4-emoji safety codes (Tribe)
 - Optional self-hosted TURN (ICE fallback / hide IP) — see [`TURN.md`](TURN.md)
 
 ### Several zones

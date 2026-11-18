@@ -1,12 +1,22 @@
 import { useMemo, useState } from 'react';
-import { KeyRound, LogOut, MessageSquare, PlusCircle, Radio } from 'lucide-react';
+import {
+  Flame,
+  KeyRound,
+  LogOut,
+  MessageSquare,
+  PlusCircle,
+  QrCode,
+  Radio,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { identiconMatrixFromHex } from '../../core/crypto/identity';
 import {
   countOtherPeers,
   type RoomJoinParams,
   type RoomState,
 } from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
+import { Identicon } from '../../components/content/Identicon';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Card } from '../../components/ui/Card';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
@@ -17,6 +27,13 @@ import { EASE, zoneCardExit } from '../../motion/tokens';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { TurnRelaySettings } from './TurnRelaySettings';
+
+const ZONE_STEPS = [
+  { Icon: KeyRound, labelKey: 'roomsPhraseLabel' as const },
+  { Icon: QrCode, labelKey: 'roomsInviteTitle' as const },
+  { Icon: Radio, labelKey: 'roomsJoin' as const },
+  { Icon: Flame, labelKey: 'leaveTab' as const },
+] as const;
 
 interface RoomEntryViewProps {
   initialRoomId?: string;
@@ -54,6 +71,7 @@ export function RoomEntryView({
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
+  const activeStep = activeRoomId ? 3 : entryTab === 'create' ? 0 : 1;
 
   return (
     <main className="mx-auto max-w-[1280px] px-4 py-3 sm:px-8 sm:py-5 lg:py-6">
@@ -72,6 +90,7 @@ export function RoomEntryView({
           <AnimatePresence initial={false}>
           {joinedRooms.map((room) => {
             const isActive = room.roomId === activeRoomId;
+            const dmUnread = Object.values(room.dmUnread).reduce((a, b) => a + b, 0);
             return (
               <motion.div
                 key={room.roomId}
@@ -82,34 +101,32 @@ export function RoomEntryView({
                 transition={{ duration: 0.22, ease: EASE.outExpo }}
                 className={`flex items-center gap-3 overflow-hidden rounded-[var(--radius-ctrl)] border p-2.5 sm:p-3 ${
                   isActive
-                    ? 'border-accent/40 bg-accent-soft/10'
-                    : 'border-border bg-surface-raised'
+                    ? 'border-2 border-accent bg-accent-soft/10'
+                    : 'border border-border bg-surface-raised'
                 }`}
+                aria-current={isActive ? 'true' : undefined}
               >
+                <Identicon
+                  matrix={identiconMatrixFromHex(room.roomId)}
+                  size={36}
+                  label={room.roomId}
+                />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-mono text-[11px] text-faint">
-                    {room.roomId}
-                    {isActive && (
-                      <span className="ml-2 text-[10px] font-semibold text-accent">
-                        {t('roomsActiveLabel')}
-                      </span>
-                    )}
-                  </p>
+                  <p className="truncate font-mono text-[11px] text-faint">{room.roomId}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <MeshStatusBadge
                       status={room.meshStatus}
                       onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
+                      compact
                     />
                     {room.unreadCount > 0 && (
                       <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
-                        {t('roomsUnread', { n: room.unreadCount })}
+                        {room.unreadCount > 9 ? '9+' : room.unreadCount}
                       </span>
                     )}
-                    {Object.values(room.dmUnread).reduce((a, b) => a + b, 0) > 0 && (
+                    {dmUnread > 0 && (
                       <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[10px] font-semibold text-muted">
-                        {t('roomsDmUnread', {
-                          n: Object.values(room.dmUnread).reduce((a, b) => a + b, 0),
-                        })}
+                        {dmUnread > 9 ? '9+' : dmUnread}
                       </span>
                     )}
                   </div>
@@ -188,6 +205,34 @@ export function RoomEntryView({
               {t('roomsHowLink')}
             </button>
           )}
+
+          <ol
+            className="mt-4 flex items-center justify-between gap-1"
+            aria-label={t('roomsHowTitle')}
+          >
+            {ZONE_STEPS.map(({ Icon, labelKey }, i) => {
+              const done = i < activeStep;
+              const current = i === activeStep;
+              return (
+                <li key={labelKey} className="flex flex-1 flex-col items-center gap-1">
+                  <span
+                    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${
+                      current
+                        ? 'border-accent bg-accent text-on-accent'
+                        : done
+                          ? 'border-ok-border bg-ok-bg text-ok-ink'
+                          : 'border-border bg-surface text-faint'
+                    }`}
+                    title={t(labelKey)}
+                    aria-current={current ? 'step' : undefined}
+                    aria-label={t(labelKey)}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
 
           <div
             role="tablist"

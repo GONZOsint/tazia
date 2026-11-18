@@ -89,31 +89,34 @@ export function RoomSidebar({
           </div>
         </div>
         <div className="mt-3">
-          <MeshStatusBadge status={meshStatus} onlineCount={onlineCount} />
+          <MeshStatusBadge status={meshStatus} onlineCount={onlineCount} compact />
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <CopyButton
             text={invite}
             label={t('roomsCopyLink')}
             copiedLabel={t('copiedDefault')}
-            className="min-h-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
+            iconOnly
+            className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
           />
           {phrase && (
             <CopyButton
               text={phrase}
               label={t('roomsCopyPhrase')}
               copiedLabel={t('copiedDefault')}
-              className="min-h-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
+              iconOnly
+              className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
             />
           )}
           <button
             type="button"
             onClick={onSyncNow}
             disabled={isSyncing || isBusy}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
+            aria-label={t('sidebarRefresh')}
+            title={t('sidebarRefresh')}
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
           >
-            <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
-            {t('sidebarRefresh')}
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
         </div>
       </div>

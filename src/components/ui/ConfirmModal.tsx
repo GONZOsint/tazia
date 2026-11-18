@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ComponentType } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
@@ -12,6 +12,7 @@ interface ConfirmModalProps {
   cancelLabel?: string;
   /** Destructive confirm (burn / leave) — danger styling. */
   danger?: boolean;
+  icon?: ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -23,6 +24,7 @@ export function ConfirmModal({
   confirmLabel,
   cancelLabel,
   danger = false,
+  icon: Icon = AlertTriangle,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -68,10 +70,9 @@ export function ConfirmModal({
             }`}
           >
             <div className="flex items-start gap-3">
-              <AlertTriangle
-                className={`mt-0.5 h-5 w-5 shrink-0 ${danger ? 'text-danger' : 'text-warn'}`}
+              <Icon
+                className={`mt-0.5 h-7 w-7 shrink-0 ${danger ? 'text-danger' : 'text-warn'}`}
                 aria-hidden="true"
-                strokeWidth={1.75}
               />
               <div>
                 <h2 id="confirm-title" className="font-display text-lg font-semibold text-ink">

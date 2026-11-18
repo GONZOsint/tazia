@@ -51,6 +51,16 @@ function buildIdenticonFromHash(hashBytes: Uint8Array): boolean[] {
   return matrix;
 }
 
+/** Sync identicon from a zone/room hex id (no WebCrypto). */
+export function identiconMatrixFromHex(hex: string): boolean[] {
+  const clean = hex.replace(/[^0-9a-f]/gi, '').toLowerCase().padEnd(64, '0');
+  const bytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    bytes[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16) || 0;
+  }
+  return buildIdenticonFromHash(bytes);
+}
+
 export async function visualFromUserId(userId: string): Promise<{
   fingerprintHex: string;
   identiconMatrix: boolean[];

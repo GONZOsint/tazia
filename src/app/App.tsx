@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { Loader2, Radio } from 'lucide-react';
+import { Flame, Loader2, Radio } from 'lucide-react';
 import { useSwipeTabs } from '../hooks/useSwipeTabs';
 import { BottomNav } from '../components/layout/BottomNav';
 import { TopBar, type ActiveTab } from '../components/layout/TopBar';
@@ -252,6 +252,7 @@ export default function App() {
           body={t('burnConfirmBody')}
           confirmLabel={t('burnConfirmAction')}
           danger
+          icon={Flame}
           onCancel={() => setBurnConfirmOpen(false)}
           onConfirm={() => {
             setBurnConfirmOpen(false);
@@ -336,17 +337,18 @@ export default function App() {
                 </AnimatePresence>
               ) : (
                 <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
-                  <Radio className="mx-auto h-8 w-8 text-faint" aria-hidden="true" />
+                  <Radio className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
                   <h1 className="mt-4 font-display text-xl font-semibold text-ink">
                     {t('forumEmptyTitle')}
                   </h1>
-                  <p className="mt-2 text-sm text-muted">{t('forumEmptyBody')}</p>
                   <button
                     type="button"
                     onClick={() => selectTab('rooms')}
-                    className="btn-accent-sheen mt-5 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                    aria-label={t('forumEmptyCta')}
+                    className="btn-accent-sheen mt-5 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
                   >
-                    {t('forumEmptyCta')}
+                    <Radio className="h-5 w-5" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">{t('forumEmptyCta')}</span>
                   </button>
                 </main>
               )}

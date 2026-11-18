@@ -2,7 +2,7 @@
 
 **Zona Anónima Temporal en Acción** (*Temporary Anonymous Zone In Action*)
 
-Charla temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, **quema la sesión** al acabar. En el móvil puedes **Instalar / Añadir a inicio** (PWA) para un shell tipo app — las charlas siguen necesitando red y peers vivos.
+Zona temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, **quema la sesión** al acabar. En el móvil puedes **Instalar / Añadir a inicio** (PWA) para un shell tipo app — la plaza sigue necesitando red y peers vivos.
 
 Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocolo: `agora-forum-v1` (eventos firmados Ed25519). App ID: `tazia.app`.
 
@@ -21,9 +21,9 @@ Tenéis que estar **online a la vez**. No hay buzón asíncrono.
 
 ### Funciones
 
-- **Varias zonas a la vez** (máx. **5**): cada una mantiene su sesión P2P; **Zonas** las lista; cambia o sal de una; Charlas / Quién / Chat muestran la zona **activa**; **Quemar** borra todas en este dispositivo
-- Mensajes directos (firmados, dirigidos) en la zona activa
-- Confianza TOFU + códigos de 4 emojis (Quién)
+- **Varias zonas a la vez** (máx. **5**): cada una mantiene su sesión P2P; **Zonas** las lista; cambia o sal de una; Plaza / Tribu / Susurros muestran la zona **activa**; **Quemar** borra todas en este dispositivo
+- Susurros (mensajes directos firmados) en la zona activa
+- Confianza TOFU + códigos de 4 emojis (Tribu)
 - TURN opcional autoalojado (rescate ICE / ocultar IP) — [`TURN.md`](TURN.md)
 
 ### Varias zonas

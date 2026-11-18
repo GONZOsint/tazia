@@ -7,11 +7,14 @@ interface TrustBadgeProps {
   className?: string;
 }
 
-const CONFIG: Record<TrustLevel, {
-  Icon: typeof Shield;
-  color: string;
-  labelKey: 'trustNew' | 'trustTrusted' | 'trustVerified' | 'trustChanged';
-}> = {
+const CONFIG: Record<
+  TrustLevel,
+  {
+    Icon: typeof Shield;
+    color: string;
+    labelKey: 'trustNew' | 'trustTrusted' | 'trustVerified' | 'trustChanged';
+  }
+> = {
   new: { Icon: ShieldQuestion, color: 'text-muted', labelKey: 'trustNew' },
   trusted: { Icon: Shield, color: 'text-info', labelKey: 'trustTrusted' },
   verified: { Icon: ShieldCheck, color: 'text-ok', labelKey: 'trustVerified' },
@@ -21,14 +24,15 @@ const CONFIG: Record<TrustLevel, {
 export function TrustBadge({ level, className = '' }: TrustBadgeProps) {
   const t = useT();
   const { Icon, color, labelKey } = CONFIG[level];
+  const label = t(labelKey);
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[11px] font-medium ${color} ${className}`}
-      title={t(labelKey)}
+      className={`inline-flex items-center ${color} ${className}`}
+      title={label}
+      aria-label={label}
     >
-      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {t(labelKey)}
+      <Icon className="h-4 w-4" aria-hidden="true" />
     </span>
   );
 }

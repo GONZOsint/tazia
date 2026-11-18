@@ -5,24 +5,15 @@ import { generateRandomHex } from '../../core/crypto/identity';
 import {
   evaluatePassphraseStrength,
   generateMemorablePassphrase,
-  type PassphraseStrengthId,
 } from '../../core/crypto/passphraseWords';
 import { buildInviteUrl } from '../../core/utils/inviteLink';
 import type { RoomJoinParams } from '../../hooks/useRoomManager';
-import { useT, type MessageKey } from '../../i18n';
+import { useT } from '../../i18n';
 import { InviteQr } from '../../components/session/InviteQr';
 import { CopyButton } from '../../components/ui/CopyButton';
+import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
-
-const STRENGTH_KEYS: Record<PassphraseStrengthId, { label: MessageKey; hint: MessageKey }> = {
-  empty: { label: 'strengthEmpty', hint: 'strengthEmptyHint' },
-  weak: { label: 'strengthWeak', hint: 'strengthWeakHint' },
-  short: { label: 'strengthShort', hint: 'strengthShortHint' },
-  strong: { label: 'strengthStrong', hint: 'strengthStrongHint' },
-  good: { label: 'strengthGood', hint: 'strengthGoodHint' },
-  ok: { label: 'strengthOk', hint: 'strengthOkHint' },
-};
 
 interface CreateRoomFormProps {
   isJoining: boolean;
@@ -41,8 +32,6 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const createStrength = evaluatePassphraseStrength(createPhrase);
-  const strengthCopy = STRENGTH_KEYS[createStrength.id];
-  const showStrength = createStrength.id === 'empty' || createStrength.id === 'weak' || createStrength.id === 'short' || createStrength.id === 'ok';
   const phraseForLink =
     includePhraseInLink && createPhrase.trim() ? createPhrase.trim() : undefined;
   const inviteUrl = useMemo(
@@ -107,18 +96,14 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                 onToggleVisible={() => setShowCreatePhrase((v) => !v)}
               />
             </div>
-            {showStrength && (
-              <p className="mt-1.5 text-xs text-muted">
-                <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
-                {t(strengthCopy.hint)}
-              </p>
-            )}
+            <PassphraseStrengthBar id={createStrength.id} score={createStrength.score} />
             <div className="mt-2">
               <CopyButton
                 text={createPhrase}
                 label={t('roomsCopyPhrase')}
                 copiedLabel={t('copiedDefault')}
-                className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                iconOnly
+                className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
               />
             </div>
           </div>
@@ -189,7 +174,8 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
               text={inviteUrl}
               label={t('roomsCopyLink')}
               copiedLabel={t('copiedDefault')}
-              className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              iconOnly
+              className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
             />
           </div>
 

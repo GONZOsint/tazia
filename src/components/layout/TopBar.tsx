@@ -1,4 +1,4 @@
-import { Eraser } from 'lucide-react';
+import { Flame } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useT } from '../../i18n';
 import { TaziaLogo } from '../brand/TaziaLogo';
@@ -110,9 +110,11 @@ export function TopBar({
               transition={{ duration: 0.12 }}
               type="button"
               onClick={onBurnSession}
-              className="burn-heat inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap"
+              aria-label={t('leaveTab')}
+              title={t('leaveTab')}
+              className="burn-heat inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap"
             >
-              <Eraser className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <Flame className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">{t('leaveTab')}</span>
             </motion.button>
           ) : (

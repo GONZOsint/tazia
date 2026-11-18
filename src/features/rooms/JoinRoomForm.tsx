@@ -1,23 +1,12 @@
 import { lazy, Suspense, useState } from 'react';
 import { ChevronDown, KeyRound, Loader2, QrCode } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  evaluatePassphraseStrength,
-  type PassphraseStrengthId,
-} from '../../core/crypto/passphraseWords';
+import { evaluatePassphraseStrength } from '../../core/crypto/passphraseWords';
 import { buildInviteUrl, parseInviteInput } from '../../core/utils/inviteLink';
 import type { RoomJoinParams } from '../../hooks/useRoomManager';
-import { useT, type MessageKey } from '../../i18n';
+import { useT } from '../../i18n';
+import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
-
-const STRENGTH_KEYS: Record<PassphraseStrengthId, { label: MessageKey; hint: MessageKey }> = {
-  empty: { label: 'strengthEmpty', hint: 'strengthEmptyHint' },
-  weak: { label: 'strengthWeak', hint: 'strengthWeakHint' },
-  short: { label: 'strengthShort', hint: 'strengthShortHint' },
-  strong: { label: 'strengthStrong', hint: 'strengthStrongHint' },
-  good: { label: 'strengthGood', hint: 'strengthGoodHint' },
-  ok: { label: 'strengthOk', hint: 'strengthOkHint' },
-};
 
 const QrScannerModal = lazy(() => import('../../components/ui/QrScannerModal'));
 
@@ -43,6 +32,7 @@ export function JoinRoomForm({
   const [showJoinPhrase, setShowJoinPhrase] = useState(false);
   const [joinAlias, setJoinAlias] = useState('');
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(Boolean(initialRoomId));
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const handlePasteInviteInput = (raw: string) => {
@@ -56,7 +46,14 @@ export function JoinRoomForm({
 
   const phraseNeeded = !!joinRoomId && !joinPhrase.trim();
   const joinStrength = evaluatePassphraseStrength(joinPhrase);
-  const strengthCopy = STRENGTH_KEYS[joinStrength.id];
+  const showStrength =
+    !!joinPhrase &&
+    (joinStrength.id === 'weak' ||
+      joinStrength.id === 'short' ||
+      joinStrength.id === 'empty' ||
+      joinStrength.id === 'ok' ||
+      joinStrength.id === 'good' ||
+      joinStrength.id === 'strong');
 
   return (
     <motion.form
@@ -76,32 +73,55 @@ export function JoinRoomForm({
         });
       }}
     >
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        type="button"
+        onClick={() => setScannerOpen(true)}
+        className="btn-accent-sheen inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-3 text-sm font-semibold text-on-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        <QrCode className="h-5 w-5" aria-hidden="true" />
+        {t('qrScanTitle')}
+      </motion.button>
+
       <div>
-        <label htmlFor="join-invite" className="text-xs font-semibold text-ink">
-          {t('roomsInvitePaste')}
-        </label>
-        <div className="mt-2 flex gap-2">
-          <input
-            id="join-invite"
-            value={joinInviteInput}
-            onChange={(e) => handlePasteInviteInput(e.target.value)}
-            className="flex-1 min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
-            placeholder={t('roomsInvitePaste')}
+        <button
+          type="button"
+          aria-expanded={pasteOpen}
+          onClick={() => setPasteOpen((v) => !v)}
+          className="flex min-h-[44px] w-full items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform ${pasteOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true"
           />
-          <button
-            type="button"
-            onClick={() => setScannerOpen(true)}
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-border bg-surface-raised text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-            aria-label={t('qrScanTitle')}
-          >
-            <QrCode className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-        {joinRoomId && (
-          <p className="mt-1.5 font-mono text-[11px] text-muted">
-            {t('roomsRoomIdLabel')}: {joinRoomId}
-          </p>
-        )}
+          {t('roomsInvitePaste')}
+        </button>
+        <AnimatePresence>
+          {pasteOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-2">
+                <input
+                  id="join-invite"
+                  value={joinInviteInput}
+                  onChange={(e) => handlePasteInviteInput(e.target.value)}
+                  className="w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                  placeholder={t('roomsInvitePaste')}
+                  aria-label={t('roomsInvitePaste')}
+                />
+                {joinRoomId && (
+                  <p className="mt-1.5 font-mono text-[11px] text-muted">
+                    {t('roomsRoomIdLabel')}: {joinRoomId}
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {(phraseNeeded || joinPhrase || joinRoomId) && (
@@ -122,16 +142,9 @@ export function JoinRoomForm({
               onToggleVisible={() => setShowJoinPhrase((v) => !v)}
             />
           </div>
-          {joinPhrase &&
-            (joinStrength.id === 'weak' ||
-              joinStrength.id === 'short' ||
-              joinStrength.id === 'empty' ||
-              joinStrength.id === 'ok') && (
-              <p className="mt-1.5 text-xs text-muted">
-                <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
-                {t(strengthCopy.hint)}
-              </p>
-            )}
+          {showStrength && (
+            <PassphraseStrengthBar id={joinStrength.id} score={joinStrength.score} />
+          )}
         </motion.div>
       )}
 
@@ -180,7 +193,7 @@ export function JoinRoomForm({
         transition={{ duration: 0.12 }}
         type="submit"
         disabled={!joinRoomId.trim() || !joinPhrase.trim() || isJoining}
-        className="btn-accent-sheen inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 text-sm font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {isJoining ? (
           <>
@@ -204,6 +217,7 @@ export function JoinRoomForm({
               setJoinRoomId(parsed.roomId);
               setJoinInviteInput(buildInviteUrl(parsed.roomId, parsed.phrase ?? undefined));
               if (parsed.phrase) setJoinPhrase(parsed.phrase);
+              setPasteOpen(true);
               setScannerOpen(false);
             }}
           />

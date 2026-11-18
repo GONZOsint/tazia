@@ -230,24 +230,25 @@ export function ForumWorkspace({
             />
           ) : (
             <div className="rounded-2xl border border-border bg-surface-raised p-8 text-center sm:p-10">
-              <MessageSquare className="mx-auto h-9 w-9 text-faint" aria-hidden="true" strokeWidth={1.5} />
+              <MessageSquare className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
               <h2 className="mt-4 font-display text-lg font-semibold text-ink">
                 {hasAnyThreads && searchQuery.trim() ? t('forumNoResults') : t('forumEmptyThreads')}
               </h2>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-                {hasAnyThreads && searchQuery.trim()
-                  ? t('forumNoResultsHint', { q: searchQuery.trim() })
-                  : t('forumEmptyHint')}
-              </p>
+              {hasAnyThreads && searchQuery.trim() ? (
+                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+                  {t('forumNoResultsHint', { q: searchQuery.trim() })}
+                </p>
+              ) : null}
               {!(hasAnyThreads && searchQuery.trim()) && (
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => setIsComposingThread(true)}
-                  className="btn-accent-sheen mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                  aria-label={t('forumStartFirst')}
+                  className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
                 >
-                  <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
-                  {t('forumStartFirst')}
+                  <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only">{t('forumStartFirst')}</span>
                 </motion.button>
               )}
             </div>

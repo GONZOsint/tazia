@@ -1,14 +1,19 @@
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
 import type { MeshStatus } from '../../core/protocol';
 
 interface MeshStatusBadgeProps {
   status: MeshStatus;
   onlineCount: number;
+  /** Icon + peer dots only; full label in aria/title. */
+  compact?: boolean;
 }
 
-export function MeshStatusBadge({ status, onlineCount }: MeshStatusBadgeProps) {
+export function MeshStatusBadge({
+  status,
+  onlineCount,
+  compact = false,
+}: MeshStatusBadgeProps) {
   const t = useT();
   const label =
     status === 'connecting'
@@ -46,10 +51,14 @@ export function MeshStatusBadge({ status, onlineCount }: MeshStatusBadgeProps) {
           ? WifiOff
           : Loader2;
 
+  const peerDots = Math.min(Math.max(onlineCount, 0), 5);
+
   return (
     <p
-      className={`inline-flex items-center gap-2 rounded-[var(--radius-ctrl)] border px-2.5 py-1 text-xs font-medium ${tone}`}
+      className={`inline-flex items-center gap-1.5 rounded-[var(--radius-ctrl)] border px-2 py-1 text-xs font-medium ${tone}`}
       role="status"
+      aria-label={label}
+      title={label}
     >
       <span className="relative flex h-2 w-2 shrink-0">
         {(status === 'mesh' || status === 'syncing') && (
@@ -65,17 +74,13 @@ export function MeshStatusBadge({ status, onlineCount }: MeshStatusBadgeProps) {
         aria-hidden="true"
         strokeWidth={1.75}
       />
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={label}
-          initial={{ opacity: 0, y: 2 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -2 }}
-          transition={{ duration: 0.16 }}
-        >
-          {label}
-        </motion.span>
-      </AnimatePresence>
+      <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
+        {Array.from({ length: peerDots }, (_, i) => (
+          <span key={i} className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+        ))}
+      </span>
+      {!compact && <span>{label}</span>}
     </p>
   );
 }
