@@ -52,9 +52,12 @@ export function MeshStatusBadge({ status, onlineCount }: MeshStatusBadgeProps) {
       role="status"
     >
       <span className="relative flex h-2 w-2 shrink-0">
-        <span
-          className={`absolute inline-flex h-full w-full rounded-full opacity-75 motion-safe:animate-ping ${dotColor}`}
-        />
+        {(status === 'mesh' || status === 'syncing') && (
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full opacity-75 motion-safe:animate-ping ${dotColor}`}
+            aria-hidden="true"
+          />
+        )}
         <span className={`relative inline-flex h-2 w-2 rounded-full ${dotColor}`} />
       </span>
       <StatusIcon

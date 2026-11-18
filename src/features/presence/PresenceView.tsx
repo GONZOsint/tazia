@@ -22,6 +22,7 @@ interface PresenceViewProps {
   presence: Record<string, PresenceState>;
   onlineUserIds: string[];
   meshStatus: MeshStatus;
+  peerOnlineCount?: number;
   rejectedSyncCount: number;
   onSyncNow: () => Promise<void>;
   isSyncing: boolean;
@@ -35,6 +36,7 @@ export function PresenceView({
   presence,
   onlineUserIds,
   meshStatus,
+  peerOnlineCount,
   rejectedSyncCount,
   onSyncNow,
   isSyncing,
@@ -65,7 +67,7 @@ export function PresenceView({
 
   if (!selfUserId) {
     return (
-      <main className="mx-auto max-w-[720px] px-4 py-16 text-center sm:px-8">
+      <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <Users className="mx-auto h-8 w-8 text-faint" aria-hidden="true" />
         <h1 className="mt-4 font-display text-xl font-semibold text-ink">
           {t('presenceEmptyTitle')}
@@ -75,7 +77,7 @@ export function PresenceView({
           <button
             type="button"
             onClick={onGoToRooms}
-            className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+            className="btn-accent-sheen mt-5 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
           >
             {t('presenceEmptyCta')}
           </button>
@@ -95,13 +97,16 @@ export function PresenceView({
       : t('presenceRejectedPlural', { n: rejectedSyncCount });
 
   return (
-    <main className="mx-auto max-w-[720px] px-4 py-6 sm:px-8 sm:py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
+    <main className="mx-auto max-w-[720px] px-4 py-4 sm:px-8 sm:py-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-ink">{t('presenceTitle')}</h1>
-          <p className="mt-2 text-sm text-muted">{countLabel}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <MeshStatusBadge status={meshStatus} onlineCount={onlineUserIds.length} />
+          <p className="mt-1 text-sm text-muted">{countLabel}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <MeshStatusBadge
+              status={meshStatus}
+              onlineCount={peerOnlineCount ?? Math.max(0, onlineUserIds.length - 1)}
+            />
             {rejectedSyncCount > 0 && (
               <p className="text-[11px] text-muted">{rejectedLabel}</p>
             )}
@@ -111,14 +116,14 @@ export function PresenceView({
           type="button"
           onClick={() => void onSyncNow()}
           disabled={isSyncing}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-surface-raised px-4 py-2 text-xs font-semibold text-ink hover:bg-bg disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-4 py-2 text-xs font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           {t('presenceRefresh')}
         </button>
       </div>
 
-      <ul className="mt-6 space-y-3">
+      <ul className="mt-3 space-y-2">
         {onlineUserIds.map((id) => {
           const alias =
             presence[id]?.alias || (id === selfUserId ? t('you') : t('presenceNoAlias'));

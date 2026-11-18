@@ -52,7 +52,7 @@ export function DmListView({
 
   if (!selfUserId) {
     return (
-      <main className="mx-auto max-w-[720px] px-4 py-16 text-center sm:px-8">
+      <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <MessageCircle className="mx-auto h-8 w-8 text-faint" aria-hidden="true" />
         <h1 className="mt-4 font-display text-xl font-semibold text-ink">{t('dmsTitle')}</h1>
         <p className="mt-2 text-sm text-muted">{t('dmsEmpty')}</p>
@@ -60,7 +60,7 @@ export function DmListView({
           <button
             type="button"
             onClick={onGoToRooms}
-            className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+            className="btn-accent-sheen mt-5 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
           >
             {t('dmsEmptyCta')}
           </button>
@@ -71,7 +71,7 @@ export function DmListView({
 
   if (peerIds.length === 0) {
     return (
-      <main className="mx-auto max-w-[720px] px-4 py-16 text-center sm:px-8">
+      <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <MessageCircle className="mx-auto h-8 w-8 text-faint" aria-hidden="true" />
         <h1 className="mt-4 font-display text-xl font-semibold text-ink">{t('dmsTitle')}</h1>
         <p className="mt-2 text-sm text-muted">{t('dmsNoOnline')}</p>
@@ -80,11 +80,11 @@ export function DmListView({
   }
 
   return (
-    <main className="mx-auto max-w-[720px] px-4 py-6 sm:px-8 sm:py-8">
+    <main className="mx-auto max-w-[720px] px-4 py-4 sm:px-8 sm:py-6">
       <h1 className="font-display text-2xl font-bold text-ink">{t('dmsTitle')}</h1>
-      <p className="mt-2 text-sm text-muted">{t('dmsStartChat')}</p>
+      <p className="mt-1 text-sm text-muted">{t('dmsStartChat')}</p>
 
-      <ul className="mt-6 space-y-2">
+      <ul className="mt-3 space-y-1.5">
         {peerIds.map((id) => {
           const alias = presence[id]?.alias || t('presenceNoAlias');
           const visual = visuals[id];

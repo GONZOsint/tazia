@@ -128,8 +128,8 @@ export function ForumWorkspace({
   };
 
   return (
-    <main className="card-container mx-auto flex max-w-[1280px] flex-col px-4 pt-3 sm:px-8 sm:pt-5 lg:min-h-0 lg:py-6">
-      <div className="mb-3 flex shrink-0 items-center justify-between gap-3 lg:hidden">
+    <main className="card-container mx-auto flex max-w-[1280px] flex-col px-4 pt-2 sm:px-8 sm:pt-4 lg:min-h-0 lg:py-5">
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-3 lg:hidden">
         <motion.button
           whileTap={{ scale: 0.97 }}
           transition={{ duration: 0.12 }}
@@ -145,7 +145,7 @@ export function ForumWorkspace({
           transition={{ duration: 0.12 }}
           type="button"
           onClick={() => setIsComposingThread(true)}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent"
+          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent"
         >
           <MessageSquarePlus className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           {t('sidebarNewThread')}
@@ -244,7 +244,7 @@ export function ForumWorkspace({
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => setIsComposingThread(true)}
-                  className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                  className="btn-accent-sheen mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
                 >
                   <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
                   {t('forumStartFirst')}

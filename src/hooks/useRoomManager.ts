@@ -60,19 +60,36 @@ export interface RoomState {
 
 const MAX_ROOMS = 5;
 
+export function countOtherPeers(
+  onlineUserIds: string[],
+  selfUserId: string | null | undefined
+): number {
+  if (!selfUserId) return onlineUserIds.length;
+  return onlineUserIds.filter((id) => id !== selfUserId).length;
+}
+
+function peerOnlineCount(r: { onlineUserIds: string[]; selfUserId: string }): number {
+  return countOtherPeers(r.onlineUserIds, r.selfUserId);
+}
+
 function deriveMeshStatus(r: {
   isSyncing: boolean;
   onlineUserIds: string[];
+  selfUserId: string;
 }): MeshStatus {
-  // onlineUserIds are other peers (not self). One peer => mesh, not alone.
-  if (r.onlineUserIds.length > 0) return 'mesh';
+  // room.getUsers() includes self — mesh only when another peer is present.
+  if (peerOnlineCount(r) > 0) return 'mesh';
   if (r.isSyncing) return 'syncing';
   return 'alone';
 }
 
 export function useRoomManager(
   onNavigateTab: (tab: 'forum' | 'rooms' | 'presence') => void,
-  options?: { forumTabFocusedRef?: MutableRefObject<boolean> }
+  options?: {
+    forumTabFocusedRef?: MutableRefObject<boolean>;
+    dmsTabFocusedRef?: MutableRefObject<boolean>;
+    activeDmPeerIdRef?: MutableRefObject<string | null>;
+  }
 ) {
   const [rooms, setRooms] = useState<Map<string, RoomState>>(new Map());
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
@@ -86,6 +103,8 @@ export function useRoomManager(
   const activeRoomIdRef = useRef<string | null>(null);
   const joinGenerationRef = useRef(0);
   const forumFocusedRef = options?.forumTabFocusedRef;
+  const dmsFocusedRef = options?.dmsTabFocusedRef;
+  const activeDmPeerIdRef = options?.activeDmPeerIdRef;
 
   useEffect(() => {
     roomsRef.current = rooms;
@@ -210,7 +229,13 @@ export function useRoomManager(
               const prev = r.dmMessages[peerId] ?? [];
               if (prev.some((m) => m.msgId === dm.msgId)) return r;
               const dmMessages = { ...r.dmMessages, [peerId]: [...prev, dm] };
-              const dmUnread = { ...r.dmUnread, [peerId]: (r.dmUnread[peerId] ?? 0) + 1 };
+              const viewingPeer =
+                roomIdTrim === activeRoomIdRef.current &&
+                dmsFocusedRef?.current === true &&
+                activeDmPeerIdRef?.current === peerId;
+              const dmUnread = viewingPeer
+                ? r.dmUnread
+                : { ...r.dmUnread, [peerId]: (r.dmUnread[peerId] ?? 0) + 1 };
               return { ...r, dmMessages, dmUnread };
             });
           },
@@ -259,8 +284,9 @@ export function useRoomManager(
           presence: session.getPresenceMap(),
           onlineUserIds: session.getOnlineUserIds(),
           meshStatus: deriveMeshStatus({
-            isSyncing: false,
+            isSyncing: true,
             onlineUserIds: session.getOnlineUserIds(),
+            selfUserId: session.selfUserId,
           }),
           rejectedSyncCount: 0,
           isPublishing: false,
@@ -365,6 +391,9 @@ export function useRoomManager(
 
   const burnSession = useCallback(async () => {
     joinGenerationRef.current += 1;
+    pendingJoinRef.current = null;
+    setIpConsentNeeded(false);
+    setIsJoining(false);
     for (const room of roomsRef.current.values()) {
       try {
         await room.session.leave();
@@ -391,21 +420,16 @@ export function useRoomManager(
     [onNavigateTab, updateRoom]
   );
 
-  const clearForumUnread = useCallback(() => {
-    setRooms((prev) => {
-      let changed = false;
-      const next = new Map(prev);
-      for (const [id, r] of next) {
-        if (r.unreadCount !== 0) {
-          next.set(id, { ...r, unreadCount: 0 });
-          changed = true;
-        }
-      }
-      if (!changed) return prev;
-      roomsRef.current = next;
-      return next;
-    });
-  }, []);
+  const clearForumUnread = useCallback(
+    (roomId?: string | null) => {
+      const target = roomId ?? activeRoomIdRef.current;
+      if (!target) return;
+      updateRoom(target, (r) =>
+        r.unreadCount === 0 ? r : { ...r, unreadCount: 0 }
+      );
+    },
+    [updateRoom]
+  );
 
   const dismissRoomError = useCallback(() => {
     if (!activeRoomIdRef.current) return;

@@ -145,7 +145,7 @@ export function RoomSidebar({
           type="button"
           onClick={onStartCompose}
           disabled={isBusy}
-          className="mt-3 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="btn-accent-sheen mt-3 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden="true" />
           {t('sidebarNewThread')}

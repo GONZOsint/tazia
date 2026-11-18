@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { KeyRound, LogOut, MessageSquare, PlusCircle, Radio } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import type { RoomJoinParams, RoomState } from '../../hooks/useRoomManager';
+import {
+  countOtherPeers,
+  type RoomJoinParams,
+  type RoomState,
+} from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Card } from '../../components/ui/Card';
@@ -48,16 +52,16 @@ export function RoomEntryView({
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
 
   return (
-    <main className="mx-auto max-w-[1280px] px-4 py-6 sm:px-8 sm:py-8 lg:py-10">
+    <main className="mx-auto max-w-[1280px] px-4 py-3 sm:px-8 sm:py-5 lg:py-6">
       {joinedRooms.length > 0 && (
-        <div className="mb-6 space-y-3">
+        <div className="mb-3 space-y-2">
           <h2 className="text-xs font-semibold text-muted">{t('roomsJoinedTitle')}</h2>
           {joinedRooms.map((room) => {
             const isActive = room.roomId === activeRoomId;
             return (
               <div
                 key={room.roomId}
-                className={`flex items-center gap-3 rounded-xl border p-3 ${
+                className={`flex items-center gap-3 rounded-[var(--radius-ctrl)] border p-2.5 sm:p-3 ${
                   isActive
                     ? 'border-accent/40 bg-accent-soft/10'
                     : 'border-border bg-surface-raised'
@@ -75,7 +79,7 @@ export function RoomEntryView({
                   <div className="mt-1 flex items-center gap-2">
                     <MeshStatusBadge
                       status={room.meshStatus}
-                      onlineCount={room.onlineUserIds.length}
+                      onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
                     />
                     {room.unreadCount > 0 && (
                       <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
@@ -89,7 +93,7 @@ export function RoomEntryView({
                     <button
                       type="button"
                       onClick={() => onSwitchRoom(room.roomId)}
-                      className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1 text-xs font-semibold text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1 text-xs font-semibold text-ink focus-visible:outline-2 focus-visible:outline-accent"
                       title={t('roomsSwitchTo')}
                       aria-label={t('roomsSwitchTo')}
                     >
@@ -102,7 +106,7 @@ export function RoomEntryView({
                       whileTap={{ scale: 0.97 }}
                       type="button"
                       onClick={onGoToForum}
-                      className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1 text-xs font-semibold text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1 text-xs font-semibold text-ink focus-visible:outline-2 focus-visible:outline-accent"
                     >
                       <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
                       {t('roomsGoToChat')}
@@ -112,7 +116,7 @@ export function RoomEntryView({
                     <button
                       type="button"
                       onClick={() => setLeaveTarget(room.roomId)}
-                      className="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-danger-border bg-danger-bg px-3 py-1 text-xs font-semibold text-danger-ink focus-visible:outline-2 focus-visible:outline-accent"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-3 py-1 text-xs font-semibold text-danger-ink focus-visible:outline-2 focus-visible:outline-accent"
                       title={t('roomsLeaveRoom')}
                       aria-label={t('roomsLeaveRoom')}
                     >
@@ -127,9 +131,9 @@ export function RoomEntryView({
       )}
 
       <Card padded={false}>
-        <div className="p-5 sm:p-8">
-          <div className="flex items-start gap-4">
-            <TaziaLogo size={56} className="hidden sm:block" />
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <TaziaLogo size={48} className="hidden sm:block" />
             <div className="min-w-0">
               <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-[28px] [text-wrap:balance]">
                 {t('roomsHeroTitle')}
@@ -151,7 +155,7 @@ export function RoomEntryView({
           <div
             role="tablist"
             aria-label={t('navRooms')}
-            className="relative mt-6 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1"
+            className="relative mt-4 grid grid-cols-2 gap-1 rounded-[var(--radius-ctrl)] bg-surface p-1"
           >
             <button
               type="button"
@@ -166,7 +170,7 @@ export function RoomEntryView({
                 <motion.span
                   layoutId="zones-entry-tab"
                   className="absolute inset-0 rounded-lg bg-surface-raised shadow-xs"
-                  transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
               <PlusCircle className="relative h-3.5 w-3.5" aria-hidden="true" />
@@ -185,7 +189,7 @@ export function RoomEntryView({
                 <motion.span
                   layoutId="zones-entry-tab"
                   className="absolute inset-0 rounded-lg bg-surface-raised shadow-xs"
-                  transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
               <KeyRound className="relative h-3.5 w-3.5" aria-hidden="true" />

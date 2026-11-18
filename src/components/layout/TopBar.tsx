@@ -32,13 +32,13 @@ export function TopBar({
       className="sticky top-0 z-30 border-b border-border bg-surface-raised/95 backdrop-blur-sm"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-3 px-4 sm:h-16 sm:gap-6 sm:px-8">
+      <div className="mx-auto flex h-12 max-w-[1280px] items-center justify-between gap-3 px-4 sm:h-14 sm:gap-6 sm:px-8">
         <button
           type="button"
           onClick={() => onSelectTab(hasActiveRoom ? 'forum' : 'rooms')}
           className="flex shrink-0 items-center gap-2 rounded-md py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          <TaziaLogo size={44} />
+          <TaziaLogo size={36} />
           <span className="min-w-0">
             <span className="font-display text-xl font-bold tracking-tight text-ink">
               {t('brand')}
@@ -107,9 +107,10 @@ export function TopBar({
           {hasActiveRoom ? (
             <motion.button
               whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.12 }}
               type="button"
               onClick={onBurnSession}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap"
+              className="burn-heat inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap"
             >
               <Eraser className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">{t('leaveTab')}</span>

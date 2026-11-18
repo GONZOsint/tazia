@@ -41,7 +41,7 @@ export function BottomNav({
                     : undefined
                 }
                 onClick={() => onSelectTab(id)}
-                className={`relative flex w-full min-h-[52px] flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
+                className={`relative flex w-full min-h-[48px] flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
                   active ? 'text-ink' : 'text-muted'
                 }`}
               >

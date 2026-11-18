@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Dices, Loader2, Radio, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { generateRandomHex } from '../../core/crypto/identity';
@@ -36,21 +36,25 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
   const [showCreatePhrase, setShowCreatePhrase] = useState(true);
   const [createAlias, setCreateAlias] = useState('');
   const [includePhraseInLink, setIncludePhraseInLink] = useState(false);
-  const [diceRotation, setDiceRotation] = useState(0);
+  const [diceSpinKey, setDiceSpinKey] = useState(0);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const createStrength = evaluatePassphraseStrength(createPhrase);
   const strengthCopy = STRENGTH_KEYS[createStrength.id];
   const showStrength = createStrength.id === 'empty' || createStrength.id === 'weak' || createStrength.id === 'short' || createStrength.id === 'ok';
+  const phraseForLink =
+    includePhraseInLink && createPhrase.trim() ? createPhrase.trim() : undefined;
   const inviteUrl = useMemo(
-    () =>
-      buildInviteUrl(
-        createRoomId,
-        includePhraseInLink && createPhrase.trim() ? createPhrase.trim() : undefined
-      ),
-    [createRoomId, createPhrase, includePhraseInLink]
+    () => buildInviteUrl(createRoomId, phraseForLink),
+    [createRoomId, phraseForLink]
   );
+
+  useEffect(() => {
+    if (includePhraseInLink && !createPhrase.trim()) {
+      setIncludePhraseInLink(false);
+    }
+  }, [createPhrase, includePhraseInLink]);
 
   return (
     <motion.form
@@ -70,27 +74,29 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
         });
       }}
     >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="order-2 space-y-5 lg:order-1">
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start lg:gap-6">
+        <div className="order-1 space-y-4 lg:order-1">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
                 {t('roomsPhraseLabel')}
               </label>
-              <button
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                transition={{ duration: 0.12 }}
                 type="button"
                 onClick={() => {
                   setCreatePhrase(generateMemorablePassphrase(4));
                   setShowCreatePhrase(true);
-                  setDiceRotation((deg) => deg + 180);
+                  setDiceSpinKey((k) => k + 1);
                 }}
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
               >
-                <motion.span animate={{ rotate: diceRotation }}>
-                  <Dices className="h-3.5 w-3.5" aria-hidden="true" />
-                </motion.span>
+                <span key={diceSpinKey} className="dice-rolling">
+                  <Dices className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
+                </span>
                 {t('roomsGeneratePhrase')}
-              </button>
+              </motion.button>
             </div>
             <div className="mt-2">
               <SecretPhraseInput
@@ -112,7 +118,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                 text={createPhrase}
                 label={t('roomsCopyPhrase')}
                 copiedLabel={t('copiedDefault')}
-                className="min-h-[40px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
               />
             </div>
           </div>
@@ -160,7 +166,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
             transition={{ duration: 0.12 }}
             type="submit"
             disabled={!createStrength.isAcceptable || isJoining}
-            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="btn-accent-sheen inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {isJoining ? (
               <>
@@ -176,36 +182,45 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
           </motion.button>
         </div>
 
-        <div className="order-1 rounded-xl border border-border bg-bg p-4 sm:p-5 lg:order-2">
+        <div className="order-2 rounded-[var(--radius-sheet)] border border-border bg-bg p-4 sm:p-5 lg:order-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold text-ink">{t('roomsInviteTitle')}</p>
             <CopyButton
               text={inviteUrl}
               label={t('roomsCopyLink')}
               copiedLabel={t('copiedDefault')}
-              className="min-h-[44px] rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
             />
           </div>
 
-          <div className="mt-4 flex justify-center">
-            <InviteQr inviteUrl={inviteUrl} includesSecret={includePhraseInLink} />
+          <div className="mt-3 flex justify-center">
+            <InviteQr inviteUrl={inviteUrl} includesSecret={Boolean(phraseForLink)} />
           </div>
 
           <p className="mt-3 break-all font-mono text-[11px] text-faint">{inviteUrl}</p>
 
-          <label className="mt-3 flex min-h-[44px] items-center gap-3 text-xs text-muted">
-            <input
-              type="checkbox"
-              className="h-5 w-5 rounded accent-accent"
-              checked={includePhraseInLink}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setConfirmOpen(true);
-                } else {
-                  setIncludePhraseInLink(false);
-                }
-              }}
-            />
+          <label className="mt-3 flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted">
+            <span className="relative inline-flex">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={includePhraseInLink}
+                disabled={!createPhrase.trim()}
+                onChange={(e) => {
+                  if (e.target.checked) setConfirmOpen(true);
+                  else setIncludePhraseInLink(false);
+                }}
+              />
+              <span
+                className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-disabled:opacity-40"
+                data-checked={includePhraseInLink}
+                aria-hidden="true"
+              >
+                <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
+                  <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            </span>
             <span className="flex-1">{t('roomsIncludePhrase')}</span>
             {includePhraseInLink && (
               <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />

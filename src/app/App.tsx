@@ -10,7 +10,7 @@ import { useToast } from '../components/ui/ToastHost';
 import { KeyChangeAlert } from '../components/session/KeyChangeAlert';
 import { IpConsentModal } from '../features/rooms/IpConsentModal';
 import { RoomEntryView } from '../features/rooms/RoomEntryView';
-import { useRoomManager } from '../hooks/useRoomManager';
+import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useT } from '../i18n';
 import { parseInviteInput, scrubPhraseFromLocationHash } from '../core/utils/inviteLink';
 
@@ -43,9 +43,12 @@ export default function App() {
   const [initialInvite] = useState(readInitialInvite);
   const relayToastShownRef = useRef<string | null>(null);
   const forumTabFocusedRef = useRef(false);
+  const dmsTabFocusedRef = useRef(false);
+  const activeDmPeerIdRef = useRef<string | null>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [burnConfirmOpen, setBurnConfirmOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [dmPeerId, setDmPeerId] = useState<string | null>(null);
 
   const {
     rooms,
@@ -72,17 +75,29 @@ export default function App() {
     dismissRoomError,
     dismissTransportNotice,
     dismissKeyChange,
-  } = useRoomManager((tab) => {
-    forumTabFocusedRef.current = tab === 'forum';
-    setActiveTab(tab as ActiveTab);
-  }, { forumTabFocusedRef });
+  } = useRoomManager(
+    (tab) => {
+      forumTabFocusedRef.current = tab === 'forum';
+      dmsTabFocusedRef.current = false;
+      setActiveTab(tab as ActiveTab);
+    },
+    { forumTabFocusedRef, dmsTabFocusedRef, activeDmPeerIdRef }
+  );
 
-  const [dmPeerId, setDmPeerId] = useState<string | null>(null);
+  useEffect(() => {
+    activeDmPeerIdRef.current = dmPeerId;
+  }, [dmPeerId]);
 
   useEffect(() => {
     forumTabFocusedRef.current = activeTab === 'forum';
-    if (activeTab === 'forum') clearForumUnread();
-  }, [activeTab, clearForumUnread]);
+    dmsTabFocusedRef.current = activeTab === 'dms';
+    if (activeTab === 'forum' && activeRoomId) clearForumUnread(activeRoomId);
+    if (activeTab === 'dms' && dmPeerId) clearDmUnread(dmPeerId);
+  }, [activeTab, activeRoomId, dmPeerId, clearForumUnread, clearDmUnread]);
+
+  useEffect(() => {
+    if (!activeRoomId) setDmPeerId(null);
+  }, [activeRoomId]);
 
   useEffect(() => {
     setModalOpen(ipConsentNeeded || burnConfirmOpen);
@@ -90,7 +105,9 @@ export default function App() {
 
   const selectTab = (tab: ActiveTab) => {
     forumTabFocusedRef.current = tab === 'forum';
-    if (tab === 'forum') clearForumUnread();
+    dmsTabFocusedRef.current = tab === 'dms';
+    if (tab === 'forum' && activeRoomId) clearForumUnread(activeRoomId);
+    if (tab === 'dms' && dmPeerId) clearDmUnread(dmPeerId);
     setActiveTab(tab);
     window.requestAnimationFrame(() => {
       mainContentRef.current?.focus({ preventScroll: true });
@@ -107,6 +124,7 @@ export default function App() {
   const messages = activeRoom?.messages ?? [];
   const presence = activeRoom?.presence ?? {};
   const onlineUserIds = activeRoom?.onlineUserIds ?? [];
+  const peerOnlineCount = countOtherPeers(onlineUserIds, selfUserId);
   const isPublishing = activeRoom?.isPublishing ?? false;
   const isSyncing = activeRoom?.isSyncing ?? false;
   const meshStatus = activeRoom?.meshStatus ?? 'connecting';
@@ -168,7 +186,7 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <div
         ref={mainRef}
-        className="min-h-screen bg-bg text-ink pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+        className="min-h-screen bg-bg text-ink pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0"
       >
         <TopBar
           activeTab={activeTab}
@@ -230,6 +248,7 @@ export default function App() {
           onCancel={() => setBurnConfirmOpen(false)}
           onConfirm={() => {
             setBurnConfirmOpen(false);
+            setDmPeerId(null);
             void burnSession();
           }}
         />
@@ -262,7 +281,7 @@ export default function App() {
                   selfUserId={selfUserId}
                   messages={messages}
                   presenceAliases={presenceAliases}
-                  onlineCount={onlineUserIds.length}
+                  onlineCount={peerOnlineCount}
                   meshStatus={meshStatus}
                   isPublishing={isPublishing}
                   isSyncing={isSyncing}
@@ -296,7 +315,7 @@ export default function App() {
                   }}
                 />
               ) : (
-                <main className="mx-auto max-w-[560px] px-4 py-16 text-center sm:px-8">
+                <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
                   <Radio className="mx-auto h-8 w-8 text-faint" aria-hidden="true" />
                   <h1 className="mt-4 font-display text-xl font-semibold text-ink">
                     {t('forumEmptyTitle')}
@@ -305,7 +324,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => selectTab('rooms')}
-                    className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                    className="btn-accent-sheen mt-5 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
                   >
                     {t('forumEmptyCta')}
                   </button>
@@ -338,6 +357,7 @@ export default function App() {
                 presence={presence}
                 onlineUserIds={onlineUserIds}
                 meshStatus={meshStatus}
+                peerOnlineCount={peerOnlineCount}
                 rejectedSyncCount={rejectedSyncCount}
                 onSyncNow={syncNow}
                 isSyncing={isSyncing}

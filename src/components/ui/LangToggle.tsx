@@ -26,7 +26,7 @@ export function LangToggle({ className = '' }: { className?: string }) {
             <motion.span
               layoutId="lang-pill"
               className="absolute inset-0 rounded-md bg-accent"
-              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
             />
           )}
           <span className="relative">{code === 'es' ? t('langEs') : t('langEn')}</span>

@@ -149,9 +149,10 @@ function PostCard({
           {replyLabel}
         </motion.button>
       </header>
-      {parentSnippet && parentAlias && (
+      {parentSnippet && (
         <p className="mt-1.5 truncate text-[11px] text-faint">
-          {parentAlias} · {replySnippetLabel}
+          {parentAlias ? `${parentAlias} · ` : ''}
+          {replySnippetLabel || parentSnippet}
         </p>
       )}
       <div className="mt-2 text-sm leading-relaxed">
@@ -175,6 +176,9 @@ export function ThreadReader({
   const { locale } = useLocale();
   const [replyBody, setReplyBody] = useState('');
   const [replyParent, setReplyParent] = useState<ForumMessage | null>(null);
+  const [planeKey, setPlaneKey] = useState(0);
+  const [planeLaunching, setPlaneLaunching] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const posts = useMemo(
@@ -227,12 +231,20 @@ export function ThreadReader({
 
   const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyBody.trim() || isBusy) return;
+    if (!replyBody.trim() || isBusy || submitting) return;
+    setSubmitting(true);
+    setPlaneKey((k) => k + 1);
+    setPlaneLaunching(true);
+    window.setTimeout(() => setPlaneLaunching(false), 360);
     const parentId = replyParent ? replyParent.msgId : thread.rootPost.msgId;
-    const ok = await onReplyThread(thread.threadId, parentId, replyBody.trim());
-    if (ok) {
-      setReplyBody('');
-      setReplyParent(null);
+    try {
+      const ok = await onReplyThread(thread.threadId, parentId, replyBody.trim());
+      if (ok) {
+        setReplyBody('');
+        setReplyParent(null);
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -270,19 +282,19 @@ export function ThreadReader({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-border pb-3 sm:rounded-[var(--radius-sheet)] sm:border sm:border-border sm:bg-surface-raised sm:p-4">
+      <div className="shrink-0 border-b border-border pb-2 sm:rounded-[var(--radius-sheet)] sm:border sm:border-border sm:bg-surface-raised sm:p-3">
         <h2 className="font-display text-lg font-semibold text-ink sm:text-xl [text-wrap:balance]">
           {thread.title}
         </h2>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto py-3 pb-[calc(9.5rem+env(safe-area-inset-bottom))] md:space-y-3 md:pb-4">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto py-2 pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:space-y-3 md:pb-4">
         {renderNode(tree, 0)}
       </div>
 
       <form
         onSubmit={(e) => void handleSubmitReply(e)}
-        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-sheet)] md:border md:p-4 md:shadow-none"
+        className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 shadow-[0_-2px_8px_rgba(0,0,0,0.05)] backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-sheet)] md:border md:p-3 md:shadow-none"
       >
         <div className="mx-auto max-w-[1280px]">
           <AnimatePresence initial={false}>
@@ -325,19 +337,21 @@ export function ThreadReader({
               required
             />
             <motion.button
-              whileTap={replyBody.trim() ? TAP : undefined}
+              whileTap={replyBody.trim() && !submitting ? TAP : undefined}
               transition={TAP_TRANSITION}
               type="submit"
-              disabled={!replyBody.trim() || isBusy}
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              disabled={!replyBody.trim() || isBusy || submitting}
+              className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              {isBusy ? (
+              {isBusy && !planeLaunching ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
-                <Send className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+                <span key={planeKey} className={planeKey > 0 ? 'plane-launching' : 'inline-flex'}>
+                  <Send className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+                </span>
               )}
               <span className="hidden sm:inline">
-                {isBusy ? t('readerSending') : t('readerSend')}
+                {isBusy && !planeLaunching ? t('readerSending') : t('readerSend')}
               </span>
             </motion.button>
           </div>
