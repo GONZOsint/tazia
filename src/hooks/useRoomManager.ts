@@ -18,7 +18,7 @@ import {
 import { acceptIpConsent, hasIpConsent } from '../core/utils/ipConsent';
 import { mapRoomError, type SessionError } from './sessionErrors';
 import type { TrustStore, TrustLevel } from '../core/trust/trustStore';
-import { loadTurnConfig } from '../features/rooms/TurnRelaySettings';
+import { buildRtcConfig } from '../features/rooms/TurnRelaySettings';
 
 export type { SessionError } from './sessionErrors';
 
@@ -111,21 +111,13 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
       setJoinError(null);
 
       try {
-        const turn = loadTurnConfig();
-        const rtcConfig: RTCConfiguration | undefined = turn.enabled && turn.url
-          ? {
-              iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: turn.url, username: turn.username, credential: turn.credential },
-              ],
-            }
-          : undefined;
+        const { rtcConfig, relayOnly } = buildRtcConfig();
 
         const session = await joinP2pRoom({
           roomId: roomIdTrim,
           password: phraseTrim,
           rtcConfig,
-          relayOnly: turn.enabled && !!turn.url,
+          relayOnly,
           onForumMessage: (message) => {
             updateRoom(roomIdTrim, (r) => {
               if (r.messages.some((m) => m.msgId === message.msgId)) return r;

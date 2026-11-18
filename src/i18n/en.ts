@@ -216,9 +216,13 @@ export const en = {
   dmsNoOnline: 'Nobody else is online right now.',
   dmsUnread: '{n} unread',
 
-  turnRelayTitle: 'Relay mode',
-  turnRelayHint: 'Route traffic through a TURN server to hide your IP from peers.',
-  turnRelayEnabled: 'Relay active',
+  turnRelayTitle: 'TURN (connection help)',
+  turnRelayHint:
+    'If peers cannot connect (ICE failed), add your own TURN server. STUN alone often fails behind CGNAT.',
+  turnRelayEnabled: 'Use TURN as fallback',
+  turnForceRelay: 'Force relay only (hide my IP)',
+  turnForceRelayHint:
+    'All traffic goes through TURN. Needs a working server; otherwise ICE will fail.',
   turnServerUrl: 'TURN server URL',
   turnUsername: 'Username',
   turnCredential: 'Credential',

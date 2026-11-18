@@ -218,9 +218,13 @@ export const es: Messages = {
   dmsNoOnline: 'Nadie más está conectado ahora.',
   dmsUnread: '{n} sin leer',
 
-  turnRelayTitle: 'Modo retransmisión',
-  turnRelayHint: 'Enruta el tráfico por un servidor TURN para ocultar tu IP a los demás.',
-  turnRelayEnabled: 'Retransmisión activa',
+  turnRelayTitle: 'TURN (ayuda de conexión)',
+  turnRelayHint:
+    'Si no conectáis (ICE failed), añade tu propio servidor TURN. Solo STUN suele fallar detrás de CGNAT.',
+  turnRelayEnabled: 'Usar TURN como respaldo',
+  turnForceRelay: 'Solo retransmisión (ocultar mi IP)',
+  turnForceRelayHint:
+    'Todo el tráfico pasa por TURN. Sin servidor válido, ICE fallará.',
   turnServerUrl: 'URL del servidor TURN',
   turnUsername: 'Usuario',
   turnCredential: 'Credencial',

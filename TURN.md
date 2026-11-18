@@ -1,15 +1,19 @@
 # Self-Hosted TURN Relay for TAZIA
 
-By default, TAZIA peers connect directly (STUN-assisted P2P). If you want to
-**hide your IP address** from other peers, you can route all WebRTC traffic
-through a TURN relay that you control.
+By default, TAZIA peers connect directly (STUN-assisted P2P). Many home NATs
+(especially CGNAT / Movistar) **cannot** complete ICE with STUN alone — Firefox
+shows `WebRTC: ICE failed, add a TURN server`.
+
+TURN fixes that by relaying media when direct paths fail. Optionally you can
+**force relay-only** to also hide your IP from peers.
 
 ## Why TURN?
 
-| Mode | Your IP visible to peers | Latency | Cost |
-|------|--------------------------|---------|------|
-| Default (STUN/P2P) | Yes | Low | Free |
-| TURN relay | No (only TURN server IP visible) | Higher | Self-hosted |
+| Mode | Connect behind CGNAT | Your IP visible to peers | Latency |
+|------|----------------------|--------------------------|---------|
+| Default (STUN/P2P) | Often fails | Yes | Low |
+| TURN as fallback | Yes | Yes (until relay used) | Low / higher if relayed |
+| TURN force-relay | Yes | No (only TURN IP) | Higher |
 
 ## Quick Start with Docker (coturn)
 
@@ -36,13 +40,14 @@ docker run -d \
 ## Configure in TAZIA
 
 1. Open the **Rooms** tab.
-2. Expand the **TURN Relay** panel at the bottom.
-3. Check **Force relay mode**.
+2. Expand **TURN (connection help)**.
+3. Check **Use TURN as fallback** (fixes ICE failed).
 4. Enter your server details:
    - **URL:** `turn:your-server.example.com:3478`
    - **Username:** `tazia`
    - **Credential:** `your-secret-password`
-5. Create or join a room — all traffic will now route through your TURN server.
+5. Optional: check **Force relay only** to hide your IP (requires working TURN).
+6. Create or join a room — both peers should use the same TURN settings.
 
 ## Verify relay-only mode
 

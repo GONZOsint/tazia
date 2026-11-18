@@ -6,13 +6,28 @@ import { useT } from '../../i18n';
 const LS_KEY = 'tazia:turn-config';
 
 export interface TurnConfig {
+  /** Use TURN as ICE fallback when direct/STUN fails (fixes CGNAT). */
   enabled: boolean;
+  /** Force iceTransportPolicy: 'relay' (hides IP; needs working TURN). */
+  relayOnly: boolean;
   url: string;
   username: string;
   credential: string;
 }
 
-const DEFAULT: TurnConfig = { enabled: false, url: '', username: '', credential: '' };
+const DEFAULT: TurnConfig = {
+  enabled: false,
+  relayOnly: false,
+  url: '',
+  username: '',
+  credential: '',
+};
+
+export const DEFAULT_STUN_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+];
 
 export function loadTurnConfig(): TurnConfig {
   try {
@@ -22,6 +37,25 @@ export function loadTurnConfig(): TurnConfig {
   } catch {
     return DEFAULT;
   }
+}
+
+/** Build rtcConfig for joinP2pRoom from saved TURN settings. */
+export function buildRtcConfig(turn: TurnConfig = loadTurnConfig()): {
+  rtcConfig: RTCConfiguration;
+  relayOnly: boolean;
+} {
+  const iceServers: RTCIceServer[] = [...DEFAULT_STUN_SERVERS];
+  if (turn.enabled && turn.url.trim()) {
+    iceServers.push({
+      urls: turn.url.trim(),
+      username: turn.username || undefined,
+      credential: turn.credential || undefined,
+    });
+  }
+  return {
+    rtcConfig: { iceServers },
+    relayOnly: turn.enabled && turn.relayOnly && !!turn.url.trim(),
+  };
 }
 
 function saveTurnConfig(cfg: TurnConfig): void {
@@ -73,7 +107,12 @@ export function TurnRelaySettings() {
                   type="checkbox"
                   className="h-5 w-5 rounded accent-accent"
                   checked={config.enabled}
-                  onChange={(e) => update({ enabled: e.target.checked })}
+                  onChange={(e) =>
+                    update({
+                      enabled: e.target.checked,
+                      ...(e.target.checked ? {} : { relayOnly: false }),
+                    })
+                  }
                 />
                 <span>{t('turnRelayEnabled')}</span>
               </label>
@@ -115,6 +154,17 @@ export function TurnRelaySettings() {
                       className="mt-1 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
                     />
                   </div>
+
+                  <label className="flex min-h-[44px] items-center gap-3 text-xs text-ink">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 rounded accent-accent"
+                      checked={config.relayOnly}
+                      onChange={(e) => update({ relayOnly: e.target.checked })}
+                    />
+                    <span>{t('turnForceRelay')}</span>
+                  </label>
+                  <p className="text-[11px] text-muted">{t('turnForceRelayHint')}</p>
                 </div>
               )}
             </div>
