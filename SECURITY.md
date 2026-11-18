@@ -57,3 +57,5 @@ Permissions-Policy: camera=(self), microphone=(), geolocation=(), local-network=
 Los relés Nostr de Trystero usan `wss:`; no hace falta `https:` en `connect-src` para el mesh.
 
 **Misma LAN desde GitHub Pages:** el origen es público (`https://…github.io`), así que Chrome puede pedir permiso **Red local** (`local-network`) para candidatos host/mDNS. TAZIA hace priming ICE al unirse y deja `iceTransportPolicy: 'all'` salvo force-relay. Aislamiento de AP/clientes o LNA denegado bloquean LAN aunque no haga falta TURN.
+
+**Fallback Nostr (Pages / CGNAT):** si ICE falla tras intercambiar SDP, el chat/presencia/DM siguen por eventos Nostr **cifrados AES-GCM** con la frase de sala (además de la firma Ed25519). Los operadores de relé ven metadatos y ciphertext, no el texto en claro. No es P2P puro; TURN propio sigue siendo el camino para mesh WebRTC.

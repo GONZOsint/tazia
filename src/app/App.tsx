@@ -179,6 +179,7 @@ export default function App() {
             isPublishing={isPublishing}
             isSyncing={isSyncing}
             roomError={roomErrorMsg}
+            roomErrorTone={roomError?.key === 'infoRelayPath' ? 'warning' : 'error'}
             onSyncNow={syncNow}
             onCreateThread={async (title, body) => {
               await publish({

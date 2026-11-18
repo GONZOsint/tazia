@@ -21,6 +21,7 @@ interface ForumWorkspaceProps {
   isPublishing: boolean;
   isSyncing: boolean;
   roomError: string | null;
+  roomErrorTone?: 'error' | 'warning' | 'info' | 'success';
   onSyncNow: () => Promise<void>;
   onCreateThread: (title: string, body: string) => Promise<void>;
   onReplyThread: (threadId: string, parentMsgId: string, body: string) => Promise<void>;
@@ -38,6 +39,7 @@ export function ForumWorkspace({
   isPublishing,
   isSyncing,
   roomError,
+  roomErrorTone = 'error',
   onSyncNow,
   onCreateThread,
   onReplyThread,
@@ -179,7 +181,7 @@ export function ForumWorkspace({
 
         <section className="min-w-0">
           {roomError && (
-            <AlertBanner tone="error" className="mb-5">
+            <AlertBanner tone={roomErrorTone} role="status" className="mb-5">
               {roomError}
             </AlertBanner>
           )}

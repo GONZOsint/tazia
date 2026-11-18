@@ -181,6 +181,10 @@ export function useTaziaSession(onNavigateTab: (tab: 'forum' | 'rooms' | 'presen
               });
             });
           },
+          onRelayFallback: () => {
+            if (joinGenerationRef.current !== generation) return;
+            setRoomError({ key: 'infoRelayPath' });
+          },
         });
 
         if (joinGenerationRef.current !== generation) {

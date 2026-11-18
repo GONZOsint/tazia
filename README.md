@@ -33,7 +33,7 @@ If Firefox shows `WebRTC: ICE failed, add a TURN server`, STUN alone cannot punc
 1. Meet on the **same Wi‑Fi** (host / mDNS candidates) — on GitHub Pages, allow **Local network** if Chrome asks; disable AP/client isolation; leave **Force relay** off.
 2. Run your own **coturn** and enable TURN under Rooms (both peers need it).
 
-JS-side helpers we ship: `iceCandidatePoolSize`, Trystero `turnConfig` (defaults STUN kept), trickle ICE, LNA priming before join. Pages still cannot host TURN. Details: [`TURN.md`](TURN.md).
+JS-side helpers: `iceCandidatePoolSize`, Trystero `turnConfig`, LNA priming, and an **encrypted Nostr data-plane fallback** when ICE fails so chat still works on Pages without TURN (not true P2P; relays see ciphertext). Self-hosted TURN remains the path for a real mesh. Details: [`TURN.md`](TURN.md).
 
 ## Development
 

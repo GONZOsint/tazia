@@ -170,6 +170,8 @@ export const en = {
     'No P2P path. Same LAN needs Local network allowed + no AP isolation. Otherwise configure your own TURN below.',
   errLocalNetworkDenied:
     'This browser blocked Local network access. In site settings, allow Local network, then rejoin — needed for same-Wi‑Fi peers on GitHub Pages.',
+  infoRelayPath:
+    'Direct WebRTC is blocked (ICE). Chat continues encrypted via discovery relays — slower, not true P2P. Optional: self-hosted TURN under Rooms for a real mesh.',
   errRelay: 'Could not reach discovery helpers. Try again in a few seconds.',
   errPublishRate: 'Too many messages in a short time. Wait a moment.',
   errPublish: 'Could not publish.',

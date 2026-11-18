@@ -180,6 +180,12 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
               }));
             });
           },
+          onRelayFallback: () => {
+            updateRoom(roomIdTrim, (r) => ({
+              ...r,
+              roomError: { key: 'infoRelayPath' },
+            }));
+          },
         });
 
         const localProfile = await buildLocalProfile(

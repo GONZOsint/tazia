@@ -172,6 +172,8 @@ export const es: Messages = {
     'Sin conexión P2P. En LAN hace falta Red local permitida y sin aislamiento de AP. Si no, configura un TURN propio abajo.',
   errLocalNetworkDenied:
     'Este navegador bloqueó el acceso a la red local. En ajustes del sitio permite Red local y vuelve a unirte — hace falta para peers en la misma Wi‑Fi desde GitHub Pages.',
+  infoRelayPath:
+    'WebRTC directo bloqueado (ICE). El chat sigue cifrado por relés de descubrimiento — más lento, no es P2P puro. Opcional: TURN propio en Salas para mesh real.',
   errRelay: 'No se pudo contactar con los servicios de encuentro. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes en poco tiempo. Espera un momento.',
   errPublish: 'No se pudo publicar.',

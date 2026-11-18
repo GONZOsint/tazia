@@ -64,7 +64,11 @@ Or visit `chrome://webrtc-internals/` and confirm all candidates are type `relay
 
 Symptom: `WebRTC: ICE failed, add a TURN server and see about:webrtc`
 
-### Same Wi‑Fi (should work without TURN)
+### Without TURN on GitHub Pages
+
+TAZIA still carries **encrypted** forum/DM/presence over Nostr discovery relays when WebRTC ICE fails. You should see a notice that the relay path is active — chat works, but it is not a direct mesh.
+
+### Same Wi‑Fi (true P2P without TURN)
 
 1. Both peers open the **same** Pages URL and join with the **same** phrase.
 2. Chrome/Edge: if prompted, **Allow Local network** (public origin → LAN). If previously denied: site settings → Local network → Allow, then rejoin.
