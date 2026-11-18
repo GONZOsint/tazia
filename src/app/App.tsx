@@ -294,6 +294,7 @@ export default function App() {
                 activeRoomId={roomId}
                 joinedRooms={roomList}
                 onGoToForum={() => selectTab('forum')}
+                onGoToHelp={() => selectTab('how')}
                 onJoinRoom={joinRoom}
                 onSwitchRoom={switchRoom}
                 onLeaveRoom={leaveRoom}

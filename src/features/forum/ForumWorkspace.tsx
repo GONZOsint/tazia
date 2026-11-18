@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { List, MessageSquarePlus } from 'lucide-react';
+import { List, MessageSquare, MessageSquarePlus } from 'lucide-react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { AnimatePresence, motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
@@ -244,8 +244,9 @@ export function ForumWorkspace({
               onReplyThread={onReplyThread}
             />
           ) : (
-            <div className="rounded-2xl border border-border bg-surface-raised p-10 text-center sm:p-12">
-              <h2 className="font-display text-lg font-semibold text-ink">
+            <div className="rounded-2xl border border-border bg-surface-raised p-8 text-center sm:p-10">
+              <MessageSquare className="mx-auto h-9 w-9 text-faint" aria-hidden="true" strokeWidth={1.5} />
+              <h2 className="mt-4 font-display text-lg font-semibold text-ink">
                 {hasAnyThreads && searchQuery.trim() ? t('forumNoResults') : t('forumEmptyThreads')}
               </h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
@@ -255,7 +256,7 @@ export function ForumWorkspace({
               </p>
               {!(hasAnyThreads && searchQuery.trim()) && (
                 <motion.button
-                  whileTap={{ scale: 0.985 }}
+                  whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => setIsComposingThread(true)}
                   className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useT } from '../../i18n';
 
@@ -41,17 +40,13 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16 }}
         className="w-full max-w-md rounded-2xl border border-border bg-surface-raised p-5 shadow-lg sm:p-6"
       >
-        <div className="flex items-start gap-3">
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warn" aria-hidden="true" />
-          <div>
-            <h2 id="ip-consent-title" className="font-display text-lg font-semibold text-ink">
-              {t('consentTitle')}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{t('consentBody')}</p>
-          </div>
-        </div>
+        <h2 id="ip-consent-title" className="font-display text-lg font-semibold text-ink">
+          {t('consentTitle')}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{t('consentBody')}</p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
@@ -60,13 +55,14 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
           >
             {t('consentCancel')}
           </button>
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onAccept}
             className="min-h-[44px] rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:opacity-90"
           >
             {t('consentAccept')}
-          </button>
+          </motion.button>
         </div>
       </motion.div>
     </div>

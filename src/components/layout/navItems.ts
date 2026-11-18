@@ -1,4 +1,4 @@
-import { DoorOpen, HelpCircle, MessageCircle, MessageSquare, Users } from 'lucide-react';
+import { HelpCircle, MessageCircle, MessageSquare, Radio, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
 import type { MessageKey } from '../../i18n';
 
@@ -11,13 +11,11 @@ export type NavItem = {
 };
 
 const FORUM: NavItem = { id: 'forum', labelKey: 'navForum', Icon: MessageSquare };
-const ROOMS: NavItem = { id: 'rooms', labelKey: 'navRooms', Icon: DoorOpen };
+const ROOMS: NavItem = { id: 'rooms', labelKey: 'navRooms', Icon: Radio };
 const PRESENCE: NavItem = { id: 'presence', labelKey: 'navPresence', Icon: Users };
 const DMS: NavItem = { id: 'dms', labelKey: 'navDms', Icon: MessageCircle };
 const HOW: NavItem = { id: 'how', labelKey: 'navHelp', Icon: HelpCircle };
 
-/** Desktop order: chat first. */
-export const DESKTOP_NAV_ITEMS: NavItem[] = [FORUM, ROOMS, PRESENCE, DMS, HOW];
-
-/** Mobile order: rooms first for entry. */
+/** Same order on desktop and mobile: Zones → Chat → Who → Directs → Help. */
+export const DESKTOP_NAV_ITEMS: NavItem[] = [ROOMS, FORUM, PRESENCE, DMS, HOW];
 export const MOBILE_NAV_ITEMS: NavItem[] = [ROOMS, FORUM, PRESENCE, DMS, HOW];

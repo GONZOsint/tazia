@@ -42,6 +42,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
 
   const createStrength = evaluatePassphraseStrength(createPhrase);
   const strengthCopy = STRENGTH_KEYS[createStrength.id];
+  const showStrength = createStrength.id === 'empty' || createStrength.id === 'weak' || createStrength.id === 'short' || createStrength.id === 'ok';
   const inviteUrl = useMemo(
     () =>
       buildInviteUrl(
@@ -57,6 +58,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.16 }}
       className="mt-6"
       onSubmit={(e) => {
         e.preventDefault();
@@ -69,7 +71,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
       }}
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="space-y-5">
+        <div className="order-2 space-y-5 lg:order-1">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
@@ -99,10 +101,20 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                 onToggleVisible={() => setShowCreatePhrase((v) => !v)}
               />
             </div>
-            <p className="mt-1.5 text-xs text-muted">
-              <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
-              {t(strengthCopy.hint)}
-            </p>
+            {showStrength && (
+              <p className="mt-1.5 text-xs text-muted">
+                <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
+                {t(strengthCopy.hint)}
+              </p>
+            )}
+            <div className="mt-2">
+              <CopyButton
+                text={createPhrase}
+                label={t('roomsCopyPhrase')}
+                copiedLabel={t('copiedDefault')}
+                className="min-h-[40px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              />
+            </div>
           </div>
 
           <div>
@@ -143,10 +155,11 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
             </AnimatePresence>
           </div>
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={!createStrength.isAcceptable || isJoining}
-            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {isJoining ? (
               <>
@@ -159,10 +172,10 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                 {t('roomsOpen')}
               </>
             )}
-          </button>
+          </motion.button>
         </div>
 
-        <div className="rounded-xl border border-border bg-bg p-4 sm:p-5">
+        <div className="order-1 rounded-xl border border-border bg-bg p-4 sm:p-5 lg:order-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold text-ink">{t('roomsInviteTitle')}</p>
             <CopyButton
@@ -172,7 +185,12 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
               className="min-h-[44px] rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
             />
           </div>
-          <p className="mt-2 break-all font-mono text-[11px] text-muted">{inviteUrl}</p>
+
+          <div className="mt-4 flex justify-center">
+            <InviteQr inviteUrl={inviteUrl} includesSecret={includePhraseInLink} />
+          </div>
+
+          <p className="mt-3 break-all font-mono text-[11px] text-faint">{inviteUrl}</p>
 
           <label className="mt-3 flex min-h-[44px] items-center gap-3 text-xs text-muted">
             <input
@@ -192,10 +210,6 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
               <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
             )}
           </label>
-
-          <div className="mt-4 flex justify-center lg:justify-start">
-            <InviteQr inviteUrl={inviteUrl} includesSecret={includePhraseInLink} />
-          </div>
         </div>
       </div>
 

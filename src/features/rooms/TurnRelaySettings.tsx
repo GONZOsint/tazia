@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, Shield } from 'lucide-react';
+import { ChevronDown, Wrench } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
 
@@ -104,8 +104,9 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
         className="flex w-full min-h-[44px] items-center justify-between gap-2 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
       >
         <span className="flex items-center gap-2">
-          <Shield className="h-3.5 w-3.5" aria-hidden="true" />
-          {t('turnRelayTitle')}
+          <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
+          {t('turnFixCta')}
+          <span className="font-normal text-faint">· {t('turnRelayTitle')}</span>
         </span>
         <ChevronDown
           className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}

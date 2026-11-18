@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { ChevronDown, Loader2, QrCode } from 'lucide-react';
+import { ChevronDown, KeyRound, Loader2, QrCode } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   evaluatePassphraseStrength,
@@ -103,7 +103,7 @@ export function JoinRoomForm({
         )}
       </div>
 
-      {phraseNeeded && (
+      {(phraseNeeded || joinPhrase || joinRoomId) && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -121,16 +121,18 @@ export function JoinRoomForm({
               onToggleVisible={() => setShowJoinPhrase((v) => !v)}
             />
           </div>
-          {joinPhrase && (
-            <p className="mt-1.5 text-xs text-muted">
-              <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
-              {t(strengthCopy.hint)}
-            </p>
-          )}
+          {joinPhrase &&
+            (joinStrength.id === 'weak' ||
+              joinStrength.id === 'short' ||
+              joinStrength.id === 'empty' ||
+              joinStrength.id === 'ok') && (
+              <p className="mt-1.5 text-xs text-muted">
+                <span className="font-medium text-ink">{t(strengthCopy.label)}:</span>{' '}
+                {t(strengthCopy.hint)}
+              </p>
+            )}
         </motion.div>
       )}
-
-      {!phraseNeeded && !joinRoomId && joinPhrase === '' && null}
 
       {joinRoomId && joinPhrase && (
         <div>
@@ -172,10 +174,11 @@ export function JoinRoomForm({
         </div>
       )}
 
-      <button
+      <motion.button
+        whileTap={{ scale: 0.98 }}
         type="submit"
         disabled={!joinRoomId.trim() || !joinPhrase.trim() || isJoining}
-        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {isJoining ? (
           <>
@@ -183,9 +186,12 @@ export function JoinRoomForm({
             {t('roomsConnecting')}
           </>
         ) : (
-          t('roomsJoinCta')
+          <>
+            <KeyRound className="h-4 w-4" aria-hidden="true" />
+            {t('roomsJoinCta')}
+          </>
         )}
-      </button>
+      </motion.button>
 
       {scannerOpen && (
         <Suspense fallback={null}>

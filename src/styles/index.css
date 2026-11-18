@@ -6,13 +6,14 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #e8eaed;
-  --color-surface: #dde0e4;
-  --color-surface-raised: #f4f5f7;
-  --color-ink: #0a0a0a;
-  --color-muted: #52525b;
-  --color-faint: #8b8f96;
-  --color-border: #c8ccd2;
+  /* Warm-neutral light — not flat grey, not cream-AI */
+  --color-bg: #e6e4df;
+  --color-surface: #ddd9d2;
+  --color-surface-raised: #f3f1ec;
+  --color-ink: #111110;
+  --color-muted: #57534e;
+  --color-faint: #8a857c;
+  --color-border: #c9c4bb;
   --color-accent: #b2ff41;
   --color-accent-hover: #9de039;
   --color-accent-soft: #c4ff6e;
@@ -38,11 +39,11 @@
 html.dark {
   --color-bg: #000000;
   --color-surface: #121212;
-  --color-surface-raised: #1a1a1a;
+  --color-surface-raised: #1c1c1c;
   --color-ink: #e8e8e4;
   --color-muted: #a1a1aa;
   --color-faint: #71717a;
-  --color-border: #2a2a2a;
+  --color-border: #2e2e2e;
   --color-accent: #b2ff41;
   --color-accent-hover: #9de039;
   --color-accent-soft: #c4ff6e;
