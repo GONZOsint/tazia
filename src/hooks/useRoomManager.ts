@@ -163,8 +163,10 @@ export function useRoomManager(
               if (r.messages.some((m) => m.msgId === message.msgId)) return r;
               const msgs = [...r.messages, message].sort((a, b) => a.createdAtMs - b.createdAtMs);
               const roomIsActive = roomIdTrim === activeRoomIdRef.current;
-              const forumFocused = forumFocusedRef?.current !== false;
-              const bumpUnread = !(roomIsActive && forumFocused);
+              const forumFocused = forumFocusedRef?.current === true;
+              const isSelf = message.authorUserId === r.selfUserId;
+              const bumpUnread =
+                !isSelf && !r.isSyncing && !(roomIsActive && forumFocused);
               return {
                 ...r,
                 messages: msgs,
@@ -260,7 +262,7 @@ export function useRoomManager(
           }),
           rejectedSyncCount: 0,
           isPublishing: false,
-          isSyncing: false,
+          isSyncing: true,
           roomError: null,
           transportNotice: null,
           keyChangeAlerts: [],
@@ -289,6 +291,10 @@ export function useRoomManager(
                 ...r,
                 isSyncing: false,
                 rejectedSyncCount: r.session.getRejectedSyncCount(),
+                unreadCount:
+                  forumFocusedRef?.current === true && roomIdTrim === activeRoomIdRef.current
+                    ? 0
+                    : r.unreadCount,
               }));
             } catch {
               updateRoom(roomIdTrim, (r) => ({ ...r, isSyncing: false }));
@@ -384,11 +390,20 @@ export function useRoomManager(
   );
 
   const clearForumUnread = useCallback(() => {
-    if (!activeRoomIdRef.current) return;
-    updateRoom(activeRoomIdRef.current, (r) =>
-      r.unreadCount === 0 ? r : { ...r, unreadCount: 0 }
-    );
-  }, [updateRoom]);
+    setRooms((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const [id, r] of next) {
+        if (r.unreadCount !== 0) {
+          next.set(id, { ...r, unreadCount: 0 });
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      roomsRef.current = next;
+      return next;
+    });
+  }, []);
 
   const dismissRoomError = useCallback(() => {
     if (!activeRoomIdRef.current) return;

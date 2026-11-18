@@ -55,10 +55,10 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
   return (
     <motion.form
       key="create"
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.16 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.12 }}
       className="mt-6"
       onSubmit={(e) => {
         e.preventDefault();

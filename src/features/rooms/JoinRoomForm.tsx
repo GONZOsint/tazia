@@ -61,9 +61,10 @@ export function JoinRoomForm({
   return (
     <motion.form
       key="join"
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.12 }}
       className="mt-6 space-y-5"
       onSubmit={(e) => {
         e.preventDefault();

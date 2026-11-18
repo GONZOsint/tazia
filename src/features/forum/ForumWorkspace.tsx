@@ -22,9 +22,7 @@ interface ForumWorkspaceProps {
   isSyncing: boolean;
   roomError: string | null;
   roomErrorTone?: 'error' | 'warning' | 'info' | 'success';
-  transportNotice?: string | null;
   onDismissRoomError?: () => void;
-  onDismissTransportNotice?: () => void;
   onSyncNow: () => Promise<void>;
   onCreateThread: (title: string, body: string) => Promise<boolean>;
   onReplyThread: (threadId: string, parentMsgId: string, body: string) => Promise<boolean>;
@@ -43,9 +41,7 @@ export function ForumWorkspace({
   isSyncing,
   roomError,
   roomErrorTone = 'error',
-  transportNotice = null,
   onDismissRoomError,
-  onDismissTransportNotice,
   onSyncNow,
   onCreateThread,
   onReplyThread,
@@ -186,23 +182,6 @@ export function ForumWorkspace({
         </AnimatePresence>
 
         <section className="min-w-0">
-          {transportNotice && (
-            <AlertBanner tone="warning" role="status" className="mb-3">
-              <div className="flex items-start justify-between gap-3">
-                <span>{transportNotice}</span>
-                {onDismissTransportNotice && (
-                  <button
-                    type="button"
-                    className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline"
-                    onClick={onDismissTransportNotice}
-                  >
-                    {t('dismissAlert')}
-                  </button>
-                )}
-              </div>
-            </AlertBanner>
-          )}
-
           {roomError && (
             <AlertBanner tone={roomErrorTone} role="status" className="mb-5">
               <div className="flex items-start justify-between gap-3">

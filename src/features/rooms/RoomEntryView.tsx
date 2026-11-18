@@ -15,7 +15,6 @@ import { TurnRelaySettings } from './TurnRelaySettings';
 interface RoomEntryViewProps {
   initialRoomId?: string;
   initialPhrase?: string | null;
-  phraseWasScrubbed?: boolean;
   isJoining: boolean;
   errorMsg: string | null;
   /** Expand TURN panel (ICE / peer-connect failures). */
@@ -32,7 +31,6 @@ interface RoomEntryViewProps {
 export function RoomEntryView({
   initialRoomId = '',
   initialPhrase = null,
-  phraseWasScrubbed = false,
   isJoining,
   errorMsg,
   showIceHint = false,
@@ -148,12 +146,6 @@ export function RoomEntryView({
             >
               {t('roomsHowLink')}
             </button>
-          )}
-
-          {phraseWasScrubbed && (
-            <AlertBanner tone="warning" role="status" className="mt-4">
-              {t('roomsPhraseScrubbed')}
-            </AlertBanner>
           )}
 
           <div

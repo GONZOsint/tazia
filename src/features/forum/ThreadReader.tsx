@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CornerDownRight, Loader2, Send, X } from 'lucide-react';
-import { motion } from 'motion/react';
 import { visualFromUserId, type LocalProfile } from '../../core/crypto/identity';
 import { useLocale, useT } from '../../i18n';
 import { MAX_BODY_CHARS, type ForumMessage } from '../../core/protocol';
@@ -152,14 +151,21 @@ export function ThreadReader({
         ))}
       </div>
 
-      <motion.form
-        layout
+      <form
         onSubmit={(e) => void handleSubmitReply(e)}
         className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-border bg-surface-raised p-5 shadow-sm md:static md:shadow-none"
       >
         {replyParent && (
           <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-xs text-muted">
-            <span className="truncate">{t('readerReplyingTo')}…</span>
+            <span className="truncate">
+              {t('readerReplyingTo', {
+                alias:
+                  presenceAliases[replyParent.authorUserId] ||
+                  (replyParent.authorUserId === selfUserId
+                    ? identity.alias
+                    : t('presenceNoAlias')),
+              })}
+            </span>
             <button
               type="button"
               onClick={() => setReplyParent(null)}
@@ -195,7 +201,7 @@ export function ThreadReader({
           )}
           {isBusy ? t('readerSending') : t('readerSend')}
         </button>
-      </motion.form>
+      </form>
     </div>
   );
 }

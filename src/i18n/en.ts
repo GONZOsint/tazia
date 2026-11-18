@@ -36,8 +36,8 @@ export const en = {
 
   burnNotice: 'It went dark. With the phrase, it lights up again.',
 
-  forumEmptyTitle: 'The zone is quiet.',
-  forumEmptyBody: 'Open or enter a zone to chat.',
+  forumEmptyTitle: 'No zone yet.',
+  forumEmptyBody: 'Open one — while it lasts.',
   forumEmptyCta: 'Go to zones',
 
   roomsActivePrefix: 'You are already in zone',
@@ -102,23 +102,23 @@ export const en = {
   meshConnected: 'Connected: {n}',
   meshSyncing: 'Pulling…',
 
-  sidebarSearch: 'Search chats…',
-  sidebarNewThread: 'New chat',
-  sidebarNoThreads: 'No chats yet.',
+  sidebarSearch: 'Search circles…',
+  sidebarNewThread: 'New circle',
+  sidebarNoThreads: 'No circles yet.',
   sidebarReplies: '{n} reply',
   sidebarRepliesPlural: '{n} replies',
   sidebarRefresh: 'Pull messages',
-  sidebarTopics: 'Chats',
+  sidebarTopics: 'Circles',
   sidebarCloseTopics: 'Close',
 
   forumEmptyThreads: 'The zone is quiet.',
-  forumEmptyHint: 'Start a chat or wait for someone to share history.',
-  forumStartFirst: 'Start chatting',
+  forumEmptyHint: 'Light a circle — or wait for someone still here.',
+  forumStartFirst: 'Light a circle',
   forumNoResults: 'No results',
   forumNoResultsHint: 'Nothing matches “{q}”.',
   forumSyncing: 'Pulling messages',
 
-  composerTitle: 'New chat',
+  composerTitle: 'New circle',
   composerAs: 'As {alias}',
   composerCancel: 'Cancel',
   composerTitleLabel: 'Title',
@@ -131,7 +131,7 @@ export const en = {
   readerUntitled: '(Untitled)',
   readerSend: 'Send',
   readerSending: 'Sending…',
-  readerReplyingTo: 'Replying to',
+  readerReplyingTo: 'Replying to {alias}',
   readerClearQuote: 'Clear quote',
 
   presenceEmptyTitle: 'Nobody in the zone',
@@ -193,8 +193,7 @@ export const en = {
   errIceHint: "Can't reach each other. Same Wi‑Fi: allow Local network. Else use Fix under Zones.",
   errLocalNetworkDenied:
     'Local network was blocked. Allow it in site settings, then re-enter — needed on the same Wi‑Fi.',
-  infoRelayPath:
-    'Direct path blocked. Chat continues encrypted via discovery helpers — slower. Optional: your own TURN under Fix.',
+  infoRelayPath: 'No direct path. Chat continues encrypted.',
   errRelay: 'Could not reach discovery helpers. Try again in a few seconds.',
   errPublishRate: 'Too many messages. Wait a moment.',
   errPublish: 'Could not send.',

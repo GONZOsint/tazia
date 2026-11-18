@@ -38,8 +38,8 @@ export const es: Messages = {
 
   burnNotice: 'Se apagó. Con la frase se vuelve a encender.',
 
-  forumEmptyTitle: 'La zona está en silencio.',
-  forumEmptyBody: 'Abre o entra a una zona para chatear.',
+  forumEmptyTitle: 'Aún no hay zona.',
+  forumEmptyBody: 'Abre una — mientras dure.',
   forumEmptyCta: 'Ir a zonas',
 
   roomsActivePrefix: 'Ya estás en la zona',
@@ -104,23 +104,23 @@ export const es: Messages = {
   meshConnected: 'Conectados: {n}',
   meshSyncing: 'Trayendo…',
 
-  sidebarSearch: 'Buscar charlas…',
-  sidebarNewThread: 'Nueva charla',
-  sidebarNoThreads: 'Aún no hay charlas.',
+  sidebarSearch: 'Buscar corrillos…',
+  sidebarNewThread: 'Nuevo corrillo',
+  sidebarNoThreads: 'Aún no hay corrillos.',
   sidebarReplies: '{n} respuesta',
   sidebarRepliesPlural: '{n} respuestas',
   sidebarRefresh: 'Traer mensajes',
-  sidebarTopics: 'Charlas',
+  sidebarTopics: 'Corrillos',
   sidebarCloseTopics: 'Cerrar',
 
   forumEmptyThreads: 'La zona está en silencio.',
-  forumEmptyHint: 'Empieza una charla o espera a que alguien comparta el historial.',
-  forumStartFirst: 'Empezar a chatear',
+  forumEmptyHint: 'Enciende un corrillo — o espera a quien siga aquí.',
+  forumStartFirst: 'Enciende un corrillo',
   forumNoResults: 'Sin resultados',
   forumNoResultsHint: 'Nada coincide con «{q}».',
   forumSyncing: 'Trayendo mensajes',
 
-  composerTitle: 'Nueva charla',
+  composerTitle: 'Nuevo corrillo',
   composerAs: 'Como {alias}',
   composerCancel: 'Cancelar',
   composerTitleLabel: 'Título',
@@ -133,7 +133,7 @@ export const es: Messages = {
   readerUntitled: '(Sin título)',
   readerSend: 'Enviar',
   readerSending: 'Enviando…',
-  readerReplyingTo: 'Respondiendo a',
+  readerReplyingTo: 'Respondiendo a {alias}',
   readerClearQuote: 'Quitar cita',
 
   presenceEmptyTitle: 'Nadie en la zona',
@@ -195,8 +195,7 @@ export const es: Messages = {
   errIceHint: 'No llegáis a conectar. Misma Wi‑Fi: permite Red local. Si no, usa Arreglar en Zonas.',
   errLocalNetworkDenied:
     'Se bloqueó la red local. Permítela en ajustes del sitio y vuelve a entrar — hace falta en la misma Wi‑Fi.',
-  infoRelayPath:
-    'Ruta directa bloqueada. El chat sigue cifrado por ayudas de encuentro — más lento. Opcional: TURN propio en Arreglar.',
+  infoRelayPath: 'Sin ruta directa. El chat sigue cifrado.',
   errRelay: 'No se pudo contactar con los servicios de encuentro. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes. Espera un momento.',
   errPublish: 'No se pudo enviar.',

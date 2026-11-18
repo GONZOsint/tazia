@@ -30,19 +30,18 @@ function TabSkeleton() {
 
 function readInitialInvite() {
   const parsed = parseInviteInput(window.location.hash);
-  let phraseWasScrubbed = false;
   if (parsed?.phrase) {
     scrubPhraseFromLocationHash(parsed.roomId);
-    phraseWasScrubbed = true;
   }
-  return { invite: parsed, phraseWasScrubbed };
+  return parsed;
 }
 
 export default function App() {
   const t = useT();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<ActiveTab>('rooms');
-  const [{ invite: initialInvite, phraseWasScrubbed }] = useState(readInitialInvite);
+  const [initialInvite] = useState(readInitialInvite);
+  const relayToastShownRef = useRef<string | null>(null);
   const forumTabFocusedRef = useRef(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [burnConfirmOpen, setBurnConfirmOpen] = useState(false);
@@ -73,7 +72,10 @@ export default function App() {
     dismissRoomError,
     dismissTransportNotice,
     dismissKeyChange,
-  } = useRoomManager((tab) => setActiveTab(tab as ActiveTab), { forumTabFocusedRef });
+  } = useRoomManager((tab) => {
+    forumTabFocusedRef.current = tab === 'forum';
+    setActiveTab(tab as ActiveTab);
+  }, { forumTabFocusedRef });
 
   const [dmPeerId, setDmPeerId] = useState<string | null>(null);
 
@@ -87,6 +89,8 @@ export default function App() {
   }, [ipConsentNeeded, burnConfirmOpen]);
 
   const selectTab = (tab: ActiveTab) => {
+    forumTabFocusedRef.current = tab === 'forum';
+    if (tab === 'forum') clearForumUnread();
     setActiveTab(tab);
     window.requestAnimationFrame(() => {
       mainContentRef.current?.focus({ preventScroll: true });
@@ -115,16 +119,33 @@ export default function App() {
 
   const joinErrorMsg = joinError ? t(joinError.key, joinError.vars) : null;
   const roomErrorMsg = roomError ? t(roomError.key, roomError.vars) : null;
-  const transportNoticeMsg = transportNotice
-    ? t(transportNotice.key, transportNotice.vars)
-    : null;
-  const iceFailed =
+  const hardIceFailed =
     joinError?.key === 'errPeerConnect' ||
     joinError?.key === 'errLocalNetworkDenied' ||
     roomError?.key === 'errPeerConnect' ||
-    roomError?.key === 'errLocalNetworkDenied' ||
-    !!transportNotice;
+    roomError?.key === 'errLocalNetworkDenied';
+  const showIceHint =
+    joinError?.key === 'errPeerConnect' ||
+    joinError?.key === 'errLocalNetworkDenied' ||
+    roomError?.key === 'errPeerConnect' ||
+    roomError?.key === 'errLocalNetworkDenied';
   const mainRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!activeRoomId) {
+      relayToastShownRef.current = null;
+      return;
+    }
+    if (!transportNotice) return;
+    const stamp = `${activeRoomId}:${transportNotice.key}`;
+    if (relayToastShownRef.current === stamp) {
+      dismissTransportNotice();
+      return;
+    }
+    relayToastShownRef.current = stamp;
+    toast.push(t(transportNotice.key, transportNotice.vars), 'warning');
+    dismissTransportNotice();
+  }, [transportNotice, activeRoomId, dismissTransportNotice, t, toast]);
 
   const TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const;
   useSwipeTabs(mainRef, {
@@ -169,7 +190,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {iceFailed && activeTab !== 'rooms' && (
+        {hardIceFailed && activeTab !== 'rooms' && (
           <div className="mx-auto mt-4 max-w-[1280px] px-4 sm:px-8">
             <AlertBanner tone="warning" role="status" className="w-full">
               <button
@@ -177,7 +198,7 @@ export default function App() {
                 className="text-left underline-offset-2 hover:underline"
                 onClick={() => selectTab('rooms')}
               >
-                {transportNoticeMsg || t('errIceHint')}
+                {t('errPeerConnect')}
               </button>
             </AlertBanner>
           </div>
@@ -235,9 +256,7 @@ export default function App() {
                   isSyncing={isSyncing}
                   roomError={roomErrorMsg}
                   roomErrorTone="error"
-                  transportNotice={transportNoticeMsg}
                   onDismissRoomError={dismissRoomError}
-                  onDismissTransportNotice={dismissTransportNotice}
                   onSyncNow={async () => {
                     await syncNow();
                     toast.push(t('toastSynced'), 'success');
@@ -287,10 +306,9 @@ export default function App() {
               <RoomEntryView
                 initialRoomId={initialInvite?.roomId}
                 initialPhrase={initialInvite?.phrase}
-                phraseWasScrubbed={phraseWasScrubbed}
                 isJoining={isJoining}
                 errorMsg={joinErrorMsg}
-                showIceHint={iceFailed}
+                showIceHint={showIceHint}
                 activeRoomId={roomId}
                 joinedRooms={roomList}
                 onGoToForum={() => selectTab('forum')}
