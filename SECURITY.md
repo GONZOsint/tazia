@@ -26,7 +26,7 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer (local).
 7. **Consentimiento IP** — Modal la primera vez (`localStorage` `tazia-ip-consent`). Salir de la pestaña **no** borra el consentimiento; «Olvidar este dispositivo» en Ayuda sí.
 8. **Scrub de frase en URL** — Tras parsear `#sala~frase`, el hash queda en `#sala`.
-9. **CSP / fuentes** — Meta CSP (sin `frame-ancestors`: el navegador lo ignora en `<meta>`) + [`public/_headers`](public/_headers) donde el host lo permita; fuentes self-hosted (sin Google Fonts).
+9. **CSP / fuentes** — Meta CSP (sin `frame-ancestors`: el navegador lo ignora en `<meta>`) + [`public/_headers`](public/_headers) donde el host lo permita; `font-src 'self' data:` (self-hosted + data URIs); sin Google Fonts.
 
 ## Límites honestos (no-goals de este ciclo)
 
@@ -43,7 +43,7 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 - Cabeceras sugeridas (además o en lugar del meta CSP):
 
 ```
-Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:;
+Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:;
 Referrer-Policy: no-referrer
 X-Content-Type-Options: nosniff
 ```
