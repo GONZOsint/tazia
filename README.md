@@ -1,52 +1,52 @@
 # TAZIA
 
-**Temporary Anonymous Zone In Action** / **Zona Anónima Temporal en Acción**
-
-Live temporary chat in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, leave the tab when done.
+**Zona Anónima Temporal en Acción** (*Temporary Anonymous Zone In Action*)
 
 Charla temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, salid al acabar.
 
-Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: `agora-forum-v1` (Ed25519-signed events). App ID: `tazia.app`.
+Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocolo: `agora-forum-v1` (eventos firmados Ed25519). App ID: `tazia.app`.
 
-## Quick start / Uso rápido
+## Uso rápido
 
-1. Open the site (local or static host).
-2. **Create room** and generate a memorable phrase.
-3. Say the phrase in person / on paper. Optional: put it in the `#` link (riskier).
-4. Share link or QR (QR is generated **in the browser**).
-5. First join asks for **network address consent**.
-6. When done: **Leave this tab**.
+1. Abre el sitio (local o hosting estático).
+2. **Crea una sala** y genera una frase memorable.
+3. Di la frase en persona / en papel. Opcional: meterla en el enlace `#` (más cómodo, más arriesgado).
+4. Comparte el enlace o el QR (el QR se genera **en el navegador**).
+5. La primera entrada pide **consentimiento de dirección de red**.
+6. Al acabar: **Salir de esta pestaña**.
 
-You must be **online at the same time**. No async mailbox.
+Tenéis que estar **online a la vez**. No hay buzón asíncrono.
 
-## Development
+## Desarrollo
 
 ```bash
 npm install
 npm run dev
 ```
 
-| Script | What |
+| Script | Qué hace |
 | --- | --- |
-| `npm run build` | Static build → `dist/` |
-| `npm run preview` | Serve build |
+| `npm run build` | Build estático → `dist/` |
+| `npm run preview` | Sirve el build |
 | `npm run lint` | `tsc --noEmit` |
 
-## Docs
+Para probar en la red local, `vite` escucha en todas las interfaces (`host: true`). En Windows, permite `node.exe` o el puerto `5173` en el firewall si la red es **Pública**.
 
-- [`SECURITY.md`](SECURITY.md) — threat model, CSP, no-goals (Tor/MLS).
-- [`PROTOCOL.md`](PROTOCOL.md) — `agora-forum-v1` wire format.
+## Documentación
 
-## Papers / readings
+- [`SECURITY.md`](SECURITY.md) — modelo de amenaza, CSP, no-goals (Tor/MLS).
+- [`PROTOCOL.md`](PROTOCOL.md) — formato wire `agora-forum-v1`.
 
-| Source | Relevance |
+## Lecturas
+
+| Fuente | Relevancia |
 | --- | --- |
-| [Cwtch](https://cwtch.im/cwtch.pdf) / [docs](https://docs.cwtch.im/) | Untrusted infra + failure detection |
-| [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Metadata hiding (not implemented) |
-| [WebRTC IP leakage 2025](https://arxiv.org/abs/2510.16168) + [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html) | IP consent UX |
-| [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | Do not treat DTLS alone as authorship |
-| OpenMLS / WASM | Future groups roadmap |
+| [Cwtch](https://cwtch.im/cwtch.pdf) / [docs](https://docs.cwtch.im/) | Infra no confiable + detección de fallos |
+| [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Ocultación de metadata (no implementado) |
+| [WebRTC IP leakage 2025](https://arxiv.org/abs/2510.16168) + [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html) | UX de consentimiento IP |
+| [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | No tratar DTLS solo como autoría |
+| OpenMLS / WASM | Roadmap de grupos |
 
-## Deploy headers
+## Cabeceras de despliegue
 
-See [`public/_headers`](public/_headers) (Netlify-style). Prefer HTTP CSP over meta; fonts are self-hosted.
+Ver [`public/_headers`](public/_headers) (estilo Netlify). Preferir CSP por HTTP frente a meta; las fuentes van self-hosted.

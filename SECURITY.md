@@ -1,8 +1,6 @@
 # Seguridad — TAZIA
 
-*(EN: TAZIA — Temporary Anonymous Zone In Action. Threat model for the live P2P TAZ forum.)*
-
-Modelo de amenaza y mitigaciones del foro P2P TAZ (`agora-forum-v1`, `APP_ID=tazia.app`). Detalle de wire format en [`PROTOCOL.md`](PROTOCOL.md).
+Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=tazia.app`). Detalle de wire format en [`PROTOCOL.md`](PROTOCOL.md).
 
 ## Qué es (y qué no)
 
@@ -45,9 +43,10 @@ Modelo de amenaza y mitigaciones del foro P2P TAZ (`agora-forum-v1`, `APP_ID=taz
 - Cabeceras sugeridas (además o en lugar del meta CSP):
 
 ```
-Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:;
+Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; worker-src 'self' blob:;
 Referrer-Policy: no-referrer
 X-Content-Type-Options: nosniff
 ```
+
 
 Ajusta `connect-src` a los hosts concretos de relés Nostr si quieres una CSP más cerrada tras probar el mesh.
