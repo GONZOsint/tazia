@@ -202,6 +202,17 @@ export default function App() {
           hasActiveRoom={isInRoom}
           forumUnread={totalForumUnread}
           dmUnread={totalDmUnread}
+          roomsCount={roomList.length}
+          activeZone={
+            activeRoom
+              ? {
+                  roomId: activeRoom.roomId,
+                  meshStatus: activeRoom.meshStatus,
+                  onlineUserIds: activeRoom.onlineUserIds,
+                  selfUserId: activeRoom.selfUserId,
+                }
+              : null
+          }
           onBurnSession={() => setBurnConfirmOpen(true)}
         />
 
@@ -341,17 +352,14 @@ export default function App() {
               ) : (
                 <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
                   <Radio className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-                  <h1 className="mt-4 font-display text-xl font-semibold text-ink">
-                    {t('forumEmptyTitle')}
-                  </h1>
                   <button
                     type="button"
                     onClick={() => selectTab('rooms')}
                     aria-label={t('forumEmptyCta')}
-                    className="btn-accent-sheen mt-5 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                    className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
                   >
                     <Radio className="h-5 w-5" aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">{t('forumEmptyCta')}</span>
+                    <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
                   </button>
                 </main>
               )}
@@ -366,11 +374,15 @@ export default function App() {
                 showIceHint={showIceHint}
                 activeRoomId={roomId}
                 joinedRooms={roomList}
-                onGoToForum={() => selectTab('forum')}
-                onGoToHelp={() => selectTab('how')}
                 onJoinRoom={joinRoom}
                 onSwitchRoom={switchRoom}
-                onLeaveRoom={leaveRoom}
+                onLeaveRoom={async (id) => {
+                  const wasActive = id === activeRoomId;
+                  await leaveRoom(id);
+                  if (wasActive) {
+                    toast.push({ message: t('roomsLeftToast'), tone: 'info', dedupeKey: 'leave-zone' });
+                  }
+                }}
               />
             </div>
 
@@ -435,6 +447,7 @@ export default function App() {
           onSelectTab={selectTab}
           forumUnread={totalForumUnread}
           dmUnread={totalDmUnread}
+          roomsCount={roomList.length}
         />
       </div>
     </MotionConfig>

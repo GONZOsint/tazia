@@ -54,16 +54,15 @@ export function DmListView({
     return (
       <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <MessageCircle className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-        <h1 className="mt-4 font-display text-xl font-semibold text-ink">{t('dmsTitle')}</h1>
         {onGoToRooms && (
           <button
             type="button"
             onClick={onGoToRooms}
             aria-label={t('dmsEmptyCta')}
-            className="btn-accent-sheen mt-5 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
           >
             <Radio className="h-5 w-5" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">{t('dmsEmptyCta')}</span>
+            <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
           </button>
         )}
       </main>

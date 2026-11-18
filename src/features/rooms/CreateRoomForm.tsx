@@ -52,7 +52,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.12 }}
-      className="mt-6"
+      className="mt-1"
       onSubmit={(e) => {
         e.preventDefault();
         if (!createStrength.isAcceptable) return;
@@ -130,17 +130,46 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="pt-2">
-                    <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
-                      {t('roomsAliasLabel')}
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
+                        {t('roomsAliasLabel')}
+                      </label>
+                      <input
+                        id="create-alias"
+                        value={createAlias}
+                        onChange={(e) => setCreateAlias(e.target.value)}
+                        className="mt-2 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
+                        placeholder={t('roomsAliasPlaceholder')}
+                      />
+                    </div>
+                    <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted">
+                      <span className="relative inline-flex">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={includePhraseInLink}
+                          disabled={!createPhrase.trim()}
+                          onChange={(e) => {
+                            if (e.target.checked) setConfirmOpen(true);
+                            else setIncludePhraseInLink(false);
+                          }}
+                        />
+                        <span
+                          className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-disabled:opacity-40"
+                          data-checked={includePhraseInLink}
+                          aria-hidden="true"
+                        >
+                          <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
+                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                      </span>
+                      <span className="flex-1">{t('roomsIncludePhrase')}</span>
+                      {includePhraseInLink && (
+                        <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
+                      )}
                     </label>
-                    <input
-                      id="create-alias"
-                      value={createAlias}
-                      onChange={(e) => setCreateAlias(e.target.value)}
-                      className="mt-2 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
-                      placeholder={t('roomsAliasPlaceholder')}
-                    />
                   </div>
                 </motion.div>
               )}
@@ -184,36 +213,6 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
           <div className="mt-3 flex justify-center">
             <InviteQr inviteUrl={inviteUrl} includesSecret={Boolean(phraseForLink)} />
           </div>
-
-          <p className="mt-3 break-all font-mono text-[11px] text-faint">{inviteUrl}</p>
-
-          <label className="mt-3 flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted">
-            <span className="relative inline-flex">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                checked={includePhraseInLink}
-                disabled={!createPhrase.trim()}
-                onChange={(e) => {
-                  if (e.target.checked) setConfirmOpen(true);
-                  else setIncludePhraseInLink(false);
-                }}
-              />
-              <span
-                className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-disabled:opacity-40"
-                data-checked={includePhraseInLink}
-                aria-hidden="true"
-              >
-                <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
-                  <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </span>
-            <span className="flex-1">{t('roomsIncludePhrase')}</span>
-            {includePhraseInLink && (
-              <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
-            )}
-          </label>
         </div>
       </div>
 

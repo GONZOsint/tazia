@@ -7,6 +7,8 @@ interface BottomNavProps {
   onSelectTab: (tab: ActiveTab) => void;
   forumUnread?: number;
   dmUnread?: number;
+  /** Open zone count — badge on Zonas when > 1. */
+  roomsCount?: number;
 }
 
 export function BottomNav({
@@ -14,6 +16,7 @@ export function BottomNav({
   onSelectTab,
   forumUnread = 0,
   dmUnread = 0,
+  roomsCount = 0,
 }: BottomNavProps) {
   const t = useT();
 
@@ -27,7 +30,13 @@ export function BottomNav({
         {MOBILE_NAV_ITEMS.map(({ id, labelKey, Icon }) => {
           const active = activeTab === id;
           const badge =
-            id === 'forum' ? forumUnread : id === 'dms' ? dmUnread : 0;
+            id === 'forum'
+              ? forumUnread
+              : id === 'dms'
+                ? dmUnread
+                : id === 'rooms' && roomsCount > 1
+                  ? roomsCount
+                  : 0;
           return (
             <li key={id} className="flex-1">
               <motion.button
@@ -37,7 +46,9 @@ export function BottomNav({
                 aria-current={active ? 'page' : undefined}
                 aria-label={
                   badge > 0
-                    ? `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
+                    ? id === 'rooms'
+                      ? `${t(labelKey)} — ${badge}`
+                      : `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
                     : t(labelKey)
                 }
                 onClick={() => onSelectTab(id)}

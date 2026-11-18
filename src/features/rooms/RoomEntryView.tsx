@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, KeyRound, LogOut, MessageSquare, PlusCircle, Radio } from 'lucide-react';
+import { KeyRound, LogOut, PlusCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { identiconMatrixFromHex } from '../../core/crypto/identity';
 import {
   countOtherPeers,
+  MAX_ROOMS,
   type RoomJoinParams,
   type RoomState,
 } from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
 import { Identicon } from '../../components/content/Identicon';
 import { AlertBanner } from '../../components/ui/AlertBanner';
-import { Card } from '../../components/ui/Card';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { TaziaLogo } from '../../components/brand/TaziaLogo';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
@@ -29,8 +29,6 @@ interface RoomEntryViewProps {
   showIceHint?: boolean;
   activeRoomId?: string | null;
   joinedRooms?: RoomState[];
-  onGoToForum?: () => void;
-  onGoToHelp?: () => void;
   onJoinRoom: (params: RoomJoinParams) => Promise<void>;
   onSwitchRoom?: (roomId: string) => void;
   onLeaveRoom?: (roomId: string) => Promise<void>;
@@ -44,7 +42,6 @@ export function RoomEntryView({
   showIceHint = false,
   activeRoomId = null,
   joinedRooms = [],
-  onGoToForum,
   onJoinRoom,
   onSwitchRoom,
   onLeaveRoom,
@@ -52,17 +49,30 @@ export function RoomEntryView({
   const t = useT();
   const hasInvite = Boolean(initialRoomId);
   const hasZones = joinedRooms.length > 0;
-  const [entryTab, setEntryTab] = useState<'create' | 'join'>(hasInvite ? 'join' : 'create');
+  const atCap = joinedRooms.length >= MAX_ROOMS;
+  const [entryTab, setEntryTab] = useState<'create' | 'join' | null>(() =>
+    hasInvite ? 'join' : hasZones ? null : null
+  );
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
-  const [entryOpen, setEntryOpen] = useState(() => !hasZones || hasInvite || showIceHint);
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
 
   useEffect(() => {
-    if (hasInvite || showIceHint) setEntryOpen(true);
-  }, [hasInvite, showIceHint]);
+    if (hasInvite) setEntryTab('join');
+  }, [hasInvite]);
 
-  const showEntryBody = !hasZones || entryOpen;
+  useEffect(() => {
+    if (showIceHint && hasZones) setEntryTab((cur) => cur ?? 'join');
+  }, [showIceHint, hasZones]);
+
+  const openEntry = (tab: 'create' | 'join') => {
+    if (atCap) return;
+    setEntryTab((cur) => (cur === tab ? null : tab));
+  };
+
+  const enterZone = (roomId: string) => {
+    onSwitchRoom?.(roomId);
+  };
 
   return (
     <main className="mx-auto max-w-[1280px] space-y-4 px-4 py-3 sm:px-8 sm:py-5 lg:py-6">
@@ -76,231 +86,239 @@ export function RoomEntryView({
         </AlertBanner>
       )}
 
+      {!hasZones && (
+        <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface-raised px-5 py-10 sm:px-10 sm:py-14">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,color-mix(in_oklab,var(--color-accent)_18%,transparent),transparent_55%)]"
+          />
+          <div className="relative mx-auto flex max-w-lg flex-col items-center text-center">
+            <TaziaLogo size={72} />
+            <h1 className="mt-5 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl [text-wrap:balance]">
+              {t('brand')}
+            </h1>
+            <p className="mt-2 text-sm text-muted">{t('roomsHeroTitle')}</p>
+
+            <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                type="button"
+                disabled={browserBlocked}
+                onClick={() => openEntry('create')}
+                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                  entryTab === 'create'
+                    ? 'bg-accent text-on-accent'
+                    : 'border border-border bg-bg text-ink'
+                }`}
+              >
+                <PlusCircle className="h-5 w-5" aria-hidden="true" />
+                {t('roomsCreate')}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                type="button"
+                disabled={browserBlocked}
+                onClick={() => openEntry('join')}
+                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                  entryTab === 'join'
+                    ? 'bg-accent text-on-accent'
+                    : 'border border-border bg-bg text-ink'
+                }`}
+              >
+                <KeyRound className="h-5 w-5" aria-hidden="true" />
+                {t('roomsJoin')}
+              </motion.button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {hasZones && (
-        <Card padded={false}>
-          <div className="space-y-2 p-4 sm:p-5">
-            <h2 className="text-xs font-semibold text-muted">{t('roomsJoinedTitle')}</h2>
+        <section className="rounded-[var(--radius-panel)] border border-border bg-surface-raised p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+              {t('roomsJoinedTitle')}
+            </h2>
+            <CapacityDots filled={joinedRooms.length} max={MAX_ROOMS} label={t('roomsCapacityAria', { n: joinedRooms.length, max: MAX_ROOMS })} />
+          </div>
+
+          <ul className="mt-3 space-y-2">
             <AnimatePresence initial={false}>
               {joinedRooms.map((room) => {
                 const isActive = room.roomId === activeRoomId;
                 const dmUnread = Object.values(room.dmUnread).reduce((a, b) => a + b, 0);
                 return (
-                  <motion.div
+                  <motion.li
                     key={room.roomId}
                     layout
                     initial={{ opacity: 0, y: 8, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={zoneCardExit.exit}
                     transition={{ duration: 0.22, ease: EASE.outExpo }}
-                    className={`flex items-center gap-3 overflow-hidden rounded-[var(--radius-ctrl)] border p-2.5 sm:p-3 ${
+                    className={`flex items-stretch gap-1 overflow-hidden rounded-[var(--radius-ctrl)] border ${
                       isActive
                         ? 'border-2 border-accent bg-accent-soft/10'
-                        : 'border border-border bg-bg'
+                        : 'border-border bg-bg'
                     }`}
                     aria-current={isActive ? 'true' : undefined}
                   >
-                    <Identicon
-                      matrix={identiconMatrixFromHex(room.roomId)}
-                      size={36}
-                      label={room.roomId}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-mono text-[11px] text-faint">{room.roomId}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <MeshStatusBadge
-                          status={room.meshStatus}
-                          onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
-                          compact
-                        />
-                        {room.unreadCount > 0 && (
-                          <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
-                            {room.unreadCount > 9 ? '9+' : room.unreadCount}
-                          </span>
+                    <button
+                      type="button"
+                      onClick={() => enterZone(room.roomId)}
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-3.5"
+                      aria-label={
+                        isActive
+                          ? `${t('roomsGoToChat')}: ${room.roomId}`
+                          : `${t('roomsSwitchTo')}: ${room.roomId}`
+                      }
+                    >
+                      <Identicon
+                        matrix={identiconMatrixFromHex(room.roomId)}
+                        size={40}
+                        label={room.roomId}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-mono text-xs font-medium text-ink">
+                          {room.roomId}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <MeshStatusBadge
+                            status={room.meshStatus}
+                            onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
+                            compact
+                          />
+                          {isActive && (
+                            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
+                              {t('roomsActiveLabel')}
+                            </span>
+                          )}
+                          {room.unreadCount > 0 && (
+                            <span className="rounded-full bg-accent/90 px-2 py-0.5 text-[10px] font-bold text-on-accent">
+                              {room.unreadCount > 9 ? '9+' : room.unreadCount}
+                            </span>
+                          )}
+                          {dmUnread > 0 && (
+                            <span className="rounded-full border border-border bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-muted">
+                              {dmUnread > 9 ? '9+' : dmUnread}
+                            </span>
+                          )}
+                        </div>
+                        {room.roomError && (
+                          <p className="mt-1 truncate text-[11px] text-danger-ink">
+                            {t(room.roomError.key, room.roomError.vars)}
+                          </p>
                         )}
-                        {dmUnread > 0 && (
-                          <span className="rounded-full border border-border bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-muted">
-                            {dmUnread > 9 ? '9+' : dmUnread}
-                          </span>
+                        {!room.roomError && room.transportNotice && (
+                          <p className="mt-1 truncate text-[11px] text-warn-ink">
+                            {t(room.transportNotice.key, room.transportNotice.vars)}
+                          </p>
                         )}
                       </div>
-                      {room.roomError && (
-                        <p className="mt-1 truncate text-[11px] text-danger-ink">
-                          {t(room.roomError.key, room.roomError.vars)}
-                        </p>
-                      )}
-                      {!room.roomError && room.transportNotice && (
-                        <p className="mt-1 truncate text-[11px] text-warn-ink">
-                          {t(room.transportNotice.key, room.transportNotice.vars)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      {!isActive && onSwitchRoom && (
-                        <button
-                          type="button"
-                          onClick={() => onSwitchRoom(room.roomId)}
-                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1 text-xs font-semibold text-ink focus-visible:outline-2 focus-visible:outline-accent"
-                          title={t('roomsSwitchTo')}
-                          aria-label={t('roomsSwitchTo')}
-                        >
-                          <Radio className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span className="hidden sm:inline">{t('roomsSwitchTo')}</span>
-                        </button>
-                      )}
-                      {isActive && onGoToForum && (
-                        <motion.button
-                          whileTap={{ scale: 0.97 }}
-                          type="button"
-                          onClick={onGoToForum}
-                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1 text-xs font-semibold text-ink focus-visible:outline-2 focus-visible:outline-accent"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
-                          {t('roomsGoToChat')}
-                        </motion.button>
-                      )}
-                      {onLeaveRoom && (
-                        <button
-                          type="button"
-                          onClick={() => setLeaveTarget(room.roomId)}
-                          className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-3 py-1 text-xs font-semibold text-danger-ink focus-visible:outline-2 focus-visible:outline-accent"
-                          title={t('roomsLeaveRoom')}
-                          aria-label={t('roomsLeaveRoom')}
-                        >
-                          <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
+                    </button>
+                    {onLeaveRoom && (
+                      <button
+                        type="button"
+                        onClick={() => setLeaveTarget(room.roomId)}
+                        className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center rounded-[var(--radius-ctrl)] border border-transparent text-danger-ink hover:border-danger-border hover:bg-danger-bg focus-visible:outline-2 focus-visible:outline-accent"
+                        title={t('roomsLeaveRoom')}
+                        aria-label={t('roomsLeaveRoom')}
+                      >
+                        <LogOut className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    )}
+                  </motion.li>
                 );
               })}
             </AnimatePresence>
+          </ul>
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <motion.button
+              whileTap={{ scale: atCap ? 1 : 0.98 }}
+              type="button"
+              disabled={atCap || browserBlocked}
+              onClick={() => openEntry('create')}
+              aria-pressed={entryTab === 'create'}
+              className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                entryTab === 'create'
+                  ? 'bg-accent text-on-accent'
+                  : 'border border-border bg-bg text-ink'
+              }`}
+            >
+              <PlusCircle className="h-4 w-4" aria-hidden="true" />
+              {t('roomsCreate')}
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: atCap ? 1 : 0.98 }}
+              type="button"
+              disabled={atCap || browserBlocked}
+              onClick={() => openEntry('join')}
+              aria-pressed={entryTab === 'join'}
+              className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                entryTab === 'join'
+                  ? 'bg-accent text-on-accent'
+                  : 'border border-border bg-bg text-ink'
+              }`}
+            >
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+              {t('roomsJoin')}
+            </motion.button>
           </div>
-        </Card>
+        </section>
       )}
 
-      <Card padded={false}>
-        <div className="p-4 sm:p-5">
-          {hasZones ? (
-            <button
-              type="button"
-              aria-expanded={entryOpen}
-              onClick={() => setEntryOpen((v) => !v)}
-              className="flex w-full min-h-[44px] items-center justify-between gap-3 text-left focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              <div className="min-w-0">
-                <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
-                  {t('roomsAnotherTitle')}
-                </h2>
-                <p className="mt-0.5 text-xs text-muted">{t('roomsAnotherHint')}</p>
-              </div>
-              <ChevronDown
-                className={`h-5 w-5 shrink-0 text-muted transition-transform ${entryOpen ? 'rotate-180' : ''}`}
-                aria-hidden="true"
-              />
-            </button>
-          ) : (
-            <div className="flex items-start gap-3 sm:gap-4">
-              <TaziaLogo size={48} className="hidden sm:block" />
-              <div className="min-w-0">
-                <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-[28px] [text-wrap:balance]">
-                  {t('roomsHeroTitle')}
-                </h1>
-                <p className="mt-1 text-sm text-muted">{t('roomsHeroBody')}</p>
-              </div>
-            </div>
-          )}
-
-          <AnimatePresence initial={false}>
-            {showEntryBody && (
-              <motion.div
-                key="entry-body"
-                initial={hasZones ? { opacity: 0, height: 0 } : false}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.18 }}
-                className="overflow-hidden"
-              >
-                <div className={hasZones ? 'pt-4' : 'pt-0'}>
-                  <div
-                    role="tablist"
-                    aria-label={t('navRooms')}
-                    className={`relative grid grid-cols-2 gap-1 rounded-[var(--radius-ctrl)] bg-surface p-1 ${hasZones ? '' : 'mt-4'}`}
-                  >
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={entryTab === 'create'}
-                      onClick={() => setEntryTab('create')}
-                      className={`relative z-10 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
-                        entryTab === 'create' ? 'text-ink' : 'text-muted'
-                      }`}
-                    >
-                      {entryTab === 'create' && (
-                        <motion.span
-                          layoutId="zones-entry-tab"
-                          className="absolute inset-0 rounded-lg bg-surface-raised shadow-xs"
-                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                        />
-                      )}
-                      <PlusCircle className="relative h-3.5 w-3.5" aria-hidden="true" />
-                      <span className="relative">{t('roomsCreate')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={entryTab === 'join'}
-                      onClick={() => setEntryTab('join')}
-                      className={`relative z-10 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
-                        entryTab === 'join' ? 'text-ink' : 'text-muted'
-                      }`}
-                    >
-                      {entryTab === 'join' && (
-                        <motion.span
-                          layoutId="zones-entry-tab"
-                          className="absolute inset-0 rounded-lg bg-surface-raised shadow-xs"
-                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                        />
-                      )}
-                      <KeyRound className="relative h-3.5 w-3.5" aria-hidden="true" />
-                      <span className="relative">{t('roomsJoin')}</span>
-                    </button>
-                  </div>
-
-                  {errorMsg && (
-                    <AlertBanner tone="error" className="mt-5">
-                      {errorMsg}
-                    </AlertBanner>
-                  )}
-
-                  {showIceHint && (
-                    <AlertBanner tone="warning" role="status" className="mt-4">
-                      {t('errIceHint')}
-                    </AlertBanner>
-                  )}
-
-                  {!browserBlocked && (
-                    <AnimatePresence mode="wait">
-                      {entryTab === 'create' ? (
-                        <CreateRoomForm key="create" isJoining={isJoining} onJoinRoom={onJoinRoom} />
-                      ) : (
-                        <JoinRoomForm
-                          key="join"
-                          initialRoomId={initialRoomId}
-                          initialPhrase={initialPhrase}
-                          isJoining={isJoining}
-                          onJoinRoom={onJoinRoom}
-                        />
-                      )}
-                    </AnimatePresence>
-                  )}
-
-                  {!browserBlocked && <TurnRelaySettings forceOpen={showIceHint} />}
-                </div>
-              </motion.div>
+      <AnimatePresence initial={false}>
+        {entryTab && !browserBlocked && (
+          <motion.section
+            key={`entry-${entryTab}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="rounded-[var(--radius-panel)] border border-border bg-surface-raised p-4 sm:p-5"
+          >
+            {errorMsg && (
+              <AlertBanner tone="error" className="mb-4">
+                {errorMsg}
+              </AlertBanner>
             )}
-          </AnimatePresence>
-        </div>
-      </Card>
+
+            {showIceHint && (
+              <AlertBanner tone="warning" role="status" className="mb-4">
+                {t('errIceHint')}
+              </AlertBanner>
+            )}
+
+            <AnimatePresence mode="wait">
+              {entryTab === 'create' ? (
+                <CreateRoomForm key="create" isJoining={isJoining} onJoinRoom={onJoinRoom} />
+              ) : (
+                <JoinRoomForm
+                  key="join"
+                  initialRoomId={initialRoomId}
+                  initialPhrase={initialPhrase}
+                  isJoining={isJoining}
+                  onJoinRoom={onJoinRoom}
+                />
+              )}
+            </AnimatePresence>
+
+            <TurnRelaySettings forceOpen={showIceHint} />
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {!entryTab && showIceHint && (
+        <AlertBanner tone="warning" role="status">
+          <button
+            type="button"
+            className="underline-offset-2 hover:underline"
+            onClick={() => setEntryTab('join')}
+          >
+            {t('errIceHint')}
+          </button>
+        </AlertBanner>
+      )}
 
       <ConfirmModal
         open={leaveTarget !== null}
@@ -316,5 +334,29 @@ export function RoomEntryView({
         }}
       />
     </main>
+  );
+}
+
+function CapacityDots({
+  filled,
+  max,
+  label,
+}: {
+  filled: number;
+  max: number;
+  label: string;
+}) {
+  return (
+    <div className="inline-flex items-center gap-1" role="meter" aria-valuenow={filled} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
+      {Array.from({ length: max }, (_, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          className={`h-2 w-2 rounded-full ${
+            i < filled ? 'bg-accent' : 'bg-border'
+          }`}
+        />
+      ))}
+    </div>
   );
 }

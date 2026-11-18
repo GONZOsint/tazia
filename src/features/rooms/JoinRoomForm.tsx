@@ -62,7 +62,7 @@ export function JoinRoomForm({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.12 }}
-      className="mt-6 space-y-5"
+      className="mt-1 space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
         if (!joinRoomId.trim() || !joinPhrase.trim()) return;

@@ -1,12 +1,24 @@
 import { Flame } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useT } from '../../i18n';
+import { identiconMatrixFromHex } from '../../core/crypto/identity';
+import type { MeshStatus } from '../../core/protocol';
+import { countOtherPeers } from '../../hooks/useRoomManager';
 import { TaziaLogo } from '../brand/TaziaLogo';
+import { Identicon } from '../content/Identicon';
+import { MeshStatusBadge } from '../session/MeshStatusBadge';
 import { LangToggle } from '../ui/LangToggle';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { DESKTOP_NAV_ITEMS, type ActiveTab } from './navItems';
 
 export type { ActiveTab } from './navItems';
+
+export interface ActiveZoneChip {
+  roomId: string;
+  meshStatus: MeshStatus;
+  onlineUserIds: string[];
+  selfUserId: string;
+}
 
 interface TopBarProps {
   activeTab: ActiveTab;
@@ -15,6 +27,9 @@ interface TopBarProps {
   onBurnSession: () => void;
   forumUnread?: number;
   dmUnread?: number;
+  /** Open zone count — badge on Zonas when > 1. */
+  roomsCount?: number;
+  activeZone?: ActiveZoneChip | null;
 }
 
 export function TopBar({
@@ -24,30 +39,63 @@ export function TopBar({
   onBurnSession,
   forumUnread = 0,
   dmUnread = 0,
+  roomsCount = 0,
+  activeZone = null,
 }: TopBarProps) {
   const t = useT();
+  const shortId = activeZone
+    ? activeZone.roomId.length > 8
+      ? `${activeZone.roomId.slice(0, 6)}…`
+      : activeZone.roomId
+    : '';
 
   return (
     <header
       className="sticky top-0 z-30 border-b border-border bg-surface-raised/95 backdrop-blur-sm"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <div className="mx-auto flex h-12 max-w-[1280px] items-center justify-between gap-3 px-4 sm:h-14 sm:gap-6 sm:px-8">
-        <button
-          type="button"
-          onClick={() => onSelectTab(hasActiveRoom ? 'forum' : 'rooms')}
-          className="flex shrink-0 items-center gap-2 rounded-md py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <TaziaLogo size={36} />
-          <span className="min-w-0">
-            <span className="font-display text-xl font-bold tracking-tight text-ink">
-              {t('brand')}
+      <div className="mx-auto flex h-12 max-w-[1280px] items-center justify-between gap-2 px-4 sm:h-14 sm:gap-4 sm:px-8">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => onSelectTab('rooms')}
+            className="flex shrink-0 items-center gap-2 rounded-md py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            aria-label={t('navRooms')}
+          >
+            <TaziaLogo size={36} />
+            <span className="hidden min-w-0 sm:block">
+              <span className="font-display text-xl font-bold tracking-tight text-ink">
+                {t('brand')}
+              </span>
             </span>
-            <span className="mt-0.5 hidden text-[11px] font-medium text-muted lg:block">
-              {t('liveHint')}
-            </span>
-          </span>
-        </button>
+          </button>
+
+          {activeZone && (
+            <button
+              type="button"
+              onClick={() => onSelectTab('forum')}
+              title={activeZone.roomId}
+              aria-label={`${t('roomsActiveLabel')}: ${activeZone.roomId}`}
+              className="flex min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft/15 px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
+            >
+              <Identicon
+                matrix={identiconMatrixFromHex(activeZone.roomId)}
+                size={22}
+                label={activeZone.roomId}
+              />
+              <span className="min-w-0 truncate font-mono text-[11px] font-medium text-ink">
+                {shortId}
+              </span>
+              <span className="hidden shrink-0 md:inline">
+                <MeshStatusBadge
+                  status={activeZone.meshStatus}
+                  onlineCount={countOtherPeers(activeZone.onlineUserIds, activeZone.selfUserId)}
+                  compact
+                />
+              </span>
+            </button>
+          )}
+        </div>
 
         <nav
           aria-label={t('navAria')}
@@ -56,7 +104,13 @@ export function TopBar({
           {DESKTOP_NAV_ITEMS.map(({ id, labelKey, Icon }) => {
             const isActive = activeTab === id;
             const badge =
-              id === 'forum' ? forumUnread : id === 'dms' ? dmUnread : 0;
+              id === 'forum'
+                ? forumUnread
+                : id === 'dms'
+                  ? dmUnread
+                  : id === 'rooms' && roomsCount > 1
+                    ? roomsCount
+                    : 0;
             return (
               <button
                 key={id}
@@ -64,7 +118,9 @@ export function TopBar({
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={
                   badge > 0
-                    ? `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
+                    ? id === 'rooms'
+                      ? `${t(labelKey)} — ${badge}`
+                      : `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
                     : undefined
                 }
                 onClick={() => onSelectTab(id)}
@@ -117,9 +173,7 @@ export function TopBar({
               <Flame className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">{t('leaveTab')}</span>
             </motion.button>
-          ) : (
-            <span className="hidden lg:inline text-xs text-faint">{t('liveHint')}</span>
-          )}
+          ) : null}
         </div>
       </div>
     </header>

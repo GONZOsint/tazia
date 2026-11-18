@@ -348,6 +348,9 @@ export function useRoomManager(
           dmUnread: {},
         };
 
+        // First zone → Plaza; additional zones stay on Zonas so the hub updates in view.
+        const isAdditionalZone = roomsRef.current.size > 0;
+
         setRooms((prev) => {
           const next = new Map(prev);
           next.set(roomIdTrim, roomState);
@@ -355,7 +358,7 @@ export function useRoomManager(
           return next;
         });
         setActiveRoomId(roomIdTrim);
-        onNavigateTab('forum');
+        onNavigateTab(isAdditionalZone ? 'rooms' : 'forum');
 
         for (const delayMs of [800, 2500, 6000]) {
           window.setTimeout(async () => {
