@@ -10,8 +10,9 @@ export function RoomHowAside() {
     <Card className="bg-bg lg:self-start" padded>
       <button
         type="button"
+        aria-expanded={howOpen}
         onClick={() => setHowOpen((v) => !v)}
-        className="flex w-full min-h-[44px] items-center justify-between text-left font-display text-lg font-semibold text-ink lg:pointer-events-none"
+        className="flex w-full min-h-[44px] items-center justify-between text-left font-display text-lg font-semibold text-ink lg:pointer-events-none focus-visible:outline-2 focus-visible:outline-accent"
       >
         {t('roomsHowTitle')}
         <span className="text-sm font-normal text-muted lg:hidden">{howOpen ? '−' : '+'}</span>

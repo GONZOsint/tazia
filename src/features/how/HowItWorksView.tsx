@@ -56,8 +56,9 @@ export function HowItWorksView() {
 
       <button
         type="button"
+        aria-expanded={moreOpen}
         onClick={() => setMoreOpen((v) => !v)}
-        className="mt-6 min-h-[44px] text-sm font-semibold text-ink underline-offset-2 hover:underline"
+        className="mt-6 min-h-[44px] text-sm font-semibold text-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-accent"
       >
         {moreOpen ? t('helpMoreHide') : t('helpMore')}
       </button>
@@ -85,3 +86,5 @@ export function HowItWorksView() {
     </main>
   );
 }
+
+export default HowItWorksView;

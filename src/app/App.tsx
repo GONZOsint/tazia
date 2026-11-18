@@ -1,17 +1,30 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { Radio } from 'lucide-react';
+import { Loader2, Radio } from 'lucide-react';
+import { useSwipeTabs } from '../hooks/useSwipeTabs';
 import { BottomNav } from '../components/layout/BottomNav';
 import { TopBar, type ActiveTab } from '../components/layout/TopBar';
 import { AlertBanner } from '../components/ui/AlertBanner';
-import { ForumWorkspace } from '../features/forum/ForumWorkspace';
-import { HowItWorksView } from '../features/how/HowItWorksView';
-import { PresenceView } from '../features/presence/PresenceView';
+import { KeyChangeAlert } from '../components/session/KeyChangeAlert';
 import { IpConsentModal } from '../features/rooms/IpConsentModal';
 import { RoomEntryView } from '../features/rooms/RoomEntryView';
-import { useTaziaSession } from '../hooks/useTaziaSession';
+import { useRoomManager } from '../hooks/useRoomManager';
 import { useT } from '../i18n';
 import { parseInviteInput, scrubPhraseFromLocationHash } from '../core/utils/inviteLink';
+
+const ForumWorkspace = lazy(() => import('../features/forum/ForumWorkspace'));
+const HowItWorksView = lazy(() => import('../features/how/HowItWorksView'));
+const PresenceView = lazy(() => import('../features/presence/PresenceView'));
+const DmListView = lazy(() => import('../features/dms/DmListView'));
+const DmConversationView = lazy(() => import('../features/dms/DmConversationView'));
+
+function TabSkeleton() {
+  return (
+    <div className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-faint" />
+    </div>
+  );
+}
 
 function readInitialInvite() {
   const parsed = parseInviteInput(window.location.hash);
@@ -29,45 +42,65 @@ export default function App() {
   const [{ invite: initialInvite, phraseWasScrubbed }] = useState(readInitialInvite);
 
   const {
-    isInRoom,
-    roomId,
-    phrase,
-    profile,
-    selfUserId,
+    rooms,
+    activeRoomId,
+    activeRoom,
+    presenceAliases,
     isJoining,
     joinError,
-    roomError,
     burnNotice,
-    messages,
-    presence,
-    onlineUserIds,
-    isPublishing,
-    isSyncing,
-    meshStatus,
-    rejectedSyncCount,
     ipConsentNeeded,
     confirmIpConsent,
     cancelIpConsent,
     joinRoom,
+    leaveRoom,
+    switchRoom,
     burnSession,
     publish,
     syncNow,
-  } = useTaziaSession((tab) => setActiveTab(tab));
+    sendDm,
+    clearDmUnread,
+    dismissKeyChange,
+  } = useRoomManager((tab) => setActiveTab(tab as ActiveTab));
 
-  const presenceAliases = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const [id, state] of Object.entries(presence)) {
-      if (state.alias) map[id] = state.alias;
-    }
-    return map;
-  }, [presence]);
+  const [dmPeerId, setDmPeerId] = useState<string | null>(null);
+
+  const isInRoom = activeRoom !== null;
+  const roomId = activeRoom?.roomId ?? null;
+  const phrase = activeRoom?.phrase ?? null;
+  const profile = activeRoom?.profile ?? null;
+  const selfUserId = activeRoom?.selfUserId ?? null;
+  const selfSignPubKeyB64 = activeRoom?.selfSignPubKeyB64 ?? null;
+  const trustStore = activeRoom?.trustStore ?? null;
+  const messages = activeRoom?.messages ?? [];
+  const presence = activeRoom?.presence ?? {};
+  const onlineUserIds = activeRoom?.onlineUserIds ?? [];
+  const isPublishing = activeRoom?.isPublishing ?? false;
+  const isSyncing = activeRoom?.isSyncing ?? false;
+  const meshStatus = activeRoom?.meshStatus ?? 'connecting';
+  const rejectedSyncCount = activeRoom?.rejectedSyncCount ?? 0;
+  const roomError = activeRoom?.roomError ?? null;
+  const keyChangeAlerts = activeRoom?.keyChangeAlerts ?? [];
+  const dmMessages = activeRoom?.dmMessages ?? {};
+  const dmUnread = activeRoom?.dmUnread ?? {};
 
   const joinErrorMsg = joinError ? t(joinError.key, joinError.vars) : null;
   const roomErrorMsg = roomError ? t(roomError.key, roomError.vars) : null;
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  const TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const;
+  useSwipeTabs(mainRef, {
+    tabs: TABS,
+    activeTab: activeTab as (typeof TABS)[number],
+    onSwipe: (tab) => setActiveTab(tab as ActiveTab),
+    disabled: false,
+  });
+
+  const roomList = [...rooms.values()];
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen bg-bg text-ink pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <div ref={mainRef} className="min-h-screen bg-bg text-ink pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
         <TopBar
           activeTab={activeTab}
           onSelectTab={setActiveTab}
@@ -96,6 +129,24 @@ export default function App() {
           onCancel={cancelIpConsent}
         />
 
+        {keyChangeAlerts.length > 0 && activeRoomId && (
+          <div className="mx-auto mt-4 max-w-[1280px] space-y-2 px-4 sm:px-8">
+            {keyChangeAlerts.map((alert) => (
+              <KeyChangeAlert
+                key={alert.userId}
+                peerAlias={presence[alert.userId]?.alias || alert.userId}
+                onRepin={() => {
+                  trustStore?.repin(alert.userId);
+                  dismissKeyChange(activeRoomId, alert.userId);
+                }}
+                onDisconnect={() => void burnSession()}
+                onDismiss={() => dismissKeyChange(activeRoomId, alert.userId)}
+              />
+            ))}
+          </div>
+        )}
+
+        <Suspense fallback={<TabSkeleton />}>
         {activeTab === 'forum' && isInRoom && roomId && profile && selfUserId ? (
           <ForumWorkspace
             roomId={roomId}
@@ -152,13 +203,18 @@ export default function App() {
             isJoining={isJoining}
             errorMsg={joinErrorMsg}
             activeRoomId={roomId}
+            joinedRooms={roomList}
             onGoToForum={() => setActiveTab('forum')}
             onBurnSession={() => void burnSession()}
             onJoinRoom={joinRoom}
+            onSwitchRoom={switchRoom}
+            onLeaveRoom={leaveRoom}
           />
         ) : activeTab === 'presence' ? (
           <PresenceView
             selfUserId={selfUserId}
+            selfSignPubKeyB64={selfSignPubKeyB64}
+            trustStore={trustStore}
             presence={presence}
             onlineUserIds={onlineUserIds}
             meshStatus={meshStatus}
@@ -166,9 +222,38 @@ export default function App() {
             onSyncNow={syncNow}
             isSyncing={isSyncing}
           />
+        ) : activeTab === 'dms' ? (
+          dmPeerId && selfUserId ? (
+            <DmConversationView
+              selfUserId={selfUserId}
+              peerId={dmPeerId}
+              peerAlias={presence[dmPeerId]?.alias || dmPeerId}
+              messages={dmMessages[dmPeerId] ?? []}
+              onSend={async (body) => {
+                await sendDm(dmPeerId, body);
+              }}
+              onBack={() => {
+                clearDmUnread(dmPeerId);
+                setDmPeerId(null);
+              }}
+            />
+          ) : (
+            <DmListView
+              selfUserId={selfUserId}
+              presence={presence}
+              onlineUserIds={onlineUserIds}
+              dmMessages={dmMessages}
+              dmUnread={dmUnread}
+              onSelectPeer={(peerId) => {
+                clearDmUnread(peerId);
+                setDmPeerId(peerId);
+              }}
+            />
+          )
         ) : (
           <HowItWorksView />
         )}
+        </Suspense>
 
         <BottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
       </div>

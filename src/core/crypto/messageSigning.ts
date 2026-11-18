@@ -1,4 +1,4 @@
-import { canonicalForumPayload, type ForumEvent } from '../protocol';
+import { canonicalForumPayload, canonicalDmPayload, type ForumEvent, type DirectMessage } from '../protocol';
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -72,6 +72,40 @@ export async function verifyForumEvent(
         signature.byteOffset + signature.byteLength
       ) as ArrayBuffer,
       payload
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function signDirectMessage(
+  unsigned: Omit<DirectMessage, 'sig'>,
+  privateKey: CryptoKey,
+): Promise<DirectMessage> {
+  const payload = new TextEncoder().encode(canonicalDmPayload(unsigned));
+  const signature = await crypto.subtle.sign({ name: 'Ed25519' }, privateKey, payload);
+  return {
+    ...unsigned,
+    sig: bytesToBase64(new Uint8Array(signature)),
+  };
+}
+
+export async function verifyDirectMessage(
+  dm: DirectMessage,
+  publicKey: CryptoKey,
+): Promise<boolean> {
+  try {
+    const { sig, ...rest } = dm;
+    const payload = new TextEncoder().encode(canonicalDmPayload(rest));
+    const signature = base64ToBytes(sig);
+    return await crypto.subtle.verify(
+      { name: 'Ed25519' },
+      publicKey,
+      signature.buffer.slice(
+        signature.byteOffset,
+        signature.byteOffset + signature.byteLength,
+      ) as ArrayBuffer,
+      payload,
     );
   } catch {
     return false;

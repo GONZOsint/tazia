@@ -13,7 +13,7 @@ export function LangToggle({ className = '' }: { className?: string }) {
         type="button"
         onClick={() => setLocale('es')}
         aria-pressed={locale === 'es'}
-        className={`min-h-[36px] min-w-[40px] rounded-md px-2 text-xs font-semibold ${
+        className={`min-h-[44px] min-w-[44px] rounded-md px-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
           locale === 'es' ? 'bg-accent text-on-accent' : 'text-muted'
         }`}
       >
@@ -23,7 +23,7 @@ export function LangToggle({ className = '' }: { className?: string }) {
         type="button"
         onClick={() => setLocale('en')}
         aria-pressed={locale === 'en'}
-        className={`min-h-[36px] min-w-[40px] rounded-md px-2 text-xs font-semibold ${
+        className={`min-h-[44px] min-w-[44px] rounded-md px-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
           locale === 'en' ? 'bg-accent text-on-accent' : 'text-muted'
         }`}
       >

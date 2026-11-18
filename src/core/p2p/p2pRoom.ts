@@ -2,23 +2,30 @@ import { joinRoom, type Room, type RoomErrorCode, type Unsubscribe } from 'tryst
 import {
   generateSigningIdentity,
   importVerifyKey,
+  signDirectMessage,
   signForumEvent,
+  verifyDirectMessage,
   verifyForumEvent,
   type SigningIdentity,
 } from '../crypto/messageSigning';
 import {
   APP_ID,
+  MAX_DM_BODY_CHARS,
   MAX_PUBLISH_PER_MINUTE,
   MAX_SYNC_ANSWERS_PER_MINUTE,
   MAX_SYNC_MESSAGES,
+  MAX_SYNC_TOTAL_BYTES,
   MAX_USERS,
   PROTOCOL_VERSION,
+  isValidDirectMessage,
   isValidForumEvent,
   isValidPresenceState,
+  type DirectMessage,
   type ForumEvent,
   type PresenceState,
 } from '../protocol';
 import { PeerRateLimiter } from './rateLimit';
+import { TrustStore, type TrustLevel } from '../trust/trustStore';
 
 export type P2pRoomErrorCode = RoomErrorCode | 'publish-rate' | 'unknown';
 
@@ -35,6 +42,7 @@ export class P2pActionError extends Error {
 export interface JoinedP2pRoom {
   selfUserId: string;
   signPubKeySpkiB64: string;
+  trustStore: TrustStore;
   leave: () => Promise<void>;
   setPresenceAlias: (alias: string) => Promise<void>;
   publishEvent: (partial: {
@@ -46,6 +54,7 @@ export interface JoinedP2pRoom {
     body: string;
     createdAtMs: number;
   }) => Promise<void>;
+  sendDirectMessage: (toUserId: string, body: string) => Promise<DirectMessage>;
   requestSyncFromPeers: () => Promise<number>;
   getPresenceMap: () => Record<string, PresenceState>;
   getOnlineUserIds: () => string[];
@@ -59,7 +68,13 @@ export interface JoinP2pRoomOptions {
   onPresenceChange: (userId: string, state: PresenceState | null, removed: boolean) => void;
   onPeerPresence: (onlineUserIds: string[]) => void;
   onUserJoined?: (userId: string) => void;
+  onKeyChange?: (userId: string, level: TrustLevel) => void;
+  onDirectMessage?: (dm: DirectMessage) => void;
   onError: (code: P2pRoomErrorCode, message: string) => void;
+  /** Optional TURN/STUN config to pass to Trystero. */
+  rtcConfig?: RTCConfiguration;
+  /** If true, set iceTransportPolicy: 'relay' to force TURN-only. */
+  relayOnly?: boolean;
 }
 
 function emptyPresence(): PresenceState {
@@ -73,13 +88,26 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const rateLimiter = new PeerRateLimiter();
   const syncAnswerLimiter = new PeerRateLimiter();
   const localMessages = new Map<string, ForumEvent>();
+  const trustStore = new TrustStore();
   const unsubs: Unsubscribe[] = [];
   let rejectedSyncCount = 0;
   let left = false;
+  let pruneTimer: ReturnType<typeof setInterval> | null = null;
+
+  pruneTimer = setInterval(() => {
+    rateLimiter.pruneStale();
+    syncAnswerLimiter.pruneStale();
+  }, 5 * 60_000);
 
   const cachePubKey = async (userId: string, spkiB64: string): Promise<CryptoKey | null> => {
     if (!userId || !spkiB64 || spkiB64.length < 32) return null;
     knownPubKeys.set(userId, spkiB64);
+
+    const trustLevel = trustStore.observe(userId, spkiB64);
+    if (trustLevel === 'changed') {
+      options.onKeyChange?.(userId, trustLevel);
+    }
+
     const existing = verifyKeyCache.get(userId);
     if (existing) return existing;
     try {
@@ -101,12 +129,17 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
 
   let room: Room;
   try {
+    const rtcConfig: RTCConfiguration = {
+      ...options.rtcConfig,
+      ...(options.relayOnly ? { iceTransportPolicy: 'relay' as const } : {}),
+    };
     room = joinRoom(
       {
         appId: APP_ID,
         password: options.password.trim(),
         identity: 'none',
         maxUsers: MAX_USERS,
+        ...(Object.keys(rtcConfig).length > 0 ? { rtcConfig } : {}),
       },
       options.roomId.trim()
     );
@@ -123,6 +156,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   await cachePubKey(self.userId, signing.publicKeySpkiB64);
 
   const forumMsg = room.makeAction<ForumEvent>('forumMsg');
+  const directMsg = room.makeAction<DirectMessage>('directMsg');
   const forumSync = room.makeAction<{ want: string }, ForumEvent[]>('forumSync', {
     kind: 'request',
   });
@@ -139,7 +173,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     event: ForumEvent,
     opts: { liveUserId: string | null; source: 'live' | 'sync' }
   ): Promise<boolean> => {
-    if (!isValidForumEvent(event, { requireFreshClock: opts.source === 'live' })) {
+    if (!isValidForumEvent(event, { clockSource: opts.source })) {
       if (opts.source === 'sync') rejectedSyncCount += 1;
       return false;
     }
@@ -176,6 +210,22 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     forumMsg.onMessage((data, { userId }) => {
       if (left) return;
       void ingestSigned(data, { liveUserId: userId, source: 'live' });
+    })
+  );
+
+  unsubs.push(
+    directMsg.onMessage((data, { userId }) => {
+      if (left) return;
+      if (!isValidDirectMessage(data)) return;
+      if (data.fromUserId !== userId) return;
+      if (data.toUserId !== self.userId) return;
+      void (async () => {
+        const verifyKey = await getVerifyKey(userId);
+        if (!verifyKey) return;
+        const ok = await verifyDirectMessage(data, verifyKey);
+        if (!ok) return;
+        options.onDirectMessage?.(data);
+      })();
     })
   );
 
@@ -236,11 +286,14 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   return {
     selfUserId: self.userId,
     signPubKeySpkiB64: signing.publicKeySpkiB64,
+    trustStore,
     leave: async () => {
       if (left) return;
       left = true;
+      if (pruneTimer) clearInterval(pruneTimer);
       rateLimiter.clear();
       syncAnswerLimiter.clear();
+      trustStore.clear();
       for (const u of unsubs) {
         try {
           u();
@@ -290,6 +343,24 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       options.onForumMessage(signed);
       await forumMsg.send(signed);
     },
+    sendDirectMessage: async (toUserId: string, body: string): Promise<DirectMessage> => {
+      if (left) throw new P2pActionError('unknown', 'P2P session already closed');
+      const trimmed = body.slice(0, MAX_DM_BODY_CHARS);
+      if (!trimmed.trim()) throw new P2pActionError('unknown', 'Empty DM body');
+
+      const unsigned: Omit<DirectMessage, 'sig'> = {
+        protocolVersion: PROTOCOL_VERSION,
+        msgId: crypto.randomUUID(),
+        fromUserId: self.userId,
+        toUserId,
+        body: trimmed,
+        createdAtMs: Date.now(),
+      };
+
+      const signed = await signDirectMessage(unsigned, signing.keyPair.privateKey);
+      await directMsg.send(signed, { target: toUserId });
+      return signed;
+    },
     requestSyncFromPeers: async () => {
       if (left) return 0;
       const targets = Object.keys(room.getUsers()).filter((id) => id !== self.userId);
@@ -303,6 +374,11 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         let added = 0;
         for (const res of results) {
           if (res.status !== 'fulfilled' || !Array.isArray(res.value)) continue;
+          const raw = JSON.stringify(res.value);
+          if (new TextEncoder().encode(raw).byteLength > MAX_SYNC_TOTAL_BYTES) {
+            rejectedSyncCount += 1;
+            continue;
+          }
           const capped = res.value.slice(0, MAX_SYNC_MESSAGES);
           for (const item of capped) {
             const ok = await ingestSigned(item, { liveUserId: null, source: 'sync' });

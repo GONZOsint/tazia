@@ -13,7 +13,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       onClick={toggleTheme}
       aria-label={t('themeToggleAria')}
       title={isDark ? t('themeLight') : t('themeDark')}
-      className={`inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-surface text-ink hover:bg-surface-raised ${className}`}
+      className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-surface text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`}
     >
       {isDark ? (
         <Sun className="h-4 w-4" aria-hidden="true" />

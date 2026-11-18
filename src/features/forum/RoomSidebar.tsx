@@ -110,7 +110,7 @@ export function RoomSidebar({
             type="button"
             onClick={onSyncNow}
             disabled={isSyncing || isBusy}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
           >
             <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
             {t('sidebarRefresh')}
@@ -128,14 +128,24 @@ export function RoomSidebar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t('sidebarSearch')}
-            className="w-full min-h-[44px] rounded-lg border border-border bg-bg py-2 pr-3 pl-9 text-sm"
+            className="w-full min-h-[44px] rounded-lg border border-border bg-bg py-2 pr-8 pl-9 text-[16px] focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-full text-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              aria-label="Clear"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          )}
         </div>
         <button
           type="button"
           onClick={onStartCompose}
           disabled={isBusy}
-          className="mt-3 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-on-accent disabled:opacity-50"
+          className="mt-3 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden="true" />
           {t('sidebarNewThread')}
@@ -161,7 +171,7 @@ export function RoomSidebar({
                 >
                   <span className="line-clamp-2 font-medium">{thread.title}</span>
                   <span
-                    className={`mt-1 block text-[11px] ${active ? 'text-faint' : 'text-muted'}`}
+                    className={`mt-1 block text-[11px] ${active ? 'text-on-accent/70' : 'text-muted'}`}
                   >
                     {replyLabel}
                   </span>

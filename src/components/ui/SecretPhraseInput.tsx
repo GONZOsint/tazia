@@ -39,7 +39,7 @@ export function SecretPhraseInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="min-h-[44px] w-full rounded-lg border border-border bg-bg pr-12 pl-10 py-2.5 text-sm text-ink transition-colors focus:border-ink focus:bg-surface-raised focus:outline-none"
+        className="min-h-[44px] w-full rounded-xl border border-border bg-bg pr-12 pl-10 py-2.5 text-[16px] text-ink transition-colors focus:border-ink focus:bg-surface-raised focus:outline-none focus:ring-1 focus:ring-accent/30"
       />
       <button
         type="button"

@@ -34,9 +34,9 @@ export function TopBar({
           onClick={() => onSelectTab(hasActiveRoom ? 'forum' : 'rooms')}
           className="flex shrink-0 items-center gap-2 rounded-md py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          <TaziaLogo size={32} />
+          <TaziaLogo size={44} />
           <span className="min-w-0">
-            <span className="font-display text-lg font-bold tracking-tight text-ink">
+            <span className="font-display text-xl font-bold tracking-tight text-ink">
               {t('brand')}
             </span>
             <span className="mt-0.5 hidden text-[10px] font-medium text-muted sm:block">
@@ -57,7 +57,7 @@ export function TopBar({
                 type="button"
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => onSelectTab(id)}
-                className={`relative inline-flex h-full items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
+                className={`relative inline-flex h-full items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
                   isActive ? 'font-semibold text-ink' : 'text-muted hover:text-ink'
                 }`}
               >

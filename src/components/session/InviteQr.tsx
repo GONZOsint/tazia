@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { QrCode } from 'lucide-react';
 import { useT } from '../../i18n';
+import { useTheme } from '../../theme';
 
 interface InviteQrProps {
   inviteUrl: string;
@@ -11,16 +12,19 @@ interface InviteQrProps {
 
 export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: InviteQrProps) {
   const t = useT();
+  const { theme } = useTheme();
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setError(false);
+    const dark = theme === 'dark' ? '#e8e8e4' : '#0a0a0a';
+    const light = theme === 'dark' ? '#1a1a1a' : '#ffffff';
     void QRCode.toDataURL(inviteUrl, {
       width: size,
       margin: 1,
-      color: { dark: '#0f172a', light: '#ffffff' },
+      color: { dark, light },
     })
       .then((url) => {
         if (!cancelled) setDataUrl(url);
@@ -34,7 +38,7 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
     return () => {
       cancelled = true;
     };
-  }, [inviteUrl, size]);
+  }, [inviteUrl, size, theme]);
 
   if (error) {
     return <p className="text-center text-xs text-danger-ink">{t('qrError')}</p>;

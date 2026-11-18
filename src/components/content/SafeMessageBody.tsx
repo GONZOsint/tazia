@@ -36,7 +36,7 @@ export function SafeMessageBody({ text }: SafeMessageBodyProps) {
                             text={part}
                             label={t('copyDefault')}
                             copiedLabel={t('copiedDefault')}
-                            className="min-h-[28px] rounded bg-surface-raised px-2 py-0.5 font-sans text-[11px] font-medium text-muted shadow-2xs hover:bg-surface"
+                            className="min-h-[36px] rounded bg-surface-raised px-2 py-0.5 font-sans text-[11px] font-medium text-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
                           />
                         </span>
                       );

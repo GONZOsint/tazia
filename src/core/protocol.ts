@@ -46,10 +46,52 @@ export const MAX_SYNC_MESSAGES = 500;
 export const MAX_PUBLISH_PER_MINUTE = 30;
 /** Respuestas sync por peer y minuto (anti-abuso blando). */
 export const MAX_SYNC_ANSWERS_PER_MINUTE = 12;
-/** Ventana de reloj aceptada (±) para anti-spam básico. */
-export const CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
+/** Ventana de reloj para mensajes en vivo (±5 min). */
+export const LIVE_CLOCK_SKEW_MS = 5 * 60 * 1000;
+/** Ventana de reloj para mensajes de sync histórico (±24 h). */
+export const SYNC_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
+/** Max bytes totals aceptados en una respuesta de sync (2 MB). */
+export const MAX_SYNC_TOTAL_BYTES = 2 * 1024 * 1024;
 
 export type MeshStatus = 'connecting' | 'alone' | 'mesh' | 'syncing';
+
+/** Direct message between two peers (not broadcast to the room). */
+export interface DirectMessage {
+  protocolVersion: typeof PROTOCOL_VERSION;
+  msgId: string;
+  fromUserId: string;
+  toUserId: string;
+  body: string;
+  createdAtMs: number;
+  /** Ed25519 signature over canonical DM payload. */
+  sig: string;
+}
+
+export const MAX_DM_BODY_CHARS = 4000;
+
+export function canonicalDmPayload(dm: Omit<DirectMessage, 'sig'>): string {
+  return JSON.stringify([
+    dm.protocolVersion,
+    dm.msgId,
+    dm.fromUserId,
+    dm.toUserId,
+    dm.body,
+    dm.createdAtMs,
+  ]);
+}
+
+export function isValidDirectMessage(value: unknown): value is DirectMessage {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (v.protocolVersion !== PROTOCOL_VERSION) return false;
+  if (typeof v.msgId !== 'string' || v.msgId.length < 8 || v.msgId.length > 80) return false;
+  if (typeof v.fromUserId !== 'string' || v.fromUserId.length < 4 || v.fromUserId.length > MAX_USER_ID_CHARS) return false;
+  if (typeof v.toUserId !== 'string' || v.toUserId.length < 4 || v.toUserId.length > MAX_USER_ID_CHARS) return false;
+  if (typeof v.body !== 'string' || v.body.length === 0 || v.body.length > MAX_DM_BODY_CHARS) return false;
+  if (typeof v.createdAtMs !== 'number' || !Number.isFinite(v.createdAtMs)) return false;
+  if (typeof v.sig !== 'string' || v.sig.length < 16 || v.sig.length > MAX_SIG_B64_CHARS) return false;
+  return true;
+}
 
 /** Campos firmados en orden canónico (sin `sig`). */
 export function canonicalForumPayload(event: Omit<ForumEvent, 'sig'>): string {
@@ -68,15 +110,17 @@ export function canonicalForumPayload(event: Omit<ForumEvent, 'sig'>): string {
 
 export function isValidForumEvent(
   value: unknown,
-  opts?: { nowMs?: number; requireFreshClock?: boolean }
+  opts?: { nowMs?: number; requireFreshClock?: boolean; clockSource?: 'live' | 'sync' }
 ): value is ForumEvent {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
   if (v.protocolVersion !== PROTOCOL_VERSION) return false;
   if (typeof v.msgId !== 'string' || v.msgId.length < 8 || v.msgId.length > 80) return false;
   if (v.type !== 'NEW_THREAD' && v.type !== 'REPLY') return false;
-  if (typeof v.threadId !== 'string' || !v.threadId) return false;
-  if (!(v.parentMsgId === null || typeof v.parentMsgId === 'string')) return false;
+  if (typeof v.threadId !== 'string' || !v.threadId || v.threadId.length > 80) return false;
+  if (v.parentMsgId !== null && (typeof v.parentMsgId !== 'string' || v.parentMsgId.length > 80)) {
+    return false;
+  }
   if (typeof v.title !== 'string' || v.title.length > MAX_TITLE_CHARS) return false;
   if (typeof v.body !== 'string' || v.body.length === 0 || v.body.length > MAX_BODY_CHARS) {
     return false;
@@ -95,7 +139,8 @@ export function isValidForumEvent(
 
   if (opts?.requireFreshClock !== false) {
     const now = opts?.nowMs ?? Date.now();
-    if (Math.abs(now - v.createdAtMs) > CLOCK_SKEW_MS) return false;
+    const skew = opts?.clockSource === 'sync' ? SYNC_CLOCK_SKEW_MS : LIVE_CLOCK_SKEW_MS;
+    if (Math.abs(now - v.createdAtMs) > skew) return false;
   }
   return true;
 }

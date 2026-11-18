@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useT } from '../../i18n';
@@ -10,6 +11,21 @@ interface IpConsentModalProps {
 
 export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps) {
   const t = useT();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open, onCancel]);
+
+  useEffect(() => {
+    if (open) dialogRef.current?.focus();
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -19,6 +35,8 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
       role="dialog"
       aria-modal="true"
       aria-labelledby="ip-consent-title"
+      ref={dialogRef}
+      tabIndex={-1}
     >
       <motion.div
         initial={{ opacity: 0, y: 12 }}

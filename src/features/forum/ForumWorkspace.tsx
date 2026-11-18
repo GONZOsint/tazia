@@ -124,7 +124,7 @@ export function ForumWorkspace({
   };
 
   return (
-    <main className="mx-auto max-w-[1280px] px-4 py-6 sm:px-8 sm:py-8">
+    <main className="card-container mx-auto max-w-[1280px] px-4 py-6 sm:px-8 sm:py-8">
       <div className="mb-4 flex items-center justify-between gap-3 lg:hidden">
         <button
           type="button"
@@ -238,3 +238,5 @@ export function ForumWorkspace({
     </main>
   );
 }
+
+export default ForumWorkspace;

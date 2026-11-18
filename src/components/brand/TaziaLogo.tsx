@@ -1,18 +1,12 @@
-import { useTheme } from '../../theme';
-
 interface TaziaLogoProps {
   className?: string;
   size?: number;
 }
 
-export function TaziaLogo({ className = '', size = 36 }: TaziaLogoProps) {
-  const { theme } = useTheme();
+export function TaziaLogo({ className = '', size = 40 }: TaziaLogoProps) {
   const base = import.meta.env.BASE_URL;
-  const src =
-    theme === 'dark'
-      ? `${base}brand/tazia-logo-dark.jpg`
-      : `${base}brand/tazia-logo-light.jpg`;
-
+  // Dark mark keeps contrast on light and dark chrome; light JPG washes out on white.
+  const src = `${base}brand/tazia-logo-dark.jpg`;
 
   return (
     <img
@@ -20,7 +14,7 @@ export function TaziaLogo({ className = '', size = 36 }: TaziaLogoProps) {
       alt="TAZIA"
       width={size}
       height={size}
-      className={`rounded-md object-contain ${className}`}
+      className={`rounded-lg object-cover ring-1 ring-border shadow-sm ${className}`}
       decoding="async"
     />
   );

@@ -16,6 +16,8 @@ import {
 } from '../core/protocol';
 import { acceptIpConsent, hasIpConsent } from '../core/utils/ipConsent';
 import { mapRoomError, type SessionError } from './sessionErrors';
+import type { TrustStore, TrustLevel } from '../core/trust/trustStore';
+import { loadTurnConfig } from '../features/rooms/TurnRelaySettings';
 
 export type { SessionError } from './sessionErrors';
 
@@ -41,6 +43,7 @@ export function useTaziaSession(onNavigateTab: (tab: 'forum' | 'rooms' | 'presen
   const [isSyncing, setIsSyncing] = useState(false);
   const [rejectedSyncCount, setRejectedSyncCount] = useState(0);
   const [ipConsentNeeded, setIpConsentNeeded] = useState(false);
+  const [keyChangeAlerts, setKeyChangeAlerts] = useState<Array<{ userId: string; level: TrustLevel }>>([]);
   const pendingJoinRef = useRef<RoomJoinParams | null>(null);
 
   const joinedRef = useRef<JoinedP2pRoom | null>(null);
@@ -133,9 +136,21 @@ export function useTaziaSession(onNavigateTab: (tab: 'forum' | 'rooms' | 'presen
           setJoined(null);
         }
 
+        const turn = loadTurnConfig();
+        const rtcConfig: RTCConfiguration | undefined = turn.enabled && turn.url
+          ? {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: turn.url, username: turn.username, credential: turn.credential },
+              ],
+            }
+          : undefined;
+
         const session = await joinP2pRoom({
           roomId: roomIdTrim,
           password: phraseTrim,
+          rtcConfig,
+          relayOnly: turn.enabled && !!turn.url,
           onForumMessage: (message) => {
             if (joinGenerationRef.current !== generation) return;
             upsertMessage(message);
@@ -156,6 +171,10 @@ export function useTaziaSession(onNavigateTab: (tab: 'forum' | 'rooms' | 'presen
           onUserJoined: () => {
             if (joinGenerationRef.current !== generation) return;
             void runSync();
+          },
+          onKeyChange: (userId, level) => {
+            if (joinGenerationRef.current !== generation) return;
+            setKeyChangeAlerts((prev) => [...prev, { userId, level }]);
           },
           onError: (code) => {
             if (joinGenerationRef.current !== generation) return;
@@ -326,12 +345,22 @@ export function useTaziaSession(onNavigateTab: (tab: 'forum' | 'rooms' | 'presen
     return 'mesh';
   }, [isJoining, joined, isSyncing, onlineUserIds.length]);
 
+  const dismissKeyChange = useCallback((userId: string) => {
+    setKeyChangeAlerts((prev) => prev.filter((a) => a.userId !== userId));
+  }, []);
+
+  const trustStoreRef = joined?.trustStore ?? null;
+
   return {
     isInRoom: joined !== null,
     roomId,
     phrase,
     profile,
     selfUserId: joined?.selfUserId ?? null,
+    selfSignPubKeyB64: joined?.signPubKeySpkiB64 ?? null,
+    trustStore: trustStoreRef,
+    keyChangeAlerts,
+    dismissKeyChange,
     isJoining,
     joinError,
     roomError,

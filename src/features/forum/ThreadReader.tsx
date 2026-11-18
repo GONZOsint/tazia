@@ -64,7 +64,7 @@ function PostCard({
         <button
           type="button"
           onClick={onReply}
-          className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted"
+          className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
         >
           <CornerDownRight className="h-3 w-3" aria-hidden="true" />
           {replyLabel}
@@ -174,13 +174,13 @@ export function ThreadReader({
           onChange={(e) => setReplyBody(e.target.value)}
           rows={3}
           placeholder={t('composerAs', { alias: identity.alias })}
-          className="w-full rounded-xl border border-border px-3 py-2.5 text-sm"
+          className="w-full rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
           required
         />
         <button
           type="submit"
           disabled={!replyBody.trim() || isBusy}
-          className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-on-accent disabled:opacity-50"
+          className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isBusy ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

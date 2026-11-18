@@ -50,7 +50,7 @@ export function ThreadComposer({
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted"
+          className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
           {t('composerCancel')}
@@ -67,7 +67,7 @@ export function ThreadComposer({
             value={title}
             maxLength={MAX_TITLE_CHARS}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-2 w-full min-h-[44px] rounded-xl border border-border px-3 py-2.5 text-sm"
+            className="mt-2 w-full min-h-[44px] rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
             required
           />
         </div>
@@ -81,14 +81,14 @@ export function ThreadComposer({
             maxLength={MAX_BODY_CHARS}
             onChange={(e) => setBody(e.target.value)}
             rows={6}
-            className="mt-2 w-full rounded-xl border border-border px-3 py-2.5 text-sm"
+            className="mt-2 w-full rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[16px] text-ink focus:border-ink focus:outline-none focus:ring-1 focus:ring-accent/30"
             required
           />
         </div>
         <button
           type="submit"
           disabled={overLimit || isBusy}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isBusy ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
