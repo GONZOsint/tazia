@@ -26,14 +26,14 @@ Tenéis que estar **online a la vez**. No hay buzón asíncrono.
 - Confianza TOFU + códigos de 4 emojis (Presentes)
 - TURN opcional autoalojado (rescate ICE / ocultar IP) — [`TURN.md`](TURN.md)
 
-### ICE failed / CGNAT
+### ICE failed / CGNAT / misma Wi‑Fi en Pages
 
 Si Firefox muestra `WebRTC: ICE failed, add a TURN server`, STUN no puede atravesar tu NAT (habitual con CGNAT residencial). Opciones:
 
-1. Misma **Wi‑Fi**, o
+1. Misma **Wi‑Fi** (candidatos host/mDNS) — en Pages, permite **Red local** si Chrome lo pide; sin aislamiento de AP; **Forzar relay** apagado.
 2. Tu propio **coturn** y activar TURN en Salas (ambos peers).
 
-GitHub Pages no puede hospedar TURN. Detalle: [`TURN.md`](TURN.md).
+Helpers en JS: `iceCandidatePoolSize`, `turnConfig` de Trystero, trickle ICE, priming LNA al unirse. Pages sigue sin poder hospedar TURN. Detalle: [`TURN.md`](TURN.md).
 
 ## Desarrollo
 

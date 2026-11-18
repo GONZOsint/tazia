@@ -23,12 +23,6 @@ const DEFAULT: TurnConfig = {
   credential: '',
 };
 
-export const DEFAULT_STUN_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun.cloudflare.com:3478' },
-];
-
 export function loadTurnConfig(): TurnConfig {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -39,22 +33,36 @@ export function loadTurnConfig(): TurnConfig {
   }
 }
 
-/** Build rtcConfig for joinP2pRoom from saved TURN settings. */
+/**
+ * Build Trystero ICE options.
+ * Omit iceServers so Trystero keeps its default STUN list and merges turnConfig.
+ * iceCandidatePoolSize warms gathering while signaling runs (faster LAN/WAN join).
+ * iceTransportPolicy stays 'all' unless force-relay — required for same-LAN host candidates on Pages.
+ */
 export function buildRtcConfig(turn: TurnConfig = loadTurnConfig()): {
   rtcConfig: RTCConfiguration;
+  turnConfig?: RTCIceServer[];
   relayOnly: boolean;
 } {
-  const iceServers: RTCIceServer[] = [...DEFAULT_STUN_SERVERS];
-  if (turn.enabled && turn.url.trim()) {
-    iceServers.push({
-      urls: turn.url.trim(),
-      username: turn.username || undefined,
-      credential: turn.credential || undefined,
-    });
-  }
+  const hasTurn = turn.enabled && !!turn.url.trim();
+  const relayOnly = hasTurn && turn.relayOnly;
+  const turnConfig: RTCIceServer[] | undefined = hasTurn
+    ? [
+        {
+          urls: turn.url.trim(),
+          username: turn.username || undefined,
+          credential: turn.credential || undefined,
+        },
+      ]
+    : undefined;
+
   return {
-    rtcConfig: { iceServers },
-    relayOnly: turn.enabled && turn.relayOnly && !!turn.url.trim(),
+    rtcConfig: {
+      iceCandidatePoolSize: 10,
+      iceTransportPolicy: relayOnly ? 'relay' : 'all',
+    },
+    turnConfig,
+    relayOnly,
   };
 }
 

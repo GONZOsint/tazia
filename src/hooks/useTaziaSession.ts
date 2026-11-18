@@ -15,9 +15,10 @@ import {
   type PresenceState,
 } from '../core/protocol';
 import { acceptIpConsent, hasIpConsent } from '../core/utils/ipConsent';
-import { mapRoomError, type SessionError } from './sessionErrors';
+import { mapRoomError, mapRoomErrorAsync, type SessionError } from './sessionErrors';
 import type { TrustStore, TrustLevel } from '../core/trust/trustStore';
 import { buildRtcConfig } from '../features/rooms/TurnRelaySettings';
+import { primeLocalNetworkAccess } from '../core/p2p/localNetworkAccess';
 
 export type { SessionError } from './sessionErrors';
 
@@ -136,12 +137,14 @@ export function useTaziaSession(onNavigateTab: (tab: 'forum' | 'rooms' | 'presen
           setJoined(null);
         }
 
-        const { rtcConfig, relayOnly } = buildRtcConfig();
+        const { rtcConfig, turnConfig, relayOnly } = buildRtcConfig();
+        await primeLocalNetworkAccess();
 
         const session = await joinP2pRoom({
           roomId: roomIdTrim,
           password: phraseTrim,
           rtcConfig,
+          turnConfig,
           relayOnly,
           onForumMessage: (message) => {
             if (joinGenerationRef.current !== generation) return;
@@ -170,10 +173,12 @@ export function useTaziaSession(onNavigateTab: (tab: 'forum' | 'rooms' | 'presen
           },
           onError: (code) => {
             if (joinGenerationRef.current !== generation) return;
-            const key = mapRoomError(code);
-            setRoomError({
-              key,
-              vars: key === 'errGeneric' ? { code } : undefined,
+            void mapRoomErrorAsync(code).then((key) => {
+              if (joinGenerationRef.current !== generation) return;
+              setRoomError({
+                key,
+                vars: key === 'errGeneric' ? { code } : undefined,
+              });
             });
           },
         });

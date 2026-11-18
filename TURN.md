@@ -64,15 +64,24 @@ Or visit `chrome://webrtc-internals/` and confirm all candidates are type `relay
 
 Symptom: `WebRTC: ICE failed, add a TURN server and see about:webrtc`
 
-1. Confirm both peers are **not** on the same LAN (same Wi‑Fi often works without TURN).
-2. Open `about:webrtc` (Firefox) or `chrome://webrtc-internals` — look for missing `relay` candidates.
-3. In TAZIA → **Rooms** → expand **TURN (connection help)** (auto-opens after peer-connect errors).
-4. Enable **Use TURN as fallback**, enter your coturn URL/user/password.
-5. **Both** peers must use the same TURN settings, then rejoin.
-6. Do **not** enable **Force relay only** until TURN is confirmed working.
-7. Windows firewall: Private network + inbound Allow for `firefox.exe` (UDP) is enough for direct P2P; TURN only needs outbound to your server.
+### Same Wi‑Fi (should work without TURN)
 
-References: [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) (CGNAT), [arXiv:2510.27500](https://arxiv.org/html/2510.27500) (NAT traversal baselines).
+1. Both peers open the **same** Pages URL and join with the **same** phrase.
+2. Chrome/Edge: if prompted, **Allow Local network** (public origin → LAN). If previously denied: site settings → Local network → Allow, then rejoin.
+3. Router: disable **AP / client isolation** / “guest Wi‑Fi” that blocks peer-to-peer.
+4. Leave **Force relay only** unchecked (relay-only drops host candidates).
+5. Check `chrome://webrtc-internals` / `about:webrtc` for `host` or `*.local` candidates.
+
+### Different networks / CGNAT
+
+1. Open `about:webrtc` (Firefox) or `chrome://webrtc-internals` — look for missing `relay` candidates.
+2. In TAZIA → **Rooms** → expand **TURN (connection help)** (auto-opens after peer-connect errors).
+3. Enable **Use TURN as fallback**, enter your coturn URL/user/password.
+4. **Both** peers must use the same TURN settings, then rejoin.
+5. Do **not** enable **Force relay only** until TURN is confirmed working.
+6. Windows firewall: Private network + inbound Allow for the browser (UDP) helps direct P2P; TURN only needs outbound to your server.
+
+References: [Chrome LNA](https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access), [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) (CGNAT), [arXiv:2510.27500](https://arxiv.org/html/2510.27500) (NAT traversal baselines).
 
 ## Security Notes
 

@@ -26,14 +26,14 @@ You must be **online at the same time**. No async mailbox.
 - TOFU trust + 4-emoji safety codes (Presence)
 - Optional self-hosted TURN (ICE fallback / hide IP) — see [`TURN.md`](TURN.md)
 
-### ICE failed / CGNAT
+### ICE failed / CGNAT / same Wi‑Fi on Pages
 
 If Firefox shows `WebRTC: ICE failed, add a TURN server`, STUN alone cannot punch through your NAT (common on residential CGNAT). Options:
 
-1. Meet on the **same Wi‑Fi** (host candidates), or
+1. Meet on the **same Wi‑Fi** (host / mDNS candidates) — on GitHub Pages, allow **Local network** if Chrome asks; disable AP/client isolation; leave **Force relay** off.
 2. Run your own **coturn** and enable TURN under Rooms (both peers need it).
 
-GitHub Pages cannot host TURN. Details: [`TURN.md`](TURN.md).
+JS-side helpers we ship: `iceCandidatePoolSize`, Trystero `turnConfig` (defaults STUN kept), trickle ICE, LNA priming before join. Pages still cannot host TURN. Details: [`TURN.md`](TURN.md).
 
 ## Development
 

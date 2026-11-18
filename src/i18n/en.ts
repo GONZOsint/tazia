@@ -165,8 +165,11 @@ export const en = {
   errDecrypt: 'The phrase does not match the room. Check it with the group.',
   errRoomFull: 'The room is full.',
   errPeerConnect:
-    'No WebRTC path (ICE failed). Common behind CGNAT. Try the same Wi‑Fi, or enable TURN under Rooms. Details: about:webrtc',
-  errIceHint: 'No P2P path. Configure your own TURN below, or meet on the same network.',
+    'No WebRTC path (ICE failed). Same Wi‑Fi: allow Local network if Chrome asks, disable AP/client isolation, leave Force relay off. Else CGNAT → TURN under Rooms. Details: about:webrtc',
+  errIceHint:
+    'No P2P path. Same LAN needs Local network allowed + no AP isolation. Otherwise configure your own TURN below.',
+  errLocalNetworkDenied:
+    'This browser blocked Local network access. In site settings, allow Local network, then rejoin — needed for same-Wi‑Fi peers on GitHub Pages.',
   errRelay: 'Could not reach discovery helpers. Try again in a few seconds.',
   errPublishRate: 'Too many messages in a short time. Wait a moment.',
   errPublish: 'Could not publish.',
@@ -220,7 +223,7 @@ export const en = {
 
   turnRelayTitle: 'TURN (connection help)',
   turnRelayHint:
-    'If peers cannot connect (ICE failed), add your own TURN server. STUN alone often fails behind CGNAT.',
+    'Same Wi‑Fi usually needs no TURN (allow Local network; avoid AP isolation). Across NATs/CGNAT, add your own TURN — STUN alone often fails.',
   turnRelayEnabled: 'Use TURN as fallback',
   turnForceRelay: 'Force relay only (hide my IP)',
   turnForceRelayHint:

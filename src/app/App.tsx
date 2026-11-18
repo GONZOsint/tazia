@@ -87,7 +87,10 @@ export default function App() {
   const joinErrorMsg = joinError ? t(joinError.key, joinError.vars) : null;
   const roomErrorMsg = roomError ? t(roomError.key, roomError.vars) : null;
   const iceFailed =
-    joinError?.key === 'errPeerConnect' || roomError?.key === 'errPeerConnect';
+    joinError?.key === 'errPeerConnect' ||
+    joinError?.key === 'errLocalNetworkDenied' ||
+    roomError?.key === 'errPeerConnect' ||
+    roomError?.key === 'errLocalNetworkDenied';
   const mainRef = useRef<HTMLDivElement>(null);
 
   const TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const;

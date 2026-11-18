@@ -71,8 +71,10 @@ export interface JoinP2pRoomOptions {
   onKeyChange?: (userId: string, level: TrustLevel) => void;
   onDirectMessage?: (dm: DirectMessage) => void;
   onError: (code: P2pRoomErrorCode, message: string) => void;
-  /** Optional TURN/STUN config to pass to Trystero. */
+  /** Optional RTCConfiguration (pool size, transport policy). Prefer turnConfig for TURN URLs. */
   rtcConfig?: RTCConfiguration;
+  /** TURN servers merged by Trystero after default STUN (see peer.mjs iceServers). */
+  turnConfig?: RTCIceServer[];
   /** If true, set iceTransportPolicy: 'relay' to force TURN-only. */
   relayOnly?: boolean;
 }
@@ -130,6 +132,8 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   let room: Room;
   try {
     const rtcConfig: RTCConfiguration = {
+      iceCandidatePoolSize: 10,
+      iceTransportPolicy: options.relayOnly ? 'relay' : 'all',
       ...options.rtcConfig,
       ...(options.relayOnly ? { iceTransportPolicy: 'relay' as const } : {}),
     };
@@ -139,7 +143,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         password: options.password.trim(),
         identity: 'none',
         maxUsers: MAX_USERS,
-        ...(Object.keys(rtcConfig).length > 0 ? { rtcConfig } : {}),
+        trickleIce: true,
+        rtcConfig,
+        ...(options.turnConfig?.length ? { turnConfig: options.turnConfig } : {}),
       },
       options.roomId.trim()
     );

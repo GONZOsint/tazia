@@ -51,7 +51,9 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' wss:; worker-src 'self' blob:;
 Referrer-Policy: no-referrer
 X-Content-Type-Options: nosniff
-Permissions-Policy: camera=(self), microphone=(), geolocation=()
+Permissions-Policy: camera=(self), microphone=(), geolocation=(), local-network=(self), loopback-network=(self)
 ```
 
 Los relés Nostr de Trystero usan `wss:`; no hace falta `https:` en `connect-src` para el mesh.
+
+**Misma LAN desde GitHub Pages:** el origen es público (`https://…github.io`), así que Chrome puede pedir permiso **Red local** (`local-network`) para candidatos host/mDNS. TAZIA hace priming ICE al unirse y deja `iceTransportPolicy: 'all'` salvo force-relay. Aislamiento de AP/clientes o LNA denegado bloquean LAN aunque no haga falta TURN.

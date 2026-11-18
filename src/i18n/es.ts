@@ -167,8 +167,11 @@ export const es: Messages = {
   errDecrypt: 'La frase no coincide con la sala. Compruébala con el grupo.',
   errRoomFull: 'La sala está llena.',
   errPeerConnect:
-    'No hay ruta WebRTC (ICE failed). Suele pasar con CGNAT. Prueba la misma Wi‑Fi, o activa TURN en Salas. Detalle: about:webrtc',
-  errIceHint: 'Sin conexión P2P. Configura un TURN propio abajo o reuníos en la misma red.',
+    'No hay ruta WebRTC (ICE failed). Misma Wi‑Fi: permite Red local si Chrome lo pide, desactiva aislamiento de AP/clientes, deja Forzar relay apagado. Si no, CGNAT → TURN en Salas. Detalle: about:webrtc',
+  errIceHint:
+    'Sin conexión P2P. En LAN hace falta Red local permitida y sin aislamiento de AP. Si no, configura un TURN propio abajo.',
+  errLocalNetworkDenied:
+    'Este navegador bloqueó el acceso a la red local. En ajustes del sitio permite Red local y vuelve a unirte — hace falta para peers en la misma Wi‑Fi desde GitHub Pages.',
   errRelay: 'No se pudo contactar con los servicios de encuentro. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes en poco tiempo. Espera un momento.',
   errPublish: 'No se pudo publicar.',
@@ -222,7 +225,7 @@ export const es: Messages = {
 
   turnRelayTitle: 'TURN (ayuda de conexión)',
   turnRelayHint:
-    'Si no conectáis (ICE failed), añade tu propio servidor TURN. Solo STUN suele fallar detrás de CGNAT.',
+    'En la misma Wi‑Fi casi nunca hace falta TURN (permite Red local; evita aislamiento de AP). Entre NATs/CGNAT, añade tu propio TURN — solo STUN suele fallar.',
   turnRelayEnabled: 'Usar TURN como respaldo',
   turnForceRelay: 'Solo retransmisión (ocultar mi IP)',
   turnForceRelayHint:

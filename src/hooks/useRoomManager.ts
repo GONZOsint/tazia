@@ -16,9 +16,10 @@ import {
   type PresenceState,
 } from '../core/protocol';
 import { acceptIpConsent, hasIpConsent } from '../core/utils/ipConsent';
-import { mapRoomError, type SessionError } from './sessionErrors';
+import { mapRoomError, mapRoomErrorAsync, type SessionError } from './sessionErrors';
 import type { TrustStore, TrustLevel } from '../core/trust/trustStore';
 import { buildRtcConfig } from '../features/rooms/TurnRelaySettings';
+import { primeLocalNetworkAccess } from '../core/p2p/localNetworkAccess';
 
 export type { SessionError } from './sessionErrors';
 
@@ -111,12 +112,15 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
       setJoinError(null);
 
       try {
-        const { rtcConfig, relayOnly } = buildRtcConfig();
+        const { rtcConfig, turnConfig, relayOnly } = buildRtcConfig();
+        // User gesture → warm host/mDNS candidates + LNA prompt (Chrome public→LAN).
+        await primeLocalNetworkAccess();
 
         const session = await joinP2pRoom({
           roomId: roomIdTrim,
           password: phraseTrim,
           rtcConfig,
+          turnConfig,
           relayOnly,
           onForumMessage: (message) => {
             updateRoom(roomIdTrim, (r) => {
@@ -169,11 +173,12 @@ export function useRoomManager(onNavigateTab: (tab: 'forum' | 'rooms' | 'presenc
             });
           },
           onError: (code) => {
-            const key = mapRoomError(code);
-            updateRoom(roomIdTrim, (r) => ({
-              ...r,
-              roomError: { key, vars: key === 'errGeneric' ? { code } : undefined },
-            }));
+            void mapRoomErrorAsync(code).then((key) => {
+              updateRoom(roomIdTrim, (r) => ({
+                ...r,
+                roomError: { key, vars: key === 'errGeneric' ? { code } : undefined },
+              }));
+            });
           },
         });
 
