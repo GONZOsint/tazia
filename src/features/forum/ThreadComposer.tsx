@@ -21,6 +21,7 @@ export function ThreadComposer({
   const t = useT();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [planeKey, setPlaneKey] = useState(0);
 
   const overLimit =
     title.length > MAX_TITLE_CHARS || body.length > MAX_BODY_CHARS || !title.trim() || !body.trim();
@@ -28,6 +29,7 @@ export function ThreadComposer({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (overLimit || isBusy) return;
+    setPlaneKey((k) => k + 1);
     const ok = await onSubmitThread(title.trim(), body.trim());
     if (ok) {
       setTitle('');
@@ -98,7 +100,9 @@ export function ThreadComposer({
           {isBusy ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
-            <Send className="h-4 w-4" aria-hidden="true" />
+            <span key={planeKey} className={planeKey > 0 ? 'plane-launching' : 'inline-flex'}>
+              <Send className="h-4 w-4" aria-hidden="true" />
+            </span>
           )}
           {isBusy ? t('composerPublishing') : t('composerPublish')}
         </button>

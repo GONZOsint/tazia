@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'TAZIA',
         short_name: 'TAZIA',
         description: 'Temporary Anonymous Zone In Action — live browser chat, no accounts.',
-        theme_color: '#0a0a0a',
-        background_color: '#0a0a0a',
+        theme_color: '#0b0b0b',
+        background_color: '#0b0b0b',
         display: 'standalone',
         lang: 'es',
         icons: [

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { QrCode } from 'lucide-react';
 import { useT } from '../../i18n';
 import { useTheme } from '../../theme';
@@ -14,13 +14,16 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
   const { theme } = useTheme();
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const scanTimer = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setError(false);
     setDataUrl(null);
-    const dark = theme === 'dark' ? '#e8e8e4' : '#0a0a0a';
-    const light = theme === 'dark' ? '#1a1a1a' : '#ffffff';
+    const dark = theme === 'dark' ? '#f2f2ee' : '#0a0d06';
+    const light = theme === 'dark' ? '#181818' : '#ffffff';
     void import('qrcode')
       .then((QRCode) =>
         QRCode.toDataURL(inviteUrl, {
@@ -30,7 +33,12 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
         })
       )
       .then((url) => {
-        if (!cancelled) setDataUrl(url);
+        if (!cancelled) {
+          setDataUrl(url);
+          setScanning(true);
+          if (scanTimer.current) window.clearTimeout(scanTimer.current);
+          scanTimer.current = window.setTimeout(() => setScanning(false), 700);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -40,8 +48,25 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
       });
     return () => {
       cancelled = true;
+      if (scanTimer.current) window.clearTimeout(scanTimer.current);
     };
   }, [inviteUrl, size, theme]);
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = surfaceRef.current;
+    if (!el || window.matchMedia('(hover: none)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = el.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width - 0.5;
+    const ny = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `rotateX(${-ny * 12}deg) rotateY(${nx * 12}deg) scale(1.02)`;
+  };
+
+  const onPointerLeave = () => {
+    const el = surfaceRef.current;
+    if (!el) return;
+    el.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+  };
 
   if (error) {
     return <p className="text-center text-xs text-danger-ink">{t('qrError')}</p>;
@@ -59,13 +84,26 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <img
-        src={dataUrl}
-        alt={t('qrAlt')}
-        width={size}
-        height={size}
-        className="rounded-lg border border-border bg-surface-raised p-2"
-      />
+      <div className="qr-perspective">
+        <div
+          ref={surfaceRef}
+          className={`qr-surface-3d rounded-lg border border-border bg-surface-raised p-2 ${
+            scanning ? 'scanning' : ''
+          }`}
+          onPointerMove={onPointerMove}
+          onPointerLeave={onPointerLeave}
+        >
+          <div className="qr-laser-line" aria-hidden="true" />
+          <img
+            src={dataUrl}
+            alt={t('qrAlt')}
+            width={size}
+            height={size}
+            className="block rounded-md"
+            draggable={false}
+          />
+        </div>
+      </div>
       <p className="flex items-center gap-1.5 text-center text-[11px] text-muted">
         <QrCode className="h-3 w-3 shrink-0" aria-hidden="true" />
         {t('qrLocal')}

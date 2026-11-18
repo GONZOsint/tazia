@@ -52,11 +52,17 @@ export function MeshStatusBadge({
         aria-label={label}
         title={label}
       >
-        <StatusIcon
-          className={`h-3.5 w-3.5 shrink-0 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
-          aria-hidden="true"
-          strokeWidth={1.75}
-        />
+        {status === 'mesh' ? (
+          <span className="mesh-radar-dot shrink-0" aria-hidden="true">
+            <span />
+          </span>
+        ) : (
+          <StatusIcon
+            className={`h-3.5 w-3.5 shrink-0 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
+            aria-hidden="true"
+            strokeWidth={1.75}
+          />
+        )}
         {peerDots > 0 && (
           <span className="inline-flex items-center gap-0.5" aria-hidden="true">
             {Array.from({ length: peerDots }, (_, i) => (
@@ -68,15 +74,6 @@ export function MeshStatusBadge({
     );
   }
 
-  const dotColor =
-    status === 'mesh'
-      ? 'bg-green-500'
-      : status === 'syncing'
-        ? 'bg-blue-400'
-        : status === 'alone'
-          ? 'bg-amber-400'
-          : 'bg-zinc-400';
-
   return (
     <p
       className={`inline-flex items-center gap-1.5 rounded-[var(--radius-ctrl)] border px-2 py-1 text-xs font-medium ${tone}`}
@@ -84,17 +81,33 @@ export function MeshStatusBadge({
       aria-label={label}
       title={label}
     >
-      <span className="relative flex h-2 w-2 shrink-0">
-        {(status === 'mesh' || status === 'syncing') && (
+      {status === 'mesh' ? (
+        <span className="mesh-radar-dot shrink-0" aria-hidden="true">
+          <span />
+        </span>
+      ) : (
+        <span className="relative flex h-2 w-2 shrink-0">
+          {status === 'syncing' && (
+            <span
+              className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 motion-safe:animate-ping"
+              aria-hidden="true"
+            />
+          )}
           <span
-            className={`absolute inline-flex h-full w-full rounded-full opacity-75 motion-safe:animate-ping ${dotColor}`}
-            aria-hidden="true"
+            className={`relative inline-flex h-2 w-2 rounded-full ${
+              status === 'syncing'
+                ? 'bg-info'
+                : status === 'alone'
+                  ? 'bg-warn'
+                  : 'bg-faint'
+            }`}
           />
-        )}
-        <span className={`relative inline-flex h-2 w-2 rounded-full ${dotColor}`} />
-      </span>
+        </span>
+      )}
       <StatusIcon
-        className={`h-3.5 w-3.5 shrink-0 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
+        className={`h-3.5 w-3.5 shrink-0 ${status === 'mesh' ? 'wifi-arc-1' : ''} ${
+          status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''
+        }`}
         aria-hidden="true"
         strokeWidth={1.75}
       />

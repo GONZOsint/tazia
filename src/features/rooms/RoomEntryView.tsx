@@ -155,9 +155,9 @@ export function RoomEntryView({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={zoneCardExit.exit}
                     transition={{ duration: 0.22, ease: EASE.outExpo }}
-                    className={`flex items-stretch gap-1 overflow-hidden rounded-[var(--radius-ctrl)] border ${
+                    className={`session-burn-target flex items-stretch gap-1 overflow-hidden rounded-[var(--radius-ctrl)] border ${
                       isActive
-                        ? 'border-2 border-accent bg-accent-soft/10'
+                        ? 'border-2 border-accent bg-accent-soft'
                         : 'border-border bg-bg'
                     }`}
                     aria-current={isActive ? 'true' : undefined}

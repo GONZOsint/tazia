@@ -25,6 +25,7 @@ export function DmConversationView({
   const { locale } = useLocale();
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [planeKey, setPlaneKey] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function DmConversationView({
     e.preventDefault();
     if (!body.trim() || sending) return;
     setSending(true);
+    setPlaneKey((k) => k + 1);
     try {
       const ok = await onSend(body.trim());
       if (ok) setBody('');
@@ -112,7 +114,9 @@ export function DmConversationView({
           {sending ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
-            <Send className="h-4 w-4" aria-hidden="true" />
+            <span key={planeKey} className={planeKey > 0 ? 'plane-launching' : 'inline-flex'}>
+              <Send className="h-4 w-4" aria-hidden="true" />
+            </span>
           )}
         </button>
       </form>

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { Flame, Loader2, Radio } from 'lucide-react';
 import { useSwipeTabs } from '../hooks/useSwipeTabs';
@@ -7,6 +7,7 @@ import { TopBar, type ActiveTab } from '../components/layout/TopBar';
 import { AlertBanner } from '../components/ui/AlertBanner';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useToast } from '../components/ui/ToastHost';
+import { BurnFireOverlay } from '../components/session/BurnFireOverlay';
 import { KeyChangeAlert } from '../components/session/KeyChangeAlert';
 import { IpConsentModal } from '../features/rooms/IpConsentModal';
 import { RoomEntryView } from '../features/rooms/RoomEntryView';
@@ -49,6 +50,7 @@ export default function App() {
   const activeDmPeerIdRef = useRef<string | null>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [burnConfirmOpen, setBurnConfirmOpen] = useState(false);
+  const [burnPlaying, setBurnPlaying] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [dmPeerId, setDmPeerId] = useState<string | null>(null);
 
@@ -108,8 +110,13 @@ export default function App() {
   }, [activeRoomId]);
 
   useEffect(() => {
-    setModalOpen(ipConsentNeeded || burnConfirmOpen);
-  }, [ipConsentNeeded, burnConfirmOpen]);
+    setModalOpen(ipConsentNeeded || burnConfirmOpen || burnPlaying);
+  }, [ipConsentNeeded, burnConfirmOpen, burnPlaying]);
+
+  const finishBurnChoreography = useCallback(() => {
+    setDmPeerId(null);
+    void burnSession();
+  }, [burnSession]);
 
   const selectTab = (tab: ActiveTab) => {
     forumTabFocusedRef.current = tab === 'forum';
@@ -213,8 +220,11 @@ export default function App() {
                 }
               : null
           }
+          burnHeating={burnPlaying}
           onBurnSession={() => setBurnConfirmOpen(true)}
         />
+
+        <BurnFireOverlay play={burnPlaying} onComplete={finishBurnChoreography} />
 
         <AnimatePresence>
           {burnNotice && (
@@ -270,8 +280,7 @@ export default function App() {
           onCancel={() => setBurnConfirmOpen(false)}
           onConfirm={() => {
             setBurnConfirmOpen(false);
-            setDmPeerId(null);
-            void burnSession();
+            setBurnPlaying(true);
           }}
         />
 

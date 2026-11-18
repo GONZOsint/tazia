@@ -22,69 +22,81 @@
   --radius-sheet: 20px;
   --icon-sm: 16px;
   --icon-md: 20px;
+
   --dur-micro: 120ms;
   --dur-medium: 220ms;
+  --dur-burn: 380ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
 
   /* Warm-neutral light — not flat grey, not cream-AI */
   --color-bg: #e6e4df;
   --color-surface: #ddd9d2;
   --color-surface-raised: #f3f1ec;
   --color-ink: #111110;
-  --color-muted: #57534e;
-  --color-faint: #8a857c;
-  --color-border: #c9c4bb;
-  --color-accent: #b2ff41;
-  --color-accent-hover: #9de039;
-  --color-accent-soft: #c4ff6e;
-  --color-on-accent: #0a0a0a;
+  --color-muted: #4a4640;
+  --color-faint: #7a756c;
+  --color-border: #bdb7ad;
+  --color-accent: #ccff66;
+  --color-accent-hover: #b8e85a;
+  --color-accent-soft: color-mix(in oklab, #ccff66 28%, #f3f1ec);
+  --color-on-accent: #0a0d06;
   --color-danger: #dc2626;
-  --color-danger-bg: #fef2f2;
-  --color-danger-border: #fecaca;
+  --color-danger-bg: color-mix(in oklab, #dc2626 10%, #f3f1ec);
+  --color-danger-border: color-mix(in oklab, #dc2626 28%, #bdb7ad);
   --color-danger-ink: #991b1b;
   --color-warn: #d97706;
-  --color-warn-bg: #fffbeb;
-  --color-warn-border: #fde68a;
+  --color-warn-bg: color-mix(in oklab, #d97706 12%, #f3f1ec);
+  --color-warn-border: color-mix(in oklab, #d97706 30%, #bdb7ad);
   --color-warn-ink: #92400e;
   --color-ok: #059669;
-  --color-ok-bg: #ecfdf5;
-  --color-ok-border: #a7f3d0;
+  --color-ok-bg: color-mix(in oklab, #059669 10%, #f3f1ec);
+  --color-ok-border: color-mix(in oklab, #059669 28%, #bdb7ad);
   --color-ok-ink: #065f46;
   --color-info: #0284c7;
-  --color-info-bg: #f0f9ff;
-  --color-info-border: #bae6fd;
+  --color-info-bg: color-mix(in oklab, #0284c7 10%, #f3f1ec);
+  --color-info-border: color-mix(in oklab, #0284c7 28%, #bdb7ad);
   --color-info-ink: #075985;
+
+  --fire-core: #facc15;
+  --fire-mid: #f97316;
+  --fire-edge: #ef4444;
 }
 
 html.dark {
-  --color-bg: #000000;
+  --color-bg: #0b0b0b;
   --color-surface: #121212;
-  --color-surface-raised: #1c1c1c;
-  --color-ink: #e8e8e4;
-  --color-muted: #a1a1aa;
-  --color-faint: #71717a;
-  --color-border: #2e2e2e;
-  --color-accent: #b2ff41;
-  --color-accent-hover: #9de039;
-  --color-accent-soft: #c4ff6e;
-  --color-on-accent: #0a0a0a;
+  --color-surface-raised: #181818;
+  --color-ink: #f2f2ee;
+  --color-muted: #9ca3af;
+  --color-faint: #6b7280;
+  --color-border: #2a2a2a;
+  --color-accent: #ccff66;
+  --color-accent-hover: #d9ff88;
+  --color-accent-soft: color-mix(in oklab, #ccff66 14%, transparent);
+  --color-on-accent: #0a0d06;
   --color-danger: #f87171;
-  --color-danger-bg: #450a0a;
-  --color-danger-border: #7f1d1d;
+  --color-danger-bg: color-mix(in oklab, #f87171 14%, #0b0b0b);
+  --color-danger-border: color-mix(in oklab, #f87171 32%, #2a2a2a);
   --color-danger-ink: #fecaca;
   --color-warn: #fbbf24;
-  --color-warn-bg: #451a03;
-  --color-warn-border: #78350f;
+  --color-warn-bg: color-mix(in oklab, #fbbf24 12%, #0b0b0b);
+  --color-warn-border: color-mix(in oklab, #fbbf24 30%, #2a2a2a);
   --color-warn-ink: #fde68a;
   --color-ok: #34d399;
-  --color-ok-bg: #022c22;
-  --color-ok-border: #065f46;
+  --color-ok-bg: color-mix(in oklab, #34d399 12%, #0b0b0b);
+  --color-ok-border: color-mix(in oklab, #34d399 28%, #2a2a2a);
   --color-ok-ink: #a7f3d0;
   --color-info: #38bdf8;
-  --color-info-bg: #082f49;
-  --color-info-border: #075985;
+  --color-info-bg: color-mix(in oklab, #38bdf8 12%, #0b0b0b);
+  --color-info-border: color-mix(in oklab, #38bdf8 28%, #2a2a2a);
   --color-info-ink: #bae6fd;
+
+  --fire-core: #facc15;
+  --fire-mid: #f97316;
+  --fire-edge: #ef4444;
 }
 
 @theme {
@@ -192,10 +204,26 @@ html.dark {
   }
 
   .burn-heat {
+    position: relative;
+    overflow: hidden;
     transition:
       border-color var(--dur-micro) var(--ease-out-expo),
       box-shadow var(--dur-medium) var(--ease-out-expo),
       color var(--dur-micro) var(--ease-out-expo);
+  }
+  .burn-heat .burn-ignition-bar {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--fire-edge) 70%, #7f1d1d) 0%,
+      var(--fire-mid) 65%,
+      var(--fire-core) 100%
+    );
+    opacity: 0.55;
+    transform: scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
   }
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .burn-heat:hover {
@@ -204,6 +232,42 @@ html.dark {
         0 0 0 1px color-mix(in srgb, var(--color-danger) 25%, transparent),
         0 0 18px color-mix(in srgb, var(--color-danger) 22%, transparent);
     }
+    .burn-heat:hover .burn-flame-icon {
+      animation: flame-flicker-hover 0.45s ease-in-out infinite alternate;
+      color: var(--fire-mid);
+    }
+  }
+  .burn-heat.is-heating {
+    animation: thermal-tremor 0.11s linear infinite;
+    border-color: var(--fire-mid) !important;
+    box-shadow: 0 0 26px color-mix(in oklab, var(--fire-mid) 45%, transparent) !important;
+  }
+
+  .session-burn-target.burning-front {
+    box-shadow:
+      0 0 32px color-mix(in oklab, var(--fire-mid) 45%, transparent),
+      inset 0 0 24px color-mix(in oklab, var(--fire-edge) 35%, transparent);
+    border-color: var(--fire-mid) !important;
+  }
+  .session-burn-target.incinerated-collapse {
+    opacity: 0;
+    max-height: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-width: 0 !important;
+    overflow: hidden;
+    filter: blur(8px) brightness(0.4);
+    transform: scale(0.95);
+    transition:
+      max-height var(--dur-burn) var(--ease-in-out-quart),
+      opacity 320ms var(--ease-exit),
+      margin var(--dur-burn) var(--ease-in-out-quart),
+      padding var(--dur-burn) var(--ease-in-out-quart),
+      border-width 240ms ease,
+      filter 320ms var(--ease-exit),
+      transform 320ms var(--ease-exit);
   }
 
   .tazia-check {
@@ -238,6 +302,33 @@ html.dark {
   .tazia-check[data-checked='true'] svg path {
     stroke-dashoffset: 0;
   }
+
+  .tazia-toast-card {
+    position: relative;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+  .tazia-toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  }
+  .tazia-toast-progress > span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--color-accent);
+    transform-origin: left center;
+    animation: toast-progress-drain var(--toast-ttl, 4500ms) linear forwards;
+  }
+  .tazia-toast-card:hover .tazia-toast-progress > span {
+    animation-play-state: paused;
+  }
 }
 
 .tabular-nums {
@@ -254,12 +345,8 @@ html.dark {
 }
 
 @keyframes tab-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .tab-panel-enter {
@@ -290,13 +377,115 @@ html.dark {
   animation: paper-plane-launch 0.36s var(--ease-out-expo);
 }
 
+@keyframes flame-flicker-hover {
+  0% { transform: scale(1) rotate(-4deg); filter: drop-shadow(0 0 2px var(--fire-mid)); }
+  100% { transform: scale(1.16) rotate(4deg); filter: drop-shadow(0 0 6px var(--fire-core)); }
+}
+
+@keyframes thermal-tremor {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-1.8px, 1px) rotate(-0.7deg); }
+  40% { transform: translate(1.8px, -1px) rotate(0.7deg); }
+  60% { transform: translate(-1.5px, -1.2px) rotate(-0.5deg); }
+  80% { transform: translate(1.5px, 1.2px) rotate(0.5deg); }
+}
+
+@keyframes toast-progress-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@keyframes radar-ping {
+  0% { transform: scale(1); opacity: 0.75; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+.mesh-radar-dot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  height: 8px;
+}
+.mesh-radar-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background-color: currentColor;
+  animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.mesh-radar-dot > span {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: currentColor;
+}
+
+@keyframes wifi-wave-step {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+.wifi-arc-1 { animation: wifi-wave-step 1.8s ease-in-out infinite 0s; }
+.wifi-arc-2 { animation: wifi-wave-step 1.8s ease-in-out infinite 0.35s; }
+
+.qr-perspective {
+  perspective: 680px;
+}
+.qr-surface-3d {
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transition: transform 220ms var(--ease-out-expo), box-shadow 220ms var(--ease-out-expo);
+  will-change: transform;
+}
+.qr-laser-line {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  box-shadow: 0 0 10px var(--color-accent);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.qr-surface-3d.scanning .qr-laser-line {
+  animation: qr-scan-sweep 680ms var(--ease-in-out-quart) forwards;
+}
+@keyframes qr-scan-sweep {
+  0% { top: 8%; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 90%; opacity: 0; }
+}
+
+#burn-fire-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9500;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none !important; }
   .animate-spin { animation: none !important; }
   .tab-panel-enter,
   .dice-rolling,
-  .plane-launching {
-    animation: none;
+  .plane-launching,
+  .burn-heat.is-heating,
+  .burn-heat:hover .burn-flame-icon,
+  .mesh-radar-dot::before,
+  .wifi-arc-1,
+  .wifi-arc-2,
+  .qr-surface-3d.scanning .qr-laser-line,
+  .tazia-toast-progress > span {
+    animation: none !important;
   }
   .tazia-check[data-checked='true'] {
     transform: none;
@@ -304,6 +493,13 @@ html.dark {
   .tazia-check svg path {
     transition: none;
     stroke-dashoffset: 0;
+  }
+  .session-burn-target.incinerated-collapse {
+    filter: none;
+    transition: opacity 160ms ease, max-height 160ms ease;
+  }
+  .qr-surface-3d {
+    transition: none;
   }
 }
 

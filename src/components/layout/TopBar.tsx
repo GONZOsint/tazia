@@ -30,6 +30,8 @@ interface TopBarProps {
   /** Open zone count — badge on Zonas when > 1. */
   roomsCount?: number;
   activeZone?: ActiveZoneChip | null;
+  /** Visual ignition while burn choreography runs. */
+  burnHeating?: boolean;
 }
 
 export function TopBar({
@@ -41,6 +43,7 @@ export function TopBar({
   dmUnread = 0,
   roomsCount = 0,
   activeZone = null,
+  burnHeating = false,
 }: TopBarProps) {
   const t = useT();
   const shortId = activeZone
@@ -76,7 +79,7 @@ export function TopBar({
               onClick={() => onSelectTab('forum')}
               title={activeZone.roomId}
               aria-label={`${t('roomsActiveLabel')}: ${activeZone.roomId}`}
-              className="flex min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft/15 px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
+              className="session-burn-target flex min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
             >
               <Identicon
                 matrix={identiconMatrixFromHex(activeZone.roomId)}
@@ -166,12 +169,20 @@ export function TopBar({
               transition={{ duration: 0.12 }}
               type="button"
               onClick={onBurnSession}
+              disabled={burnHeating}
               aria-label={t('leaveTab')}
               title={t('leaveTab')}
-              className="burn-heat inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap"
+              className={`burn-heat inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap ${
+                burnHeating ? 'is-heating' : ''
+              }`}
             >
-              <Flame className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline">{t('leaveTab')}</span>
+              <span
+                className="burn-ignition-bar"
+                style={burnHeating ? { transform: 'scaleX(1)', transition: 'transform 700ms linear' } : undefined}
+                aria-hidden="true"
+              />
+              <Flame className="burn-flame-icon relative z-10 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="relative z-10 hidden sm:inline">{t('leaveTab')}</span>
             </motion.button>
           ) : null}
         </div>
