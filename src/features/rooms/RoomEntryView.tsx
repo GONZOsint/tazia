@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { KeyRound, LogOut, PlusCircle } from 'lucide-react';
+import { KeyRound, LogOut, PlusCircle, QrCode } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { identiconMatrixFromHex } from '../../core/crypto/identity';
 import {
@@ -19,6 +19,7 @@ import { DUR, EASE, zoneCardExit } from '../../motion/tokens';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { TurnRelaySettings } from './TurnRelaySettings';
+import { ZoneInvitePanel } from './ZoneInvitePanel';
 
 interface RoomEntryViewProps {
   initialRoomId?: string;
@@ -55,6 +56,7 @@ export function RoomEntryView({
   );
   const [createFormKey, setCreateFormKey] = useState(0);
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
+  const [qrRoomId, setQrRoomId] = useState<string | null>(null);
   const prevJoinedCountRef = useRef(joinedRooms.length);
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
@@ -167,6 +169,7 @@ export function RoomEntryView({
               {joinedRooms.map((room) => {
                 const isActive = room.roomId === activeRoomId;
                 const dmUnread = Object.values(room.dmUnread).reduce((a, b) => a + b, 0);
+                const showQr = qrRoomId === room.roomId;
                 return (
                   <motion.li
                     key={room.roomId}
@@ -178,77 +181,103 @@ export function RoomEntryView({
                       transition: { duration: DUR.medium, ease: EASE.outExpo },
                     }}
                     exit={zoneCardExit.exit}
-                    className={`session-burn-target flex items-stretch gap-1 overflow-hidden rounded-[var(--radius-ctrl)] border ${
+                    className={`session-burn-target overflow-hidden rounded-[var(--radius-ctrl)] border ${
                       isActive
                         ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                         : 'border-border bg-bg'
                     }`}
                     aria-current={isActive ? 'true' : undefined}
                   >
-                    <button
-                      type="button"
-                      onClick={() => enterZone(room.roomId)}
-                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-3.5"
-                      aria-label={
-                        isActive
-                          ? `${t('roomsGoToChat')}: ${room.roomId}`
-                          : `${t('roomsSwitchTo')}: ${room.roomId}`
-                      }
-                    >
-                      <Identicon
-                        matrix={identiconMatrixFromHex(room.roomId)}
-                        size={40}
-                        label={room.roomId}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-mono text-xs font-medium text-ink">
-                          {room.roomId}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                          <MeshStatusBadge
-                            status={room.meshStatus}
-                            onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
-                            compact
-                          />
-                          {isActive && (
-                            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
-                              {t('roomsActiveLabel')}
-                            </span>
-                          )}
-                          {room.unreadCount > 0 && (
-                            <span className="rounded-full bg-accent/90 px-2 py-0.5 text-[10px] font-bold text-on-accent">
-                              {room.unreadCount > 9 ? '9+' : room.unreadCount}
-                            </span>
-                          )}
-                          {dmUnread > 0 && (
-                            <span className="rounded-full border border-border bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-muted">
-                              {dmUnread > 9 ? '9+' : dmUnread}
-                            </span>
-                          )}
-                        </div>
-                        {room.roomError && (
-                          <p className="mt-1 truncate text-[11px] text-danger-ink">
-                            {t(room.roomError.key, room.roomError.vars)}
-                          </p>
-                        )}
-                        {!room.roomError && room.transportNotice && (
-                          <p className="mt-1 truncate text-[11px] text-warn-ink">
-                            {t(room.transportNotice.key, room.transportNotice.vars)}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                    {onLeaveRoom && (
+                    <div className="flex items-stretch gap-1">
                       <button
                         type="button"
-                        onClick={() => setLeaveTarget(room.roomId)}
-                        className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center rounded-[var(--radius-ctrl)] border border-transparent text-danger-ink hover:border-danger-border hover:bg-danger-bg focus-visible:outline-2 focus-visible:outline-accent"
-                        title={t('roomsLeaveRoom')}
-                        aria-label={t('roomsLeaveRoom')}
+                        onClick={() => enterZone(room.roomId)}
+                        className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-3.5"
+                        aria-label={
+                          isActive
+                            ? `${t('roomsGoToChat')}: ${room.roomId}`
+                            : `${t('roomsSwitchTo')}: ${room.roomId}`
+                        }
                       >
-                        <LogOut className="h-4 w-4" aria-hidden="true" />
+                        <Identicon
+                          matrix={identiconMatrixFromHex(room.roomId)}
+                          size={40}
+                          label={room.roomId}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-xs font-medium text-ink">
+                            {room.roomId}
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                            <MeshStatusBadge
+                              status={room.meshStatus}
+                              onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
+                              compact
+                            />
+                            {isActive && (
+                              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
+                                {t('roomsActiveLabel')}
+                              </span>
+                            )}
+                            {room.unreadCount > 0 && (
+                              <span className="rounded-full bg-accent/90 px-2 py-0.5 text-[10px] font-bold text-on-accent">
+                                {room.unreadCount > 9 ? '9+' : room.unreadCount}
+                              </span>
+                            )}
+                            {dmUnread > 0 && (
+                              <span className="rounded-full border border-border bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-muted">
+                                {dmUnread > 9 ? '9+' : dmUnread}
+                              </span>
+                            )}
+                          </div>
+                          {room.roomError && (
+                            <p className="mt-1 truncate text-[11px] text-danger-ink">
+                              {t(room.roomError.key, room.roomError.vars)}
+                            </p>
+                          )}
+                          {!room.roomError && room.transportNotice && (
+                            <p className="mt-1 truncate text-[11px] text-warn-ink">
+                              {t(room.transportNotice.key, room.transportNotice.vars)}
+                            </p>
+                          )}
+                        </div>
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => setQrRoomId((cur) => (cur === room.roomId ? null : room.roomId))}
+                        aria-pressed={showQr}
+                        className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center rounded-[var(--radius-ctrl)] border focus-visible:outline-2 focus-visible:outline-accent ${
+                          showQr
+                            ? 'border-accent bg-accent-soft text-ink'
+                            : 'border-transparent text-muted hover:border-border hover:bg-surface-raised'
+                        }`}
+                        title={showQr ? t('roomsHideQr') : t('roomsShowQr')}
+                        aria-label={showQr ? t('roomsHideQr') : t('roomsShowQr')}
+                      >
+                        <QrCode className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      {onLeaveRoom && (
+                        <button
+                          type="button"
+                          onClick={() => setLeaveTarget(room.roomId)}
+                          className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center rounded-[var(--radius-ctrl)] border border-transparent text-danger-ink hover:border-danger-border hover:bg-danger-bg focus-visible:outline-2 focus-visible:outline-accent"
+                          title={t('roomsLeaveRoom')}
+                          aria-label={t('roomsLeaveRoom')}
+                        >
+                          <LogOut className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                    <AnimatePresence initial={false}>
+                      {showQr && (
+                        <ZoneInvitePanel
+                          key={`qr-${room.roomId}`}
+                          roomId={room.roomId}
+                          phrase={room.phrase}
+                          compact
+                        />
+                      )}
+                    </AnimatePresence>
                   </motion.li>
                 );
               })}

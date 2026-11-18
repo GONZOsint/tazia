@@ -248,6 +248,8 @@ export const en = {
   roomsAnotherHint: 'Open or enter',
   roomsSwitchTo: 'Switch',
   roomsLeaveRoom: 'Leave',
+  roomsShowQr: 'Show QR',
+  roomsHideQr: 'Hide QR',
   roomsMaxReached: 'Zone limit reached (max {n}).',
   roomsActiveLabel: 'Active',
   roomsUnread: '{n} new',

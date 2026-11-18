@@ -1,4 +1,6 @@
-import { KeyRound, Link2, MessageSquarePlus, RefreshCw, Search, X } from 'lucide-react';
+import { useState } from 'react';
+import { KeyRound, Link2, MessageSquarePlus, QrCode, RefreshCw, Search, X } from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
@@ -6,6 +8,7 @@ import { buildInviteUrl } from '../../core/utils/inviteLink';
 import { Identicon } from '../../components/content/Identicon';
 import { CopyButton } from '../../components/ui/CopyButton';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
+import { ZoneInvitePanel } from '../rooms/ZoneInvitePanel';
 
 export interface ThreadGroup {
   threadId: string;
@@ -61,6 +64,7 @@ export function RoomSidebar({
 }: RoomSidebarProps) {
   const t = useT();
   const invite = buildInviteUrl(roomId);
+  const [showQr, setShowQr] = useState(false);
 
   return (
     <aside className={`space-y-4 ${mobileSheet ? '' : ''}`}>
@@ -112,6 +116,20 @@ export function RoomSidebar({
           )}
           <button
             type="button"
+            onClick={() => setShowQr((v) => !v)}
+            aria-pressed={showQr}
+            aria-label={showQr ? t('roomsHideQr') : t('roomsShowQr')}
+            title={showQr ? t('roomsHideQr') : t('roomsShowQr')}
+            className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-accent ${
+              showQr
+                ? 'border-accent bg-accent-soft text-ink'
+                : 'border-border bg-bg text-ink'
+            }`}
+          >
+            <QrCode className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
             onClick={onSyncNow}
             disabled={isSyncing || isBusy}
             aria-label={t('sidebarRefresh')}
@@ -121,6 +139,9 @@ export function RoomSidebar({
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
         </div>
+        <AnimatePresence initial={false}>
+          {showQr && <ZoneInvitePanel roomId={roomId} phrase={phrase} />}
+        </AnimatePresence>
       </div>
 
       <div className="panel-surface p-4">

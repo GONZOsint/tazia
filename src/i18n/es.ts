@@ -250,6 +250,8 @@ export const es: Messages = {
   roomsAnotherHint: 'Abrir o entrar',
   roomsSwitchTo: 'Cambiar',
   roomsLeaveRoom: 'Salir',
+  roomsShowQr: 'Mostrar QR',
+  roomsHideQr: 'Ocultar QR',
   roomsMaxReached: 'Límite de zonas (máx. {n}).',
   roomsActiveLabel: 'Activa',
   roomsUnread: '{n} nuevos',
