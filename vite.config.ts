@@ -21,6 +21,8 @@ export default defineConfig({
         name: 'TAZIA',
         short_name: 'TAZIA',
         description: 'Temporary Anonymous Zone In Action — live browser chat, no accounts.',
+        // Static install/splash chrome (manifest cannot track runtime theme).
+        // Live theme-color meta is synced by theme-boot.js + ThemeContext.
         theme_color: '#0b0d09',
         background_color: '#0b0d09',
         display: 'standalone',

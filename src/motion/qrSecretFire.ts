@@ -3,6 +3,8 @@
  * Ported from the invite/QR reference demo (symmetric ignite + micro embers).
  */
 
+import { getFirePalette, refreshFirePalette, rgbaFire } from './fireBurnEngine';
+
 export const QR_SECRET_FIRE = {
   maxFlames: 28,
   maxSparks: 14,
@@ -159,6 +161,7 @@ export class QrSecretFireController {
     this.canvas = canvas;
     this.ctx = ctx;
     this.geom = geom;
+    refreshFirePalette();
     this.resize();
   }
 
@@ -169,6 +172,7 @@ export class QrSecretFireController {
 
   setFireOn(on: boolean) {
     this.fireOn = on;
+    if (on) refreshFirePalette();
     if (on || this.firePower > 0.01 || this.flames.length || this.sparks.length) {
       this.ensureLoop();
     }
@@ -280,16 +284,18 @@ export class QrSecretFireController {
       }
     };
 
+    const { tip, mid, edge } = getFirePalette();
+
     trace();
-    ctx.strokeStyle = `rgba(255, 65, 15, ${0.2 * power})`;
+    ctx.strokeStyle = rgbaFire(edge, 0.2 * power);
     ctx.lineWidth = 3.6;
-    ctx.shadowColor = 'rgba(255, 80, 20, 0.4)';
+    ctx.shadowColor = rgbaFire(mid, 0.4);
     ctx.shadowBlur = 6;
     ctx.stroke();
 
     trace();
     ctx.shadowBlur = 2;
-    ctx.strokeStyle = `rgba(255, 130, 32, ${0.5 * power})`;
+    ctx.strokeStyle = rgbaFire(mid, 0.5 * power);
     ctx.lineWidth = 1.55;
     ctx.stroke();
 
@@ -299,7 +305,7 @@ export class QrSecretFireController {
       const b = pts[i + 1]!;
       const h = (a.heat + b.heat) * 0.5;
       if (h < 0.25) continue;
-      ctx.strokeStyle = `rgba(255, 232, 165, ${h * 0.68 * power})`;
+      ctx.strokeStyle = rgbaFire(tip, h * 0.68 * power);
       ctx.lineWidth = 0.85;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
@@ -343,9 +349,10 @@ export class QrSecretFireController {
           getPerimeterPoint(half, ox, ox, s, s, r),
           getPerimeterPoint(-half, ox, ox, s, s, r),
         ]) {
+          const { tip: tipColor, mid } = getFirePalette();
           const g = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, 5);
-          g.addColorStop(0, `rgba(255, 245, 200, ${0.9 * this.firePower})`);
-          g.addColorStop(0.5, `rgba(255, 130, 30, ${0.45 * this.firePower})`);
+          g.addColorStop(0, rgbaFire(tipColor, 0.9 * this.firePower));
+          g.addColorStop(0.5, rgbaFire(mid, 0.45 * this.firePower));
           g.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = g;
           ctx.beginPath();
@@ -396,12 +403,10 @@ export class QrSecretFireController {
 
       const radius = f.size * (1 - p * 0.55);
       const alpha = Math.sin(Math.min(1, p * 4) * (Math.PI / 2)) * (1 - p) * 0.48;
+      const { tip, mid, edge } = getFirePalette();
       const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, radius);
-      grad.addColorStop(
-        0,
-        p < 0.35 ? `rgba(255, 240, 180, ${alpha})` : `rgba(255, 115, 25, ${alpha * 0.85})`
-      );
-      grad.addColorStop(0.55, `rgba(235, 65, 10, ${alpha * 0.4})`);
+      grad.addColorStop(0, p < 0.35 ? rgbaFire(tip, alpha) : rgbaFire(mid, alpha * 0.85));
+      grad.addColorStop(0.55, rgbaFire(edge, alpha * 0.4));
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -429,7 +434,8 @@ export class QrSecretFireController {
         continue;
       }
 
-      ctx.strokeStyle = `rgba(255, 195, 110, ${(1 - p) * 0.55})`;
+      const { tip } = getFirePalette();
+      ctx.strokeStyle = rgbaFire(tip, (1 - p) * 0.55);
       ctx.lineWidth = sp.size;
       ctx.lineCap = 'round';
       ctx.beginPath();

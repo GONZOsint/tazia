@@ -170,10 +170,11 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
     setError(false);
     // Keep the previous bitmap mounted so the 3D surface / tilt never unmounts mid-click.
     const cs = getComputedStyle(document.documentElement);
-    const ink = cs.getPropertyValue('--color-ink').trim() || '#121211';
-    const raised = cs.getPropertyValue('--color-surface-raised').trim() || '#efede8';
-    const dark = theme === 'dark' ? ink : '#0a0d06';
-    const light = theme === 'dark' ? raised : '#ffffff';
+    const ink = cs.getPropertyValue('--color-ink').trim() || '#141310';
+    const raised = cs.getPropertyValue('--color-surface-raised').trim() || '#f1eee8';
+    // Modules = ink, paper = raised — no parallel white / off-token blacks.
+    const dark = ink;
+    const light = raised;
     void import('qrcode')
       .then((QRCode) =>
         QRCode.toDataURL(inviteUrl, {

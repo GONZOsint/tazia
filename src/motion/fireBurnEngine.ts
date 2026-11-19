@@ -329,6 +329,62 @@ function cssVar(name: string, fallback: string): string {
   return v || fallback;
 }
 
+export type FireRgb = { r: number; g: number; b: number };
+
+export type FirePalette = {
+  core: FireRgb;
+  mid: FireRgb;
+  edge: FireRgb;
+  tip: FireRgb;
+};
+
+const FIRE_FALLBACK: FirePalette = {
+  core: { r: 0xe8, g: 0xb8, b: 0x4a },
+  mid: { r: 0xc9, g: 0x78, b: 0x0a },
+  edge: { r: 0x9a, g: 0x4f, b: 0x0a },
+  tip: { r: 0xff, g: 0xfa, b: 0xc8 },
+};
+
+function parseHexRgb(hex: string): FireRgb | null {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1]!, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function lightenRgb(c: FireRgb, t: number): FireRgb {
+  return {
+    r: Math.round(c.r + (255 - c.r) * t),
+    g: Math.round(c.g + (255 - c.g) * t),
+    b: Math.round(c.b + (255 - c.b) * t),
+  };
+}
+
+export function rgbaFire(c: FireRgb, a: number): string {
+  return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
+}
+
+let firePalette: FirePalette = { ...FIRE_FALLBACK, tip: { ...FIRE_FALLBACK.tip } };
+
+/** Snapshot --fire-* tokens for canvas particles (call at burn / QR fire start). */
+export function refreshFirePalette(root: Element = document.documentElement): FirePalette {
+  const cs = getComputedStyle(root);
+  const core = parseHexRgb(cs.getPropertyValue('--fire-core').trim()) ?? FIRE_FALLBACK.core;
+  const mid = parseHexRgb(cs.getPropertyValue('--fire-mid').trim()) ?? FIRE_FALLBACK.mid;
+  const edge = parseHexRgb(cs.getPropertyValue('--fire-edge').trim()) ?? FIRE_FALLBACK.edge;
+  firePalette = {
+    core,
+    mid,
+    edge,
+    tip: lightenRgb(core, 0.72),
+  };
+  return firePalette;
+}
+
+export function getFirePalette(): FirePalette {
+  return firePalette;
+}
+
 export interface ButtonSnapshot {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
@@ -367,12 +423,12 @@ export function createBurnButtonSnapshot(
   const bh = rect.height;
   const radius = 10; // --radius-ctrl
 
-  const dangerBg = cssVar('--color-danger-bg', '#3a1810');
-  const dangerBorder = cssVar('--color-danger-border', '#a84a2e');
+  const dangerBg = cssVar('--color-danger-bg', '#c93c3c');
+  const dangerBorder = cssVar('--color-danger-border', '#c93c3c');
   const fireMid = cssVar('--fire-mid', '#c9780a');
   const fireEdge = cssVar('--fire-edge', '#9a4f0a');
   const fireCore = cssVar('--fire-core', '#e8b84a');
-  const dangerInk = cssVar('--color-danger-ink', '#ffd4c4');
+  const dangerInk = cssVar('--color-danger-ink', '#8f1f1f');
 
   const grad = octx.createLinearGradient(bx, by, bx + bw, by + bh);
   grad.addColorStop(0, dangerBg);
@@ -607,7 +663,8 @@ export function updateAndDrawAshes(
     ctx.fillStyle = `rgba(38, 36, 36, ${alpha})`;
     ctx.fillRect(-a.w / 2, -a.h / 2, a.w, a.h);
     if (a.hasEmber && p < 0.45) {
-      ctx.fillStyle = `rgba(255, 95, 20, ${(1 - p / 0.45) * 0.9})`;
+      const { mid } = getFirePalette();
+      ctx.fillStyle = rgbaFire(mid, (1 - p / 0.45) * 0.9);
       ctx.fillRect(-a.w / 2, -a.h / 2, a.w * 0.5, a.h);
     }
     ctx.restore();
@@ -638,17 +695,18 @@ export function updateAndDrawFlames(
     const radius = f.size * scale;
     const alpha = Math.sin(Math.min(1, p * 4) * (Math.PI / 2)) * (1 - p);
 
+    const { tip, core, mid, edge } = getFirePalette();
     let c0: string;
     let c1: string;
     if (p < 0.3) {
-      c0 = `rgba(255, 250, 200, ${alpha * 0.92})`;
-      c1 = `rgba(255, 165, 30, ${alpha * 0.68})`;
+      c0 = rgbaFire(tip, alpha * 0.92);
+      c1 = rgbaFire(core, alpha * 0.68);
     } else if (p < 0.65) {
-      c0 = `rgba(255, 140, 20, ${alpha * 0.78})`;
-      c1 = `rgba(255, 55, 0, ${alpha * 0.48})`;
+      c0 = rgbaFire(mid, alpha * 0.78);
+      c1 = rgbaFire(edge, alpha * 0.48);
     } else {
-      c0 = `rgba(230, 45, 0, ${alpha * 0.58})`;
-      c1 = `rgba(140, 15, 0, ${alpha * 0.25})`;
+      c0 = rgbaFire(edge, alpha * 0.58);
+      c1 = rgbaFire(edge, alpha * 0.25);
     }
 
     ctx.save();
@@ -690,8 +748,8 @@ export function updateAndDrawSparks(
 
     const twinkle = 0.6 + 0.4 * Math.sin(elapsed * 45 + sp.flicker);
     const alpha = (1 - p) * twinkle;
-    ctx.strokeStyle =
-      p < 0.4 ? `rgba(255, 225, 140, ${alpha})` : `rgba(255, 95, 15, ${alpha})`;
+    const { tip, mid } = getFirePalette();
+    ctx.strokeStyle = p < 0.4 ? rgbaFire(tip, alpha) : rgbaFire(mid, alpha);
     ctx.lineWidth = sp.size;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -711,9 +769,10 @@ export function drawAmbientGlow(
   if (fireIntensity <= 0.01) return;
   const flickerGlow = 0.85 + 0.15 * Math.sin(elapsed * 19) * Math.cos(elapsed * 11);
   const glowRadius = 250 * (0.7 + 0.3 * fireIntensity);
+  const { mid, edge } = getFirePalette();
   const ambient = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, glowRadius);
-  ambient.addColorStop(0, `rgba(255, 115, 25, ${0.28 * fireIntensity * flickerGlow})`);
-  ambient.addColorStop(0.45, `rgba(220, 52, 8, ${0.12 * fireIntensity * flickerGlow})`);
+  ambient.addColorStop(0, rgbaFire(mid, 0.28 * fireIntensity * flickerGlow));
+  ambient.addColorStop(0.45, rgbaFire(edge, 0.12 * fireIntensity * flickerGlow));
   ambient.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = ambient;
   ctx.fillRect(centerX - glowRadius, centerY - glowRadius, glowRadius * 2, glowRadius * 2);

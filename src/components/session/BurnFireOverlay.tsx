@@ -11,6 +11,7 @@ import {
   createParticleBags,
   drawAmbientGlow,
   hasLiveParticles,
+  refreshFirePalette,
   seedIgnitionBurst,
   spawnAsh,
   spawnFlame,
@@ -117,6 +118,7 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     }
 
     const bg = cssColor('--color-bg', '#0b0d09');
+    refreshFirePalette();
     const burnEl = document.querySelector('.burn-heat.session-burn-target');
     const burnRect = burnEl?.getBoundingClientRect() ?? null;
     const labelEl = burnEl?.querySelector('span.relative.z-10.hidden, span.truncate');

@@ -6,6 +6,7 @@ import {
   createParticleBags,
   drawAmbientGlow,
   hasLiveParticles,
+  refreshFirePalette,
   seedIgnitionBurst,
   spawnAsh,
   spawnFlame,
@@ -53,6 +54,7 @@ export function TalkAshOverlay({ play, onComplete }: TalkAshOverlayProps) {
 
   useEffect(() => {
     if (!play) return;
+    refreshFirePalette();
     doneRef.current = false;
     abortedRef.current = false;
     const timeouts: number[] = [];

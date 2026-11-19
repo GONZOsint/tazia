@@ -14,7 +14,7 @@ interface TaziaMarkProps {
 
 const PAINT_ORDER: MarkPart[] = ['outlineA', 'outlineB', 'island', 'arrow'];
 
-/** Inline SVG brand mark — cream outline + lime island/flag + chevron. */
+/** Inline SVG brand mark — brand-cream outline + accent lime island/flag + chevron. */
 export function TaziaMark({
   className = '',
   size = 40,
