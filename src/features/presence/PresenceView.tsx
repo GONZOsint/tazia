@@ -278,7 +278,6 @@ export function PresenceView({
                       label={alias}
                       fg={visual?.fg}
                       bg={visual?.bg}
-                      previewable={!isSelf}
                     />
                   </motion.div>
                   {justJoined && (

@@ -105,7 +105,6 @@ export function RoomSidebar({
             label={profile.alias}
             fg={profile.fg}
             bg={profile.bg}
-            previewable={false}
           />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">

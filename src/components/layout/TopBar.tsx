@@ -1,12 +1,12 @@
-import { Flame } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
 import { identiconVisualFromHex } from '../../core/crypto/identity';
 import type { MeshStatus } from '../../core/protocol';
 import { countOtherPeers } from '../../hooks/useRoomManager';
-import { BURN, NAV_INDICATOR, TAP, TAP_TRANSITION, badgeMelt } from '../../motion/tokens';
+import { NAV_INDICATOR, TAP, TAP_TRANSITION, badgeMelt } from '../../motion/tokens';
 import { TaziaLogo } from '../brand/TaziaLogo';
 import { Identicon } from '../content/Identicon';
+import { FireBurnButton } from '../session/FireBurnButton';
 import { MeshStatusBadge } from '../session/MeshStatusBadge';
 import { LangToggle } from '../ui/LangToggle';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -205,50 +205,13 @@ export function TopBar({
             <LangToggle />
           </span>
           {/* Fixed burn slot so Theme/Lang do not shift when a zone appears. */}
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-end sm:w-[9.75rem]">
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-end overflow-visible sm:w-[9.75rem]">
             {hasActiveRoom ? (
-              <motion.button
-                whileTap={burnHeating ? undefined : TAP}
-                transition={TAP_TRANSITION}
-                type="button"
+              <FireBurnButton
+                label={t('leaveTab')}
                 onClick={onBurnSession}
-                disabled={burnHeating}
-                aria-label={t('leaveTab')}
-                title={t('leaveTab')}
-                className={`burn-heat session-burn-target inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg text-xs font-semibold text-danger-ink whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80 sm:w-[9.75rem] sm:px-3 ${
-                  burnHeating ? 'is-dying' : ''
-                }`}
-              >
-                <span
-                  className="burn-ignition-bar"
-                  style={
-                    burnHeating
-                      ? {
-                          transform: 'scaleX(0)',
-                          opacity: 0.15,
-                          transition:
-                            'transform var(--dur-burn-ignition) var(--ease-out-expo), opacity var(--dur-burn-ignition) var(--ease-out-expo)',
-                        }
-                      : undefined
-                  }
-                  aria-hidden="true"
-                />
-                {burnHeating ? (
-                  <span
-                    className="relative z-10 inline-flex h-4 w-4 shrink-0"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <motion.span
-                    layoutId={BURN.layoutId}
-                    className="burn-flame-icon relative z-10 inline-flex h-4 w-4 shrink-0"
-                    transition={BURN.layoutSpring}
-                  >
-                    <Flame className="h-4 w-4" aria-hidden="true" />
-                  </motion.span>
-                )}
-                <span className="relative z-10 hidden truncate sm:inline">{t('leaveTab')}</span>
-              </motion.button>
+                dying={burnHeating}
+              />
             ) : null}
           </span>
         </div>

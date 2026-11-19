@@ -4,7 +4,7 @@
  * Engine contract (one motor per gesture):
  *   - Frequent chrome taps / panel fades → Motion duration tweens (TAP, contentSwitch)
  *   - Send plane → Motion useAnimate only (no CSS .plane-launching)
- *   - Session flame dying → CSS (.burn-heat.is-dying) + canvas BurnFireOverlay (extinguish + veil)
+ *   - Session flame dying → FireBurnButton WebGL extinguish + CSS (.is-dying) + BurnFireOverlay
  *   - Zone ignite → CSS + IGNITE (“encender”)
  *   - Zone burn (leave) → RegionAshOverlay mode=burn (ZONE_ASH);
  *     reduced-motion → Motion zoneCardExit + zoneListLayout

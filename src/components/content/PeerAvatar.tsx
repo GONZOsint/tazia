@@ -20,7 +20,7 @@ interface PeerAvatarProps {
   animated?: boolean;
   /**
    * When true and a flame seed exists, tap opens a large preview.
-   * Default: true for peers when a label is present.
+   * Default: true whenever a valid flame seed is present (self included).
    */
   previewable?: boolean;
 }
@@ -35,12 +35,12 @@ export function PeerAvatar({
   bg,
   className,
   animated,
-  previewable,
+  previewable = true,
 }: PeerAvatarProps) {
   const t = useT();
   const [previewOpen, setPreviewOpen] = useState(false);
   const hasFlame = Boolean(avatarSeed && isValidAvatarSeed(avatarSeed));
-  const canPreview = (previewable ?? Boolean(label)) && hasFlame;
+  const canPreview = previewable && hasFlame;
 
   const flame = hasFlame ? (
     <FlameAvatar

@@ -2372,6 +2372,125 @@ html.dark {
     }
   }
 
+  /*
+   * Session fire button (WebGL crown) — accent plate; canvas sits above the
+   * control so overflow must stay visible (unlike legacy .burn-heat bars).
+   */
+  .fire-btn {
+    --mx: 50%;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.75rem;
+    border: none;
+    background-color: var(--color-accent);
+    background-image: radial-gradient(
+      120px circle at var(--mx) 118%,
+      color-mix(in oklab, #fff 22%, transparent),
+      transparent 72%
+    );
+    color: var(--color-on-accent);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    isolation: isolate;
+    overflow: visible;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+      0 3px 12px color-mix(in oklab, #000 26%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 28%, transparent);
+    transition:
+      transform 0.18s var(--ease-out-expo),
+      box-shadow 0.85s var(--ease-out-expo),
+      filter var(--dur-micro) ease,
+      opacity var(--dur-micro) ease;
+  }
+  .fire-btn:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 6px 18px color-mix(in oklab, #000 32%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 42%, transparent);
+  }
+  .fire-btn:active {
+    transform: translateY(1.5px) scale(0.975);
+    transition-duration: 0.08s;
+  }
+  .fire-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+  .fire-btn:disabled {
+    opacity: 0.8;
+    cursor: default;
+  }
+  .fire-btn.is-lit {
+    box-shadow:
+      0 0 22px color-mix(in oklab, var(--color-accent) 16%, transparent),
+      0 5px 18px color-mix(in oklab, #000 30%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 45%, transparent);
+  }
+  .fire-btn.is-lit:hover {
+    box-shadow:
+      0 0 28px color-mix(in oklab, var(--color-accent) 24%, transparent),
+      0 7px 20px color-mix(in oklab, #000 34%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 54%, transparent);
+  }
+  .fire-btn--circle {
+    width: 2.75rem;
+    padding: 0;
+    border-radius: 9999px;
+  }
+  .fire-btn--pill {
+    width: 9.75rem;
+    padding: 0 0.75rem;
+    border-radius: var(--radius-ctrl);
+  }
+  .fire-btn__icon {
+    transition: transform 0.28s var(--ease-out-expo);
+  }
+  .fire-btn:hover .fire-btn__icon,
+  .fire-btn.is-lit .fire-btn__icon {
+    transform: scale(1.08);
+  }
+  .fire-btn .fire-canvas {
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .fire-btn--circle .fire-canvas {
+    left: 2px;
+    width: calc(100% - 4px);
+    bottom: calc(100% - 16px);
+    height: 66px;
+  }
+  .fire-btn--pill .fire-canvas {
+    left: 3px;
+    width: calc(100% - 6px);
+    bottom: calc(100% - 7px);
+    height: 62px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fire-btn,
+    .fire-btn.is-lit,
+    .fire-btn__icon {
+      transition-duration: 0.01ms !important;
+    }
+    .fire-btn:hover,
+    .fire-btn:active {
+      transform: none;
+    }
+    .fire-btn:hover .fire-btn__icon,
+    .fire-btn.is-lit .fire-btn__icon {
+      transform: none;
+    }
+  }
+
   .burn-heat {
     position: relative;
     overflow: hidden;
@@ -2383,6 +2502,9 @@ html.dark {
       background-color var(--dur-micro) var(--ease-out-expo),
       filter var(--dur-micro) ease,
       opacity var(--dur-micro) ease;
+  }
+  .burn-heat.fire-btn {
+    overflow: visible;
   }
   /* Real control hidden while BurnFireOverlay draws the pixel-incinerating snapshot */
   .burn-heat.burn-heat--ghost {
@@ -2447,6 +2569,15 @@ html.dark {
       0 0 8px color-mix(in oklab, var(--fire-edge) 12%, transparent),
       inset 0 0 10px color-mix(in oklab, var(--color-bg) 18%, transparent);
     filter: saturate(0.55) brightness(0.88);
+  }
+  .fire-btn.is-dying {
+    background-image: none;
+    background-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-bg)) !important;
+    color: color-mix(in oklab, var(--color-on-accent) 55%, var(--color-ink-muted)) !important;
+    box-shadow:
+      0 0 8px color-mix(in oklab, var(--fire-edge) 10%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--color-bg) 18%, transparent);
+    filter: saturate(0.45) brightness(0.9);
   }
   .burn-heat.is-dying .burn-ignition-bar {
     opacity: 0.12;
