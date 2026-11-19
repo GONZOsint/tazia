@@ -9,6 +9,7 @@
  */
 
 import { b64ToBytes } from './crypto/bytes';
+import { isValidAvatarSeed } from './avatar/avatarSeed';
 import {
   DELETE_VOTE_AYE,
   isValidDeleteElectorateBody,
@@ -83,6 +84,8 @@ export interface PresenceState {
   signPubKeySpkiB64: string;
   /** X25519 raw public key (base64) — required in v2 for Susurro seal. */
   encPubKeyRawB64: string;
+  /** Compact flame avatar seed (required). */
+  avatarSeed: string;
 }
 
 export const APP_ID = 'tazia.app';
@@ -291,6 +294,9 @@ export function isValidPresenceState(value: unknown): value is PresenceState {
     return false;
   }
   if (typeof v.encPubKeyRawB64 !== 'string' || !isExactB64Length(v.encPubKeyRawB64, X25519_RAW_LEN)) {
+    return false;
+  }
+  if (!isValidAvatarSeed(v.avatarSeed)) {
     return false;
   }
   return true;

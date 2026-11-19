@@ -11,10 +11,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: [
+        'favicon.svg',
         'favicon.png',
         'apple-touch-icon.png',
         'brand/tazia-mark.svg',
-        'brand/tazia-logo-dark.jpg',
       ],
       injectRegister: 'script',
       manifest: {

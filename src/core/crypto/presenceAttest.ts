@@ -1,6 +1,7 @@
 /**
  * Presence / goodbye attestation for Nostr fallback (TAZEP).
- * Binds claimed userId to sign/enc keys + alias + atMs (TOFU first-writer; not Trystero handshake binding).
+ * Binds claimed userId to sign/enc keys + alias + avatarSeed + atMs
+ * (TOFU first-writer; not Trystero handshake binding).
  */
 import {
   importVerifyKey,
@@ -16,17 +17,19 @@ export function canonicalPresenceAttestPayload(
   signPubKeySpkiB64: string,
   encPubKeyRawB64: string,
   atMs: number,
-  alias: string
+  alias: string,
+  avatarSeed: string
 ): Uint8Array {
   return new TextEncoder().encode(
     JSON.stringify([
-      'tazep.presence.v3',
+      'tazep.presence.v4',
       roomId,
       userId,
       signPubKeySpkiB64,
       encPubKeyRawB64,
       atMs,
       alias,
+      avatarSeed,
     ])
   );
 }
@@ -90,7 +93,8 @@ export async function signPresenceAttestation(
   signPubKeySpkiB64: string,
   encPubKeyRawB64: string,
   atMs: number,
-  alias: string
+  alias: string,
+  avatarSeed: string
 ): Promise<string> {
   const payload = canonicalPresenceAttestPayload(
     roomId,
@@ -98,7 +102,8 @@ export async function signPresenceAttestation(
     signPubKeySpkiB64,
     encPubKeyRawB64,
     atMs,
-    alias
+    alias,
+    avatarSeed
   );
   const sig = await signRaw(identity, payload);
   return bytesToB64(sig);
@@ -111,7 +116,8 @@ export async function verifyPresenceAttestation(
   encPubKeyRawB64: string,
   atMs: number,
   attestSigB64: string,
-  alias: string
+  alias: string,
+  avatarSeed: string
 ): Promise<boolean> {
   if (!isAttestAtMsFresh(atMs)) return false;
   return verifyRaw(
@@ -123,7 +129,8 @@ export async function verifyPresenceAttestation(
       signPubKeySpkiB64,
       encPubKeyRawB64,
       atMs,
-      alias
+      alias,
+      avatarSeed
     )
   );
 }

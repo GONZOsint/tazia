@@ -20,6 +20,7 @@ export interface JoinedP2pRoom {
   trustStore: TrustStore;
   leave: () => Promise<void>;
   setPresenceAlias: (alias: string) => Promise<void>;
+  setPresenceProfile: (alias: string, avatarSeed: string) => Promise<void>;
   publishEvent: (partial: {
     msgId: string;
     type: ForumEvent['type'];

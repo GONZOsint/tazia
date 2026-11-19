@@ -7,6 +7,8 @@ import { useLocale, useT } from '../../i18n';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
 import { PlaneSendIcon } from '../../components/ui/PlaneSendIcon';
+import { PeerAvatar } from '../../components/content/PeerAvatar';
+import { peerAvatarSeed as cachedPeerAvatarSeed } from '../../core/avatar/peerSeedCache';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import {
   TAP,
@@ -23,6 +25,7 @@ interface DmConversationViewProps {
   selfUserId: string;
   peerId: string;
   peerAlias: string;
+  peerAvatarSeed?: string | null;
   messages: DirectMessage[];
   trustStore?: TrustStore | null;
   onSend: (body: string) => Promise<boolean>;
@@ -33,6 +36,7 @@ export function DmConversationView({
   selfUserId,
   peerId,
   peerAlias,
+  peerAvatarSeed = null,
   messages,
   trustStore = null,
   onSend,
@@ -187,7 +191,12 @@ export function DmConversationView({
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </motion.button>
           <div className="min-w-0 flex-1">
-            <h1 className="type-title flex min-w-0 items-center gap-1.5 text-ink">
+            <h1 className="type-title flex min-w-0 items-center gap-2 text-ink">
+              <PeerAvatar
+                avatarSeed={peerAvatarSeed || cachedPeerAvatarSeed(peerId)}
+                size={32}
+                label={peerAlias}
+              />
               <span className="truncate">{peerAlias}</span>
               {peerVerified && (
                 <span

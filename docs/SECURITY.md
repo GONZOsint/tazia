@@ -38,16 +38,16 @@ The **phrase** is the key: Trystero derives discovery-handshake encryption from 
 
 ### Identity
 
-Each tab/zone is a new `userId` (`identity: 'none'`). **Burn session** closes all local meshes on this device.
+Each tab/zone is a new `userId` (`identity: 'none'`). **Extinguishing the flame** closes all local meshes on this device.
 
-### Deleting a talk (tribe vote)
+### Extinguishing a bonfire (tribe vote)
 
-There is no unilateral “delete message”. In Plaza, proposing to delete a talk freezes the electorate (online tribe at that moment) and requires a **unanimous aye** (`DELETE_PROPOSE` / `DELETE_VOTE` in [`PROTOCOL.md`](PROTOCOL.md)).
+There is no unilateral “delete message”. In Forum, proposing to extinguish a bonfire (thread) freezes the electorate (online tribe at that moment) and requires a **unanimous aye** (`DELETE_PROPOSE` / `DELETE_VOTE` in [`PROTOCOL.md`](PROTOCOL.md)).
 
-- The proposer counts as aye; alone in the zone, delete completes immediately.
-- Peers reject proposes that **shrink** the electorate relative to who they already saw online (blocks “delete without the others”).
-- One propose per talk; on completion, `NEW_THREAD` / `REPLY` are purged and signed tombstones remain (sync must not resurrect content).
-- **Not** the same as burn: the vote removes that talk on peers that apply the quorum; burn forgets **every** zone on **this** device.
+- The proposer counts as aye; alone in the zone, extinguish completes immediately.
+- Peers reject proposes that **shrink** the electorate relative to who they already saw online (blocks “extinguish without the others”).
+- One propose per bonfire; on completion, `NEW_THREAD` / `REPLY` are purged and signed tombstones remain (sync must not resurrect content).
+- **Not** the same as extinguishing the flame: the vote puts out that bonfire on peers that apply the quorum; extinguishing the flame forgets **every** zone on **this** device.
 
 Rule details: [`threadDelete.ts`](../src/core/forum/threadDelete.ts).
 
@@ -61,7 +61,7 @@ A `forumMsg` is accepted only if `authorUserId` matches the peer’s Trystero `u
 
 If ICE fails, chat can continue over **encrypted** Nostr relays (PBKDF2 210k + HKDF `tazep/*`; blob `0x03` + AAD `tazep.fallback.aad.v3:{roomId}`; envelope `v: 2`).
 
-Binding there is application-level, not transport: forum messages are accepted with Ed25519 and the **pinned** key registry (no fake `liveUserId`). Presence requires a signed attestation over `["tazep.presence.v3", …, atMs, alias]` (±5 min clock, strictly increasing `atMs`) before TOFU pin. Goodbye is attested; `sync-res` is signed (WebRTC sync too) and merged until timeout; EVENT clock skew is checked; `schnorr.verify` runs **before** decrypt. Fallback rate limits (forum, DM, sync, presence/goodbye) use the Nostr EVENT pubkey, not only the claimed `userId`.
+Binding there is application-level, not transport: forum messages are accepted with Ed25519 and the **pinned** key registry (no fake `liveUserId`). Presence requires a signed attestation over `["tazep.presence.v4", …, atMs, alias, avatarSeed]` (±5 min clock, strictly increasing `atMs`) before TOFU pin. Goodbye is attested; `sync-res` is signed (WebRTC sync too) and merged until timeout; EVENT clock skew is checked; `schnorr.verify` runs **before** decrypt. Fallback rate limits (forum, DM, sync, presence/goodbye) use the Nostr EVENT pubkey, not only the claimed `userId`.
 
 Attestation binds sign+enc keys to a claimed `userId` (first writer wins the TOFU pin). A `changed` sign key does **not** redirect Susurro enc. WebRTC presence is preferred over Nostr for the same `userId`. It does **not** equal Trystero WebRTC binding. Relays see metadata and encrypted bytes — not true P2P.
 
@@ -85,7 +85,7 @@ Phrase in the URL is scrubbed (`public/scrub-phrase.js` + React).
 Optional TURN: `sessionStorage` by default; `localStorage` only with opt-in. Burn clears sessionStorage, **not** remembered TURN. Details: [`TURN.md`](TURN.md).  
 CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_headers`](../public/_headers) is a sample for hosts that honor headers (Netlify/CF); Pages does **not** apply `_headers`, so `frame-ancestors` / `X-Frame-Options` are not present on the default github.io deploy.
 
-**Burn session** closes meshes, clears trust, wipes refs, `sessionStorage.clear`, and reloads. It is **not** forensic secure delete or practical deniability ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
+**Extinguishing the flame** closes meshes, clears trust, wipes refs, `sessionStorage.clear`, and reloads. It is **not** forensic secure delete or practical deniability ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
 
 ---
 
@@ -97,7 +97,7 @@ CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_hea
 - **DTLS as authorship proof** — no ([ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf)). DTLS ≠ E2E for Whispers.
 - **Practical deniability** — we do not claim it. Ed25519 signatures are attributable; burn clears this tab, not other devices or relays.
 - **Burn ≠ secure delete** — non-extractable `CryptoKey`s cannot be zeroized; reload reduces tab RAM surface.
-- **Delete vote ≠ global guarantee** — a peer that never received the completed ballot may still show the talk; there is no server that forces erasure everywhere.
+- **Extinguish vote ≠ global guarantee** — a peer that never received the completed ballot may still show the bonfire; there is no server that forces erasure everywhere.
 - **MLS / Double Ratchet / Key Transparency** — need durable identity or a log operator; incompatible with `identity: 'none'` + pure static hosting ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
 - **Tor** — out of scope.
 - **Wake Lock** — optional; keeps the screen on, does not stop iOS from killing WebRTC when backgrounded.

@@ -12,6 +12,7 @@ import {
   type ForumEvent,
 } from '../protocol';
 import type { PeerRateLimiter } from './rateLimit';
+import { snapshotForSync } from './syncCoordinator';
 import type { VerifyKeyRegistry } from './verifyKeyRegistry';
 
 const PENDING_TTL_MS = 60_000;
@@ -19,7 +20,6 @@ const PENDING_TTL_MS = 60_000;
 export interface ForumIngestDeps {
   rateLimiter: PeerRateLimiter;
   registry: VerifyKeyRegistry;
-  localMessages: Map<string, ForumEvent>;
   onForumMessage: (event: ForumEvent) => void;
   /** Fired when a unanimous delete ballot completes and talk content is purged. */
   onThreadDeleted?: (threadId: string) => void;
@@ -31,6 +31,7 @@ export interface ForumIngestDeps {
 }
 
 export class ForumIngest {
+  private readonly localMessages = new Map<string, ForumEvent>();
   private readonly ingestingIds = new Set<string>();
   private readonly pendingLive = new Map<string, ForumEvent[]>();
   /** DELETE_VOTE waiting for parent DELETE_PROPOSE (keyed by parentMsgId). */
@@ -39,6 +40,11 @@ export class ForumIngest {
 
   constructor(deps: ForumIngestDeps) {
     this.deps = deps;
+  }
+
+  /** Snapshot for signed sync answers (size-capped). */
+  getEventsForSync(): ForumEvent[] {
+    return snapshotForSync(this.localMessages);
   }
 
   async ingest(
@@ -71,18 +77,18 @@ export class ForumIngest {
       return false;
     }
 
-    if (this.deps.localMessages.has(event.msgId) || this.ingestingIds.has(event.msgId)) {
+    if (this.localMessages.has(event.msgId) || this.ingestingIds.has(event.msgId)) {
       return false;
     }
 
     if (isContentForumType(event.type)) {
-      if (deletedThreadIds([...this.deps.localMessages.values()]).has(event.threadId)) {
+      if (deletedThreadIds([...this.localMessages.values()]).has(event.threadId)) {
         return false;
       }
     }
 
     if (event.type === 'DELETE_PROPOSE' || event.type === 'DELETE_VOTE') {
-      const reason = rejectDeleteEventReason(event, this.deps.localMessages, {
+      const reason = rejectDeleteEventReason(event, this.localMessages, {
         source: opts.source,
         onlineUserIds: this.deps.getOnlineUserIds?.() ?? [],
         peerFirstSeenAtMs: this.deps.peerFirstSeenAtMs,
@@ -123,7 +129,7 @@ export class ForumIngest {
 
       // Re-check delete rules after await (race with concurrent propose).
       if (event.type === 'DELETE_PROPOSE' || event.type === 'DELETE_VOTE') {
-        const reason = rejectDeleteEventReason(event, this.deps.localMessages, {
+        const reason = rejectDeleteEventReason(event, this.localMessages, {
           source: opts.source,
           onlineUserIds: this.deps.getOnlineUserIds?.() ?? [],
           peerFirstSeenAtMs: this.deps.peerFirstSeenAtMs,
@@ -134,13 +140,13 @@ export class ForumIngest {
         }
       }
 
-      if (this.deps.localMessages.has(event.msgId)) return false;
-      this.deps.localMessages.set(event.msgId, event);
+      if (this.localMessages.has(event.msgId)) return false;
+      this.localMessages.set(event.msgId, event);
       this.deps.onForumMessage(event);
 
-      const deletedId = threadDeletedByEvent([...this.deps.localMessages.values()], event);
+      const deletedId = threadDeletedByEvent([...this.localMessages.values()], event);
       if (deletedId) {
-        purgeThreadContent(this.deps.localMessages, deletedId);
+        purgeThreadContent(this.localMessages, deletedId);
         this.deps.onThreadDeleted?.(deletedId);
       }
 

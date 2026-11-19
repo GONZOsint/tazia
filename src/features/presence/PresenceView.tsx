@@ -10,7 +10,11 @@ import {
   type PresenceState,
 } from '../../core/protocol';
 import type { TrustStore } from '../../core/trust/trustStore';
-import { Identicon } from '../../components/content/Identicon';
+import { PeerAvatar } from '../../components/content/PeerAvatar';
+import {
+  peerAvatarSeed,
+  rememberPeerAvatarSeed,
+} from '../../core/avatar/peerSeedCache';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { TrustBadge } from '../../components/session/TrustBadge';
 import { EmojiVerifyModal } from '../../components/session/EmojiVerifyModal';
@@ -95,6 +99,12 @@ export function PresenceView({
     if (!trustStore) return;
     return trustStore.onChange(() => setTrustTick((n) => n + 1));
   }, [trustStore]);
+
+  useEffect(() => {
+    for (const [id, state] of Object.entries(presence)) {
+      if (state.avatarSeed) rememberPeerAvatarSeed(id, state.avatarSeed);
+    }
+  }, [presence]);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,17 +271,14 @@ export function PresenceView({
                         : peerMaterialize.animate
                     }
                   >
-                    {visual ? (
-                      <Identicon
-                        matrix={visual.identiconMatrix}
-                        size={28}
-                        label={alias}
-                        fg={visual.fg}
-                        bg={visual.bg}
-                      />
-                    ) : (
-                      <div className="h-7 w-7 rounded-[var(--radius-ctrl)] bg-surface" />
-                    )}
+                    <PeerAvatar
+                      avatarSeed={presence[id]?.avatarSeed || peerAvatarSeed(id)}
+                      matrix={visual?.identiconMatrix}
+                      size={28}
+                      label={alias}
+                      fg={visual?.fg}
+                      bg={visual?.bg}
+                    />
                   </motion.div>
                   {justJoined && (
                     <span

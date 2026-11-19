@@ -1,29 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { List, MessageSquare, MessageSquarePlus } from 'lucide-react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { TalkAshOverlay } from '../../components/session/TalkAshOverlay';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import {
-  collectDeleteBallots,
-  deletedThreadIds,
-  isContentForumType,
-  openBallotForThread,
-} from '../../core/forum/threadDelete';
+  clearPeerAvatarSeeds,
+  rememberPeerAvatarSeeds,
+} from '../../core/avatar/peerSeedCache';
+import { openBallotForThread } from '../../core/forum/threadDelete';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
-import { haptic, HAPTIC_RITUAL } from '../../motion/haptic';
 import {
   TAP,
   TAP_TRANSITION,
-  TALK_ASH,
   drawerPanel,
   enterPlaza,
   modalScrim,
 } from '../../motion/tokens';
-import { RoomSidebar, type ThreadGroup } from './RoomSidebar';
+import {
+  buildThreadGroups,
+  computeDeletedIds,
+  computePendingDeleteIds,
+  hasAnyContentThreads,
+} from './buildThreadGroups';
+import { RoomSidebar } from './RoomSidebar';
 import { ThreadComposer } from './ThreadComposer';
 import { ThreadReader, type AuthorVisualCache } from './ThreadReader';
+import { useForumAshRitual } from './useForumAshRitual';
+import { useForumThreadSelection } from './useForumThreadSelection';
 
 interface ForumWorkspaceProps {
   roomId: string;
@@ -32,6 +37,7 @@ interface ForumWorkspaceProps {
   selfUserId: string;
   messages: ForumMessage[];
   presenceAliases: Record<string, string>;
+  presenceAvatarSeeds: Record<string, string>;
   onlineUserIds: string[];
   onlineCount: number;
   meshStatus: MeshStatus;
@@ -55,6 +61,7 @@ export function ForumWorkspace({
   selfUserId,
   messages,
   presenceAliases,
+  presenceAvatarSeeds,
   onlineUserIds,
   onlineCount,
   meshStatus,
@@ -71,79 +78,53 @@ export function ForumWorkspace({
   onVoteDeleteThread,
 }: ForumWorkspaceProps) {
   const t = useT();
-  const reduceMotion = useReducedMotion();
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [isComposingThread, setIsComposingThread] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [authorVisuals, setAuthorVisuals] = useState<AuthorVisualCache>({});
-  const [topicsOpen, setTopicsOpen] = useState(false);
-  /** Snapshot while the talk ash exit plays after unanimous delete (all peers). */
-  const [ashThread, setAshThread] = useState<ThreadGroup | null>(null);
-  const threadSnapshotsRef = useRef<Map<string, ThreadGroup>>(new Map());
-  const ashPlayedRef = useRef<Set<string>>(new Set());
+  const [heldAshId, setHeldAshId] = useState<string | null>(null);
 
-  /** Zone switch without remount — clear local UI so Plaza does not keep the previous room's thread/composer. */
   useEffect(() => {
-    setSelectedThreadId(null);
-    setIsComposingThread(false);
-    setSearchQuery('');
     setAuthorVisuals({});
-    setTopicsOpen(false);
-    setAshThread(null);
-    threadSnapshotsRef.current = new Map();
-    ashPlayedRef.current = new Set();
+    clearPeerAvatarSeeds();
   }, [roomId]);
 
-  const deletedIds = useMemo(() => deletedThreadIds(messages), [messages]);
+  useEffect(() => {
+    rememberPeerAvatarSeeds(presenceAvatarSeeds);
+  }, [presenceAvatarSeeds]);
 
-  const pendingDeleteIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const b of collectDeleteBallots(messages)) {
-      if (!b.complete) ids.add(b.threadId);
-    }
-    return ids;
-  }, [messages]);
+  const deletedIds = useMemo(() => computeDeletedIds(messages), [messages]);
+  const pendingDeleteIds = useMemo(() => computePendingDeleteIds(messages), [messages]);
+  const untitled = t('readerUntitled');
 
-  const threads = useMemo<ThreadGroup[]>(() => {
-    const map = new Map<string, ForumMessage[]>();
-    for (const msg of messages) {
-      if (!isContentForumType(msg.type)) continue;
-      if (deletedIds.has(msg.threadId)) continue;
-      const arr = map.get(msg.threadId) ?? [];
-      arr.push(msg);
-      map.set(msg.threadId, arr);
-    }
-
-    const groups: ThreadGroup[] = [];
-    for (const [threadId, list] of map.entries()) {
-      const sorted = [...list].sort((a, b) => a.createdAtMs - b.createdAtMs);
-      const root = sorted.find((m) => m.type === 'NEW_THREAD') ?? sorted[0];
-      if (!root || root.type !== 'NEW_THREAD') continue;
-      const replies = sorted.filter((m) => m.msgId !== root.msgId && m.type === 'REPLY');
-      groups.push({
-        threadId,
-        title: root.title || t('readerUntitled'),
-        rootPost: root,
-        replies,
-        lastActivityMs: sorted[sorted.length - 1].createdAtMs,
-      });
-    }
-
-    groups.sort((a, b) => b.lastActivityMs - a.lastActivityMs);
-
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return groups;
-    return groups.filter(
-      (g) =>
-        g.title.toLowerCase().includes(q) ||
-        g.rootPost.body.toLowerCase().includes(q) ||
-        g.replies.some((r) => r.body.toLowerCase().includes(q))
-    );
-  }, [messages, deletedIds, searchQuery, t]);
-
-  const hasAnyThreads = messages.some(
-    (m) => isContentForumType(m.type) && !deletedIds.has(m.threadId)
+  /** Unfiltered — ash snapshots must not depend on search. */
+  const allThreads = useMemo(
+    () => buildThreadGroups(messages, deletedIds, untitled, ''),
+    [messages, deletedIds, untitled]
   );
+
+  const {
+    selectedThreadId,
+    setSelectedThreadId,
+    isComposingThread,
+    setIsComposingThread,
+    searchQuery,
+    setSearchQuery,
+    topicsOpen,
+    setTopicsOpen,
+    selectThread,
+    startCompose,
+  } = useForumThreadSelection(allThreads, roomId, heldAshId);
+
+  const threads = useMemo(
+    () => buildThreadGroups(messages, deletedIds, untitled, searchQuery),
+    [messages, deletedIds, untitled, searchQuery]
+  );
+
+  // Search sync against filtered list (hook also watches allThreads; re-check filtered).
+  useEffect(() => {
+    if (!selectedThreadId) return;
+    if (threads.some((th) => th.threadId === selectedThreadId)) return;
+    if (heldAshId && heldAshId === selectedThreadId) return;
+    setSelectedThreadId(null);
+  }, [threads, selectedThreadId, heldAshId, setSelectedThreadId]);
 
   const activeThread = useMemo(() => {
     if (threads.length === 0) return null;
@@ -151,52 +132,44 @@ export function ForumWorkspace({
       const found = threads.find((th) => th.threadId === selectedThreadId);
       if (found) return found;
     }
-    return threads[0];
+    // No valid selection after search clear — do not invent threads[0] as "selected".
+    if (selectedThreadId) return null;
+    return threads[0] ?? null;
   }, [threads, selectedThreadId]);
+
+  const onAshStart = useCallback(
+    (threadId: string) => {
+      setHeldAshId(threadId);
+      setIsComposingThread(false);
+      setSelectedThreadId(threadId);
+    },
+    [setIsComposingThread, setSelectedThreadId]
+  );
+
+  const { ashThread, clearAsh: clearAshOnly, reduceMotion } = useForumAshRitual(
+    allThreads,
+    deletedIds,
+    roomId,
+    onAshStart
+  );
+
+  useEffect(() => {
+    if (!ashThread) setHeldAshId(null);
+    else setHeldAshId(ashThread.threadId);
+  }, [ashThread]);
+
+  const clearAsh = useCallback(() => {
+    clearAshOnly();
+    setHeldAshId(null);
+    setSelectedThreadId(null);
+  }, [clearAshOnly, setSelectedThreadId]);
+
+  const hasAnyThreads = hasAnyContentThreads(messages, deletedIds);
 
   const activeDeleteBallot = useMemo(() => {
     if (!activeThread) return null;
     return openBallotForThread(messages, activeThread.threadId);
   }, [messages, activeThread]);
-
-  useEffect(() => {
-    for (const th of threads) {
-      threadSnapshotsRef.current.set(th.threadId, th);
-    }
-  }, [threads]);
-
-  useEffect(() => {
-    if (selectedThreadId && deletedIds.has(selectedThreadId) && !ashThread) {
-      setSelectedThreadId(null);
-    }
-  }, [deletedIds, selectedThreadId, ashThread]);
-
-  useEffect(() => {
-    if (ashThread) return;
-    for (const id of deletedIds) {
-      if (ashPlayedRef.current.has(id)) continue;
-      const snap = threadSnapshotsRef.current.get(id);
-      ashPlayedRef.current.add(id);
-      if (!snap) continue;
-      setAshThread(snap);
-      setIsComposingThread(false);
-      setSelectedThreadId(id);
-      haptic(HAPTIC_RITUAL);
-      break;
-    }
-  }, [deletedIds, ashThread]);
-
-  const clearAsh = useCallback(() => {
-    setAshThread(null);
-    setSelectedThreadId(null);
-  }, []);
-
-  useEffect(() => {
-    if (!ashThread) return;
-    const ms = (reduceMotion ? TALK_ASH.reducedMs : TALK_ASH.durationMs) + 320;
-    const timer = window.setTimeout(clearAsh, ms);
-    return () => window.clearTimeout(timer);
-  }, [ashThread, reduceMotion, clearAsh]);
 
   const isBusy = isPublishing;
   const displayThread = ashThread ?? activeThread;
@@ -213,15 +186,8 @@ export function ForumWorkspace({
     isComposingThread,
     searchQuery,
     onSearchChange: setSearchQuery,
-    onSelectThread: (threadId: string) => {
-      setIsComposingThread(false);
-      setSelectedThreadId(threadId);
-      setTopicsOpen(false);
-    },
-    onStartCompose: () => {
-      setIsComposingThread(true);
-      setTopicsOpen(false);
-    },
+    onSelectThread: selectThread,
+    onStartCompose: startCompose,
     onlineCount,
     meshStatus,
     relayActive,
@@ -230,7 +196,7 @@ export function ForumWorkspace({
     onSyncNow: () => void onSyncNow(),
     pendingDeleteIds,
     ashThread,
-    reduceMotion: Boolean(reduceMotion),
+    reduceMotion,
   };
 
   return (
@@ -251,7 +217,7 @@ export function ForumWorkspace({
           whileTap={TAP}
           transition={TAP_TRANSITION}
           type="button"
-          onClick={() => setIsComposingThread(true)}
+          onClick={() => startCompose()}
           className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
         >
           <MessageSquarePlus className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
@@ -317,94 +283,99 @@ export function ForumWorkspace({
           )}
 
           <div className="relative min-h-0 flex-1">
-          <AnimatePresence mode="wait" initial={false}>
-            {isComposingThread ? (
-              <motion.div
-                key="composer"
-                initial={enterPlaza.initial}
-                animate={enterPlaza.animate}
-                exit={enterPlaza.exit}
-                transition={enterPlaza.transition}
-                className="absolute inset-0 overflow-y-auto"
-              >
-                <ThreadComposer
-                  identity={profile}
-                  isBusy={isBusy}
-                  onCancel={() => setIsComposingThread(false)}
-                  onSubmitThread={onCreateThread}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key={displayThread?.threadId ?? ashThread?.threadId ?? 'idle'}
-                initial={ashThread ? false : enterPlaza.initial}
-                animate={enterPlaza.animate}
-                exit={enterPlaza.exit}
-                transition={enterPlaza.transition}
-                className={`absolute inset-0 flex flex-col overflow-hidden ${
-                  ashThread
-                    ? `plaza-talk-ash-target ${
-                        reduceMotion
-                          ? 'plaza-talk-incinerate plaza-talk-incinerate--reduced'
-                          : 'plaza-talk-incinerate'
-                      }`
-                    : ''
-                }`}
-                aria-busy={ashThread ? true : undefined}
-                aria-label={ashThread ? t('readerDeleteIncinerating') : undefined}
-              >
-                {isSyncing && messages.length === 0 && !ashThread ? (
-                  <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
-                    <div className="panel-surface h-32 animate-pulse" />
-                    <div className="panel-surface h-24 animate-pulse" />
-                  </div>
-                ) : displayThread ? (
-                  <ThreadReader
-                    thread={displayThread}
+            <AnimatePresence mode="wait" initial={false}>
+              {isComposingThread ? (
+                <motion.div
+                  key="composer"
+                  initial={enterPlaza.initial}
+                  animate={enterPlaza.animate}
+                  exit={enterPlaza.exit}
+                  transition={enterPlaza.transition}
+                  className="absolute inset-0 overflow-y-auto"
+                >
+                  <ThreadComposer
                     identity={profile}
-                    selfUserId={selfUserId}
-                    presenceAliases={presenceAliases}
-                    authorVisuals={authorVisuals}
-                    onAuthorVisuals={setAuthorVisuals}
-                    onlineUserIds={onlineUserIds}
-                    deleteBallot={displayBallot}
-                    isBusy={isBusy || Boolean(ashThread)}
-                    onReplyThread={onReplyThread}
-                    onProposeDeleteThread={onProposeDeleteThread}
-                    onVoteDeleteThread={onVoteDeleteThread}
+                    isBusy={isBusy}
+                    onCancel={() => setIsComposingThread(false)}
+                    onSubmitThread={onCreateThread}
                   />
-                ) : (
-                  <div className="panel-surface px-6 py-10 text-center sm:px-8 sm:py-12">
-                    <MessageSquare className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-                    <h2 className="type-title mt-4 text-ink">
-                      {hasAnyThreads && searchQuery.trim() ? t('forumNoResults') : t('forumEmptyThreads')}
-                    </h2>
-                    {hasAnyThreads && searchQuery.trim() ? (
-                      <p className="type-lede mx-auto mt-2 max-w-md">
-                        {t('forumNoResultsHint', { q: searchQuery.trim() })}
-                      </p>
-                    ) : (
-                      <p className="type-lede mx-auto mt-2 max-w-md">
-                        {t('forumEmptyHint')}
-                      </p>
-                    )}
-                    {!(hasAnyThreads && searchQuery.trim()) && (
-                      <motion.button
-                        whileTap={TAP}
-                        transition={TAP_TRANSITION}
-                        type="button"
-                        onClick={() => setIsComposingThread(true)}
-                        className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      >
-                        <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
-                        {t('forumStartFirst')}
-                      </motion.button>
-                    )}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={displayThread?.threadId ?? ashThread?.threadId ?? 'idle'}
+                  initial={ashThread ? false : enterPlaza.initial}
+                  animate={enterPlaza.animate}
+                  exit={enterPlaza.exit}
+                  transition={enterPlaza.transition}
+                  className={`absolute inset-0 flex flex-col overflow-hidden ${
+                    ashThread
+                      ? `plaza-talk-ash-target${
+                          reduceMotion
+                            ? ' plaza-talk-incinerate plaza-talk-incinerate--reduced'
+                            : ''
+                        }`
+                      : ''
+                  }`}
+                  aria-busy={ashThread ? true : undefined}
+                  aria-label={ashThread ? t('readerDeleteIncinerating') : undefined}
+                >
+                  {isSyncing && messages.length === 0 && !ashThread ? (
+                    <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
+                      <div className="panel-surface h-32 animate-pulse" />
+                      <div className="panel-surface h-24 animate-pulse" />
+                    </div>
+                  ) : displayThread ? (
+                    <ThreadReader
+                      thread={displayThread}
+                      identity={profile}
+                      selfUserId={selfUserId}
+                      presenceAliases={presenceAliases}
+                      presenceAvatarSeeds={presenceAvatarSeeds}
+                      authorVisuals={authorVisuals}
+                      onAuthorVisuals={setAuthorVisuals}
+                      onlineUserIds={onlineUserIds}
+                      deleteBallot={displayBallot}
+                      isBusy={isBusy || Boolean(ashThread)}
+                      onReplyThread={onReplyThread}
+                      onProposeDeleteThread={onProposeDeleteThread}
+                      onVoteDeleteThread={onVoteDeleteThread}
+                    />
+                  ) : (
+                    <div className="panel-surface px-6 py-10 text-center sm:px-8 sm:py-12">
+                      <MessageSquare
+                        className="mx-auto h-12 w-12 text-faint"
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                      />
+                      <h2 className="type-title mt-4 text-ink">
+                        {hasAnyThreads && searchQuery.trim()
+                          ? t('forumNoResults')
+                          : t('forumEmptyThreads')}
+                      </h2>
+                      {hasAnyThreads && searchQuery.trim() ? (
+                        <p className="type-lede mx-auto mt-2 max-w-md">
+                          {t('forumNoResultsHint', { q: searchQuery.trim() })}
+                        </p>
+                      ) : (
+                        <p className="type-lede mx-auto mt-2 max-w-md">{t('forumEmptyHint')}</p>
+                      )}
+                      {!(hasAnyThreads && searchQuery.trim()) && (
+                        <motion.button
+                          whileTap={TAP}
+                          transition={TAP_TRANSITION}
+                          type="button"
+                          onClick={() => startCompose()}
+                          className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        >
+                          <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
+                          {t('forumStartFirst')}
+                        </motion.button>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </section>
       </div>

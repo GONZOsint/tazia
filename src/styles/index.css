@@ -101,7 +101,7 @@
   --dur-burn-front-pulse: 720ms;
   --dur-burn-heat-glow: 720ms;
   /* Mirror TALK_ASH.durationMs / reducedMs in motion/tokens.ts */
-  --dur-talk-ash: 1100ms;
+  --dur-talk-ash: 2200ms;
   --dur-talk-ash-reduced: 180ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -816,7 +816,40 @@ html.dark {
     transition: width var(--dur-switch) var(--ease-out-expo);
   }
 
-  /* Talk ash exit after unanimous delete — fire palette (eco of session burn) */
+  /*
+   * Region ash (hoguera extinguish / zone burn) — full motion ghosts the DOM while
+   * RegionAshOverlay runs. CSS incinerate keyframes = reduced only.
+   */
+  .region-ash--ghost,
+  .plaza-talk-ash-target.plaza-ash--ghost,
+  .plaza-topic-ash-target.plaza-ash--ghost {
+    /* Hide chrome; keep box for one frame then incinerated-collapse frees layout. */
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  /*
+   * Own class (not `.incinerated-collapse`) so zone cards with
+   * `.session-burn-target` do not pick up session-burn filter/transitions.
+   */
+  .region-ash-collapse {
+    opacity: 0;
+    max-height: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-width: 0 !important;
+    overflow: hidden;
+    /* No filter — Windows GPU flicker; canvas carries the ash look. */
+    transform: scale(0.985) translateY(3px);
+    transition:
+      max-height var(--dur-burn) var(--ease-in-out-quart),
+      opacity var(--dur-burn) var(--ease-out-expo),
+      margin var(--dur-burn) var(--ease-in-out-quart),
+      padding var(--dur-burn) var(--ease-in-out-quart),
+      border-width var(--dur-medium) ease,
+      transform var(--dur-burn) var(--ease-out-expo);
+  }
   .plaza-talk-incinerate {
     transform-origin: 50% 20%;
     pointer-events: none;
@@ -2380,14 +2413,14 @@ html.dark {
   }
 
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-    .burn-heat:hover:not(.is-heating) {
+    .burn-heat:hover:not(.is-dying):not(.is-heating) {
       border-color: color-mix(in srgb, var(--fire-mid) 48%, var(--color-danger-border));
       background-color: color-mix(in oklab, var(--color-danger-bg) 78%, var(--fire-mid));
       box-shadow:
         0 0 0 1px color-mix(in srgb, var(--fire-mid) 18%, transparent),
         0 0 10px color-mix(in srgb, var(--fire-mid) 14%, transparent);
     }
-    .burn-heat:hover:not(.is-heating) .burn-flame-icon {
+    .burn-heat:hover:not(.is-dying):not(.is-heating) .burn-flame-icon {
       color: var(--fire-mid);
       animation: flame-flicker-hover 560ms ease-in-out infinite alternate;
     }
@@ -2397,8 +2430,29 @@ html.dark {
       color var(--dur-micro) var(--ease-out-expo),
       filter var(--dur-micro) ease;
   }
+  /* Session “apagar llama” — cool down / die (not heat-up). */
+  .burn-heat.is-dying {
+    animation: burn-flame-die var(--dur-burn-heat-glow) ease-in-out forwards;
+    border-color: color-mix(in oklab, var(--fire-edge) 40%, var(--color-danger-border)) !important;
+    color: color-mix(in oklab, var(--color-danger-ink) 70%, var(--color-ink-muted)) !important;
+    background-color: color-mix(in oklab, var(--color-danger-bg) 70%, var(--color-bg)) !important;
+    box-shadow:
+      0 0 8px color-mix(in oklab, var(--fire-edge) 12%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--color-bg) 18%, transparent);
+    filter: saturate(0.55) brightness(0.88);
+  }
+  .burn-heat.is-dying .burn-ignition-bar {
+    opacity: 0.12;
+    transform-origin: right center;
+    animation: none;
+  }
+  .burn-heat.is-dying .burn-flame-icon {
+    color: color-mix(in oklab, var(--fire-edge) 55%, var(--color-ink-muted));
+    filter: drop-shadow(0 0 2px color-mix(in oklab, var(--fire-edge) 18%, transparent));
+    opacity: 0.45;
+  }
+  /* Legacy alias — prefer .is-dying for session extinguish. */
   .burn-heat.is-heating {
-    /* Base glow; keyframes pulse over it (no !important — that blocked the animation). */
     animation: burn-heat-glow var(--dur-burn-heat-glow) ease-in-out infinite alternate;
     border-color: color-mix(in oklab, var(--fire-mid) 78%, var(--color-danger-border)) !important;
     color: color-mix(in oklab, var(--color-danger-ink) 58%, var(--fire-core)) !important;
@@ -2436,7 +2490,7 @@ html.dark {
     animation: burn-front-pulse var(--dur-burn-front-pulse) ease-in-out infinite alternate;
   }
   /*
-   * Session burn only (BurnFireOverlay classList). Zone-card leave uses Motion
+   * Session extinguish only (BurnFireOverlay classList). Zone-card burn uses Motion
    * (zoneCardExit) — do not add this class to motion-driven zone rows or the
    * CSS opacity/filter/transform will fight Motion inline styles.
    */
@@ -2608,6 +2662,28 @@ html.dark {
   100% {
     transform: scale(1.05) rotate(2deg);
     box-shadow: 0 0 4px color-mix(in oklab, var(--fire-core) 42%, transparent);
+  }
+}
+
+@keyframes burn-flame-die {
+  0% {
+    opacity: 1;
+    filter: saturate(0.85) brightness(0.95);
+    box-shadow:
+      0 0 10px color-mix(in oklab, var(--fire-mid) 14%, transparent),
+      inset 0 0 6px color-mix(in oklab, var(--fire-edge) 8%, transparent);
+  }
+  55% {
+    opacity: 0.72;
+    filter: saturate(0.45) brightness(0.82);
+    box-shadow:
+      0 0 6px color-mix(in oklab, var(--fire-edge) 10%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--color-bg) 12%, transparent);
+  }
+  100% {
+    opacity: 0.35;
+    filter: saturate(0.25) brightness(0.7);
+    box-shadow: none;
   }
 }
 
@@ -3222,7 +3298,9 @@ html.dark {
   z-index: 9500;
 }
 
-#talk-ash-fire-canvas {
+#talk-ash-fire-canvas,
+#zone-ash-fire-canvas,
+#region-ash-fire-canvas {
   position: fixed;
   inset: 0;
   width: 100vw;
@@ -3254,6 +3332,8 @@ html.dark {
   }
   .cta-ignite-spark,
   .burn-heat.burn-heat--ghost,
+  .burn-heat.is-dying,
+  .burn-heat.is-dying .burn-ignition-bar,
   .burn-heat.is-heating,
   .burn-heat.is-heating .burn-ignition-bar,
   .session-burn-target.burning-front,
@@ -3316,11 +3396,18 @@ html.dark {
     transition: opacity 160ms ease, max-height 160ms ease;
   }
   .plaza-talk-incinerate,
-  .plaza-topic-incinerate {
+  .plaza-topic-incinerate,
+  .region-ash-collapse {
     filter: none !important;
     box-shadow: none !important;
+    animation: none !important;
   }
-  #talk-ash-fire-canvas {
+  .region-ash-collapse {
+    transition: opacity 160ms ease, max-height 160ms ease;
+  }
+  #talk-ash-fire-canvas,
+  #zone-ash-fire-canvas,
+  #region-ash-fire-canvas {
     display: none !important;
   }
   .qr-surface-3d {
@@ -3385,5 +3472,85 @@ html.dark {
 @container (max-width: 640px) {
   .cq-stack {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* —— Flame avatars (ported from llamita mock) —— */
+.flame-avatar-host {
+  background: var(--color-surface);
+  line-height: 0;
+}
+
+.flame-avatar-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.flame-avatar-svg .s0 { fill: var(--color-brand-cream); }
+.flame-avatar-svg .s1 { fill: var(--c-face); }
+.flame-avatar-svg .s2 { fill: var(--c-mid); }
+.flame-avatar-svg .s3 { fill: var(--c-inner); }
+.flame-avatar-svg .s4 { fill: var(--c-core); }
+.flame-avatar-svg .s5 { fill: var(--c-bright); }
+.flame-avatar-svg .ink-dot { fill: var(--c-ink); }
+.flame-avatar-svg .s1-stroke {
+  fill: none;
+  stroke: var(--c-face);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.flame-avatar-svg .mouth-coral {
+  fill: var(--c-tongue);
+  stroke: var(--c-face);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.flame-avatar-svg .mouth-deep {
+  fill: var(--c-mouth-deep);
+  stroke: var(--c-face);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.flame-avatar-svg .tongue-pink { fill: var(--c-tongue); }
+.flame-avatar-svg .tooth-white {
+  fill: var(--color-brand-cream);
+  stroke: var(--c-face);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.flame-avatar-svg .eye-white {
+  fill: var(--color-brand-cream);
+  stroke: var(--c-face);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.flame-avatar-svg .cheek-blush {
+  fill: var(--c-blush);
+  opacity: 0.28;
+}
+
+.flame-avatar-svg .eye-open {
+  transform-box: fill-box;
+  transform-origin: 50% 54%;
+  animation: flame-eye-squash-blink var(--blink-speed, 6.4s) ease-in-out infinite;
+  animation-delay: var(--blink-delay, -2.1s);
+}
+
+.flame-avatar-svg .particles-layer,
+.flame-avatar-svg .flame-ground-shadow {
+  pointer-events: none;
+}
+
+@keyframes flame-eye-squash-blink {
+  0%, 44.0%, 47.6%, 89.0%, 92.6%, 96.4%, 100% { transform: scaleY(1); }
+  45.2%, 90.0%, 93.8% { transform: scaleY(0.10); }
+  46.5%, 91.4%, 95.1% { transform: scaleY(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flame-avatar-svg .eye-open {
+    animation: none !important;
   }
 }

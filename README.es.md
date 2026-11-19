@@ -2,7 +2,7 @@
 
 **Zona Anónima Temporal en Acción**
 
-Una sala que existe solo mientras estéis dentro: sin cuentas y sin chat guardado en nuestra nube. Compartís una frase y habláis en directo entre navegadores **conectados a la vez**. Si nadie más está online, la sala se apaga. Al **quemar la sesión**, **este** dispositivo olvida la zona.
+Una sala que existe solo mientras estéis dentro: sin cuentas y sin chat guardado en nuestra nube. Compartís una frase y habláis en directo entre navegadores **conectados a la vez**. Si nadie más está online, la sala se apaga. Al **apagar la llama**, **este** dispositivo olvida la zona.
 
 📱 En el móvil podéis **Instalar / Añadir a la pantalla de inicio**.  
 🔗 Sitio en vivo: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
@@ -16,11 +16,11 @@ Una sala que existe solo mientras estéis dentro: sin cuentas y sin chat guardad
 | Quieres… | Ve a… |
 | --- | --- |
 | 🚪 Abrir o unirte | **Zonas** |
-| 💬 Hablar en grupo | **Plaza** |
-| 🗳️ Borrar **una** charla (voto unánime) | **Plaza** → llama → toda la tribu **online** vota a favor |
+| 💬 Hablar en grupo | **Foro** |
+| 🗳️ Apagar **una** hoguera (voto unánime) | **Foro** → apagar hoguera → toda la tribu **online** vota a favor |
 | 👥 Ver quién está / verificar a alguien | **Tribu** |
 | 🤫 Escribir en privado | **Susurros** |
-| 🔥 Olvidar **todas** las zonas en este dispositivo | **Quemar sesión** |
+| 🔥 Olvidar **todas** las zonas en este dispositivo | **Apagar llama** |
 
 ---
 
@@ -32,9 +32,9 @@ Una sala que existe solo mientras estéis dentro: sin cuentas y sin chat guardad
    También podéis meterla en el enlace: más cómodo, menos privado.
 4. La otra persona entra con **Entrar con frase**, el enlace o el **QR**.
 5. La primera vez el navegador pide permiso de red: es para que os encontréis en la misma Wi‑Fi o LAN.
-6. Cuando terminéis: **Quemar sesión**.
+6. Cuando terminéis: **Apagar llama**.
 
-Podéis tener hasta **tres zonas** abiertas y cambiar entre ellas. Salir de una no tumba las demás; quemar sí limpia todas en **este** navegador.
+Podéis tener hasta **tres zonas** abiertas y cambiar entre ellas. Quemar una no tumba las demás; apagar la llama sí limpia todas en **este** navegador.
 
 ---
 
@@ -103,7 +103,7 @@ Get-FileHash .\release\tazia-single.html -Algorithm SHA256
 
 **🔑 Frase.** Es la llave de la sala: no la publiques en un chat abierto. Verificar en **Tribu** (secuencia de emojis) confirma que hablas con quien crees.
 
-**🗳️ Borrar charla ≠ quemar.** En la Plaza, la llama propone borrar **esa** charla: hace falta el sí de todos los que estaban online al proponer. **Quemar sesión** solo limpia **este** navegador (todas las zonas); el resto de la tribu sigue hasta que también queme.
+**🗳️ Apagar hoguera ≠ apagar llama.** En el Foro, apagar una hoguera propone borrar **ese** hilo: hace falta el sí de todos los que estaban online al proponer. **Apagar llama** solo limpia **este** navegador (todas las zonas); el resto de la tribu sigue hasta que también apague.
 
 **⏳ Expectativas.** Va mejor en grupos pequeños. No reemplaza una app de mensajería diaria: es una zona **temporal**.
 
@@ -119,8 +119,8 @@ Chrome, Brave, Firefox y Safari. En internet hace falta **HTTPS**. En local, `lo
 
 | Tema | Documento |
 | --- | --- |
-| 🛡️ Riesgos y límites (burn vs borrado de charla) | [Seguridad](docs/SECURITY.es.md) |
-| 📜 Formato de mensajes y voto de borrado | [Protocolo](docs/PROTOCOL.es.md) |
+| 🛡️ Riesgos y límites (apagar llama vs apagar hoguera) | [Seguridad](docs/SECURITY.es.md) |
+| 📜 Formato de mensajes y voto de apagado | [Protocolo](docs/PROTOCOL.es.md) |
 | 📶 Si no os conectáis (TURN / Wi‑Fi) | [Conexión](docs/TURN.es.md) |
 | 📚 Índice técnico | [docs/](docs/README.es.md) |
 

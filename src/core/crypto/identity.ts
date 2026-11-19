@@ -1,4 +1,5 @@
 /** Utilidades ligeras: hex aleatorio, alias e identicon desde userId Trystero. */
+import { randomAvatarSeed } from '../avatar/avatarSeed';
 
 /** Adjetivos atmosféricos (tono TAZIA); índice desde fingerprint. */
 const ALIAS_ADJECTIVES = [
@@ -152,6 +153,8 @@ export interface PeerVisual extends IdenticonVisual {
 
 export interface LocalProfile extends PeerVisual {
   alias: string;
+  /** Random flame avatar seed for this zone session. */
+  avatarSeed: string;
 }
 
 function bytesToHex(bytes: Uint8Array): string {
@@ -292,11 +295,16 @@ export function suggestAliasFromFingerprint(fingerprintHex: string): string {
   return `${adj} ${noun}`;
 }
 
-export async function buildLocalProfile(userId: string, customAlias?: string): Promise<LocalProfile> {
+export async function buildLocalProfile(
+  userId: string,
+  customAlias?: string,
+  avatarSeed?: string
+): Promise<LocalProfile> {
   const visual = await visualFromUserId(userId);
   const alias = customAlias?.trim() || visual.suggestedAlias;
   return {
     ...visual,
     alias,
+    avatarSeed: avatarSeed && avatarSeed.length > 0 ? avatarSeed : randomAvatarSeed(),
   };
 }

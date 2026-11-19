@@ -101,5 +101,5 @@ Referencias: [Chrome LNA](https://developer.chrome.com/blog/local-network-access
 - TURN oculta tu IP a los peers; el operador TURN ve la tuya. Usa un servidor de confianza (idealmente el tuyo).
 - Los mensajes van firmados con Ed25519: TURN no puede inventar firmas; sí ve tráfico WebRTC cifrado.
 - TAZIA **no** incluye un TURN de terceros.
-- **Quemar sesión** limpia `sessionStorage` (TURN por defecto). **Recordar en este dispositivo** sobrevive al burn hasta borrar datos del sitio o desmarcar.
+- **Apagar llama** limpia `sessionStorage` (TURN por defecto). **Recordar en este dispositivo** sobrevive al apagado hasta borrar datos del sitio o desmarcar.
 - Modelo de amenaza: [`SECURITY.es.md`](SECURITY.es.md).

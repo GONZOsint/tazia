@@ -3,20 +3,15 @@ import { Flame, KeyRound, Link2, MessageSquarePlus, QrCode, RefreshCw, Search, X
 import { AnimatePresence } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
-import type { ForumMessage, MeshStatus } from '../../core/protocol';
+import type { MeshStatus } from '../../core/protocol';
 import { buildInviteUrl } from '../../core/utils/inviteLink';
-import { Identicon } from '../../components/content/Identicon';
+import { PeerAvatar } from '../../components/content/PeerAvatar';
 import { CopyButton } from '../../components/ui/CopyButton';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { ZoneInvitePanel } from '../rooms/ZoneInvitePanel';
+import type { ThreadGroup } from './types';
 
-export interface ThreadGroup {
-  threadId: string;
-  title: string;
-  rootPost: ForumMessage;
-  replies: ForumMessage[];
-  lastActivityMs: number;
-}
+export type { ThreadGroup } from './types';
 
 interface RoomSidebarProps {
   roomId: string;
@@ -103,9 +98,10 @@ export function RoomSidebar({
 
       <div className="panel-surface panel-pad--dense">
         <div className="flex items-start gap-3">
-          <Identicon
+          <PeerAvatar
+            avatarSeed={profile.avatarSeed}
             matrix={profile.identiconMatrix}
-            size={36}
+            size={40}
             label={profile.alias}
             fg={profile.fg}
             bg={profile.bg}
@@ -219,10 +215,10 @@ export function RoomSidebar({
                   disabled={ashing || isBusy}
                   className={`pressable type-ui flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] px-2.5 py-2 text-left ${
                     ashing
-                      ? `plaza-topic-ash-target border border-transparent text-ink ${
+                      ? `plaza-topic-ash-target border border-transparent text-ink${
                           reduceMotion
-                            ? 'plaza-topic-incinerate plaza-topic-incinerate--reduced'
-                            : 'plaza-topic-incinerate'
+                            ? ' plaza-topic-incinerate plaza-topic-incinerate--reduced'
+                            : ''
                         }`
                       : pendingDelete
                         ? 'plaza-topic-pending border font-semibold text-ink'
@@ -260,10 +256,10 @@ export function RoomSidebar({
           {showAshGhost && ashThread && (
             <li key={`ash-${ashThread.threadId}`}>
               <div
-                className={`plaza-topic-ash-target type-ui flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] border border-transparent px-2.5 py-2 text-left font-semibold text-ink ${
+                className={`plaza-topic-ash-target type-ui flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] border border-transparent px-2.5 py-2 text-left font-semibold text-ink${
                   reduceMotion
-                    ? 'plaza-topic-incinerate plaza-topic-incinerate--reduced'
-                    : 'plaza-topic-incinerate'
+                    ? ' plaza-topic-incinerate plaza-topic-incinerate--reduced'
+                    : ''
                 }`}
                 aria-hidden="true"
               >

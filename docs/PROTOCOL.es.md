@@ -51,12 +51,12 @@ Límite de UI (no del protocolo): hasta **3** zonas concurrentes (`MAX_ROOMS`).
 | --- | --- | --- |
 | Nombre / dominio | `agora-forum-v2`, `tazia.*` | `tazep-v2`, `tazep.*` |
 | Susurros | solo `seal: 2` | igual |
-| Attestation presence | `tazia.presence.v1` | `tazep.presence.v3` + `atMs` + `alias` |
+| Attestation presence | `tazia.presence.v1` | `tazep.presence.v4` + `atMs` + `alias` + `avatarSeed` |
 | Goodbye (Nostr) | sin auth | atestiguado `tazep.goodbye.v3` + `atMs` |
 | Sync WebRTC | `ForumEvent[]` crudo | digest firmado (`tazep.sync-res.v1`) |
 | `sync-res` Nostr | primera respuesta gana | `fromUserId` + Ed25519 `tazep.sync-res.v1` + digest |
 | Verify keys | última SPKI observada | **pinned** TOFU hasta `repin` |
-| Borrar charla | ninguno (solo append) | `DELETE_PROPOSE` / `DELETE_VOTE` unánime + tumbas |
+| Apagar hoguera | ninguno (solo append) | `DELETE_PROPOSE` / `DELETE_VOTE` unánime + tumbas |
 
 ---
 
@@ -64,7 +64,7 @@ Límite de UI (no del protocolo): hasta **3** zonas concurrentes (`MAX_ROOMS`).
 
 | Canal | Tipo | Uso |
 | --- | --- | --- |
-| `forumMsg` | `makeAction` | Publicación en vivo (hilos / respuestas / voto de borrado) |
+| `forumMsg` | `makeAction` | Publicación en vivo (hogueras / respuestas / voto de apagado) |
 | `directMsg` | `makeAction` | Susurros a un `target` |
 | `forumSync` | `makeAction(..., { kind: 'request' })` | Snapshot RPC para late joiners |
 | `presence` | `makeUserState` | Alias + pubkey de firma + X25519 |
@@ -87,19 +87,21 @@ Cada zona de la UI es un `joinP2pRoom` aislado. Entrar **exige** SubtleCrypto X2
   alias: string;              // 1–40 chars
   signPubKeySpkiB64: string;  // SPKI Ed25519, base64
   encPubKeyRawB64: string;    // X25519 raw, base64 — obligatorio
+  avatarSeed: string;         // seed compacto de llamita — obligatorio
 }
 ```
 
 Sin `signPubKeySpkiB64` válida no se aceptan mensajes de ese autor en **sync** (ni en vivo hasta conocer/pinnear la clave).  
-Sin `encPubKeyRawB64` la presencia se rechaza; no hay Susurros en claro.
+Sin `encPubKeyRawB64` la presencia se rechaza; no hay Susurros en claro.  
+`avatarSeed` debe ser `v1.<p>.<f>.<e>.<m>.<d>.<hex8>` ([`avatarSeed.ts`](../src/core/avatar/avatarSeed.ts)); sin seed válido se rechaza el estado.
 
 Presence Nostr lleva `attestSig` sobre:
 
 ```
-["tazep.presence.v3", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs, alias]
+["tazep.presence.v4", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs, alias, avatarSeed]
 ```
 
-`atMs` debe estar dentro de `LIVE_CLOCK_SKEW_MS` y ser **estrictamente creciente** por `userId` en el receptor. Liga claves + alias a un `userId` reclamado (TOFU first-writer). **No** equivale al binding WebRTC de Trystero. SPKI de firma y X25519 enc se **pinnean juntos**; un sign `changed` **no** actualiza la enc de Susurros, y la enc no rota en silencio bajo el mismo SPKI. La presence WebRTC tiene prioridad sobre Nostr para el mismo `userId`.
+`atMs` debe estar dentro de `LIVE_CLOCK_SKEW_MS` y ser **estrictamente creciente** por `userId` en el receptor. Liga claves + alias + avatar a un `userId` reclamado (TOFU first-writer). **No** equivale al binding WebRTC de Trystero. SPKI de firma y X25519 enc se **pinnean juntos**; un sign `changed` **no** actualiza la enc de Susurros, y la enc no rota en silencio bajo el mismo SPKI. La presence WebRTC tiene prioridad sobre Nostr para el mismo `userId`.
 
 Goodbye Nostr (al salir con fallback activo):
 
@@ -128,15 +130,15 @@ El goodbye solo elimina al peer si `signPubKeySpkiB64` coincide con la clave fij
 }
 ```
 
-### Contenido vs voto de borrado
+### Contenido vs voto de apagado
 
 | Tipo | Rol |
 | --- | --- |
-| `NEW_THREAD` | Raíz de una charla (`parentMsgId` = `null`; `body` no vacío) |
+| `NEW_THREAD` | Raíz de una hoguera (`parentMsgId` = `null`; `body` no vacío) |
 | `REPLY` | Respuesta (`parentMsgId` = `msgId` padre; `body` no vacío) |
 | `DELETE_PROPOSE` / `DELETE_VOTE` | Ballot sobre un `threadId` — no se muestran como posts |
 
-### Borrar charla (voto unánime de la tribu)
+### Apagar hoguera (voto unánime de la tribu)
 
 | Tipo | `parentMsgId` | `title` | `body` |
 | --- | --- | --- | --- |
@@ -157,7 +159,7 @@ voto → DELETE_VOTE (padre = propose)
     ↘ cuando |votos| == |electorado|: purgar contenido, conservar tumbas
 ```
 
-UI: llama en Plaza → confirmar → banner de progreso hasta unanimidad. Solo en la zona ⇒ la propuesta se completa al instante.
+UI: Foro → apagar hoguera → confirmar → banner de progreso hasta unanimidad. Solo en la zona ⇒ la propuesta se completa al instante.
 
 ### Canónico firmado
 
@@ -210,7 +212,7 @@ Material de sala: PBKDF2 210k una vez (salt `tazep.fallback.v2:{roomId}`) + HKDF
 | `t` | Campos (además de `v: 2`) | Auth |
 | --- | --- | --- |
 | `forum` | `event` | Ed25519 del evento; sin enlace al transporte WebRTC |
-| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v3` |
+| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v4` |
 | `goodbye` | `userId`, claves, `atMs`, `attestSig` | `tazep.goodbye.v3` |
 | `dm` | `dm` | Igual que Susurro en el mensaje de red |
 | `sync-req` | `fromUserId`, `reqId` | — |
@@ -246,7 +248,7 @@ late joiner → forumSync.requestMany / Nostr sync-req → sync-res (firmado)
 | Concern | Path |
 | --- | --- |
 | Tipos / validadores | [`src/core/protocol.ts`](../src/core/protocol.ts) |
-| Borrado unánime de charla | [`src/core/forum/threadDelete.ts`](../src/core/forum/threadDelete.ts) |
+| Apagado unánime de hoguera | [`src/core/forum/threadDelete.ts`](../src/core/forum/threadDelete.ts) |
 | Ed25519 + sync-res | [`src/core/crypto/messageSigning.ts`](../src/core/crypto/messageSigning.ts) |
 | Attest presence / goodbye | [`src/core/crypto/presenceAttest.ts`](../src/core/crypto/presenceAttest.ts) |
 | Sello DM | [`src/core/crypto/dmCrypto.ts`](../src/core/crypto/dmCrypto.ts) |

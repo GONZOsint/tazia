@@ -32,7 +32,7 @@ interface TopBarProps {
   /** Open zone count — badge on Zonas when > 1. */
   roomsCount?: number;
   activeZone?: ActiveZoneChip | null;
-  /** Visual ignition while burn choreography runs. */
+  /** Visual dying flame while session extinguish choreography runs. */
   burnHeating?: boolean;
   /** Zone ignite glow on the active chip (inverse of burn). */
   igniting?: boolean;
@@ -216,7 +216,7 @@ export function TopBar({
                 aria-label={t('leaveTab')}
                 title={t('leaveTab')}
                 className={`burn-heat session-burn-target inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg text-xs font-semibold text-danger-ink whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80 sm:w-[9.75rem] sm:px-3 ${
-                  burnHeating ? 'is-heating' : ''
+                  burnHeating ? 'is-dying' : ''
                 }`}
               >
                 <span
@@ -224,9 +224,10 @@ export function TopBar({
                   style={
                     burnHeating
                       ? {
-                          transform: 'scaleX(1)',
+                          transform: 'scaleX(0)',
+                          opacity: 0.15,
                           transition:
-                            'transform var(--dur-burn-ignition) var(--ease-out-expo)',
+                            'transform var(--dur-burn-ignition) var(--ease-out-expo), opacity var(--dur-burn-ignition) var(--ease-out-expo)',
                         }
                       : undefined
                   }

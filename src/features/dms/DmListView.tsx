@@ -7,7 +7,11 @@ import type { TrustStore } from '../../core/trust/trustStore';
 import { useLocale, useT } from '../../i18n';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { EmptyZoneCta } from '../../components/ui/AccentButton';
-import { Identicon } from '../../components/content/Identicon';
+import { PeerAvatar } from '../../components/content/PeerAvatar';
+import {
+  peerAvatarSeed,
+  rememberPeerAvatarSeed,
+} from '../../core/avatar/peerSeedCache';
 import { listRowEnter, peerRowExit } from '../../motion/tokens';
 
 interface DmListViewProps {
@@ -81,6 +85,12 @@ export function DmListView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [peerIds.join('|')]);
 
+  useEffect(() => {
+    for (const [id, state] of Object.entries(presence)) {
+      if (state.avatarSeed) rememberPeerAvatarSeed(id, state.avatarSeed);
+    }
+  }, [presence]);
+
   if (!selfUserId) {
     return (
       <EmptyZoneCta
@@ -145,17 +155,14 @@ export function DmListView({
                   }`}
                 >
                   <div className="relative shrink-0">
-                    {visual ? (
-                      <Identicon
-                        matrix={visual.identiconMatrix}
-                        size={36}
-                        label={alias}
-                        fg={visual.fg}
-                        bg={visual.bg}
-                      />
-                    ) : (
-                      <div className="h-9 w-9 rounded-[var(--radius-ctrl)] bg-surface" />
-                    )}
+                    <PeerAvatar
+                      avatarSeed={presence[id]?.avatarSeed || peerAvatarSeed(id)}
+                      matrix={visual?.identiconMatrix}
+                      size={36}
+                      label={alias}
+                      fg={visual?.fg}
+                      bg={visual?.bg}
+                    />
                     {isOnline && (
                       <span
                         className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-raised bg-ok"

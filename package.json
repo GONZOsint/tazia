@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "icons": "node scripts/render-brand-icons.mjs",
     "build:single": "node scripts/release-singlefile.mjs"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "vite": "^8.3.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^22.14.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",

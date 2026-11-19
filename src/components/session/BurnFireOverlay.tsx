@@ -1,29 +1,38 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Flame } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { BURN } from '../../motion/tokens';
 import {
-  FIRE_BUDGET,
-  FractalNoise2D,
   applyBurnFront,
-  buildBurnMap,
+  burnFrontFromElapsed,
+  clampDt,
   createBurnButtonSnapshot,
   createParticleBags,
-  drawAmbientGlow,
+  cssVar,
+  drawEndVeil,
+  drawParticleLayers,
+  fireIntensityFrom,
   hasLiveParticles,
+  maybeFeedBurnParticles,
+  prepareBurnWorkTarget,
   refreshFirePalette,
-  seedIgnitionBurst,
-  spawnAsh,
-  spawnFlame,
+  seedExtinguishBurst,
+  seedSecondaryExtinguish,
   spawnFromEmberEdge,
-  spawnSmoke,
-  spawnSpark,
-  updateAndDrawAshes,
-  updateAndDrawFlames,
-  updateAndDrawSmokes,
-  updateAndDrawSparks,
-  type ButtonSnapshot,
+  type BurnWorkTarget,
+  type MidBurnFeedState,
 } from '../../motion/fireBurnEngine';
+import {
+  collectOtherTargetRects,
+  ghostBurnButton,
+  setSessionBurnPhase,
+} from './burn/domPhases';
+import {
+  abortBurnRun,
+  resetBurnRunGuards,
+  runReducedMotionPhases,
+  useBurnOverlayLifecycle,
+} from './burn/useBurnOverlayLifecycle';
 
 interface BurnFireOverlayProps {
   /** When true, run combustion burst then call onComplete. */
@@ -31,55 +40,12 @@ interface BurnFireOverlayProps {
   onComplete: () => void;
 }
 
-function cssColor(name: string, fallback: string): string {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
-
-function markTargets(phase: 'front' | 'collapse' | 'clear') {
-  const nodes = document.querySelectorAll('.session-burn-target');
-  for (const el of nodes) {
-    if (phase === 'clear') {
-      el.classList.remove('burning-front', 'incinerated-collapse', 'burn-heat--ghost');
-    } else if (phase === 'front') {
-      if (!el.classList.contains('burn-heat')) {
-        el.classList.add('burning-front');
-      }
-    } else {
-      if (!el.classList.contains('burn-heat')) {
-        el.classList.add('incinerated-collapse');
-      }
-    }
-  }
-}
-
-function collectOtherTargetRects(burnEl: Element | null): DOMRect[] {
-  const targets = document.querySelectorAll('.session-burn-target');
-  const rects: DOMRect[] = [];
-  for (const el of targets) {
-    if (burnEl && el === burnEl) continue;
-    if (el.classList.contains('burn-heat')) continue;
-    rects.push(el.getBoundingClientRect());
-  }
-  return rects;
-}
-
-function ghostBurnButton(on: boolean) {
-  const btn = document.querySelector('.burn-heat.session-burn-target');
-  if (!btn) return;
-  btn.classList.toggle('burn-heat--ghost', on);
-}
-
 /**
- * Full-viewport canvas fire for burn-session choreography.
- * Pixel-incinerates the Quemar control via fractal burn map (reference technique);
- * other session targets keep CSS front/collapse + ambient particle feeds.
+ * Full-viewport canvas for “apagar llama” (session extinguish).
+ * Cool douse front on the flame control + dark veil; smoke-heavy particles.
  */
 export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef = useRef<number | null>(null);
-  const doneRef = useRef(false);
-  const abortedRef = useRef(false);
+  const life = useBurnOverlayLifecycle(onComplete);
   const reduceMotion = useReducedMotion();
   const morphOrigin = useMemo(() => {
     if (!play || reduceMotion) return null;
@@ -102,23 +68,57 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
   useEffect(() => {
     if (!play) return;
-    doneRef.current = false;
-    abortedRef.current = false;
+    resetBurnRunGuards(life);
     const timeouts: number[] = [];
-    const canvas = canvasRef.current;
+    const bg = cssVar('--color-bg', '#0b0d09');
+    refreshFirePalette();
+
+    const finish = (clearCanvas = true) => {
+      ghostBurnButton(false);
+      life.finish({ clearCanvas, fillBg: clearCanvas ? bg : undefined });
+    };
+
+    const runReduced = () => {
+      runReducedMotionPhases(timeouts, {
+        abortedRef: life.abortedRef,
+        frontMs: BURN.reducedFrontMs,
+        collapseMs: BURN.reducedCollapseMs,
+        onFront: () => setSessionBurnPhase('front'),
+        onCollapse: () => setSessionBurnPhase('collapse'),
+        onFinish: () => finish(false),
+      });
+    };
+
+    const canvas = life.canvasRef.current;
     if (!canvas) {
-      onComplete();
-      return;
+      // Mirror Region: still run DOM phases when canvas is missing.
+      runReduced();
+      return () => {
+        abortBurnRun(life, timeouts);
+        ghostBurnButton(false);
+        if (!life.doneRef.current) setSessionBurnPhase('clear');
+      };
     }
 
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) {
-      onComplete();
-      return;
+      runReduced();
+      return () => {
+        abortBurnRun(life, timeouts);
+        ghostBurnButton(false);
+        if (!life.doneRef.current) setSessionBurnPhase('clear');
+      };
     }
 
-    const bg = cssColor('--color-bg', '#0b0d09');
-    refreshFirePalette();
+    if (reduceMotion) {
+      runReduced();
+      return () => {
+        abortBurnRun(life, timeouts);
+        ghostBurnButton(false);
+        if (!life.doneRef.current) setSessionBurnPhase('clear');
+      };
+    }
+
     const burnEl = document.querySelector('.burn-heat.session-burn-target');
     const burnRect = burnEl?.getBoundingClientRect() ?? null;
     const labelEl = burnEl?.querySelector('span.relative.z-10.hidden, span.truncate');
@@ -126,81 +126,24 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       labelEl?.textContent?.trim() ||
       (burnEl instanceof HTMLElement ? burnEl.getAttribute('aria-label') : null);
 
-    const finish = (clearCanvas = true) => {
-      if (doneRef.current || abortedRef.current) return;
-      doneRef.current = true;
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-      ghostBurnButton(false);
-      if (clearCanvas) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = bg;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      onComplete();
-    };
+    const resize = life.bindResize(canvas, ctx);
+    let dpr = resize.onResize();
 
-    if (reduceMotion) {
-      markTargets('front');
-      timeouts.push(
-        window.setTimeout(() => {
-          if (abortedRef.current) return;
-          markTargets('collapse');
-          timeouts.push(window.setTimeout(() => finish(false), BURN.reducedCollapseMs));
-        }, BURN.reducedFrontMs)
-      );
-      return () => {
-        abortedRef.current = true;
-        for (const id of timeouts) window.clearTimeout(id);
-        ghostBurnButton(false);
-        if (!doneRef.current) markTargets('clear');
-      };
-    }
-
-    let dpr = Math.min(window.devicePixelRatio || 1, FIRE_BUDGET.maxDpr);
-    const ensureCanvasSize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, FIRE_BUDGET.maxDpr);
-      const w = Math.max(1, Math.round(window.innerWidth * dpr));
-      const h = Math.max(1, Math.round(window.innerHeight * dpr));
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-      }
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    ensureCanvasSize();
-    window.addEventListener('resize', ensureCanvasSize);
-
-    let snap: ButtonSnapshot | null = null;
-    let burnMap: Float32Array | null = null;
-    let noiseCache: Float32Array | null = null;
-    let workImageData: ImageData | null = null;
-    let burnWorkCanvas: HTMLCanvasElement | null = null;
-    let burnWorkCtx: CanvasRenderingContext2D | null = null;
-    let liveRect = burnRect;
+    let work: BurnWorkTarget | null = null;
 
     if (burnRect && burnRect.width > 0) {
-      snap = createBurnButtonSnapshot(burnRect, dpr, labelText);
+      const snap = createBurnButtonSnapshot(burnRect, dpr, labelText);
       if (snap) {
-        const igX = (burnRect.width / 2 + snap.pad) * dpr;
-        const igY = (burnRect.height - 6 + snap.pad) * dpr;
-        const noise = new FractalNoise2D(snap.pxW, snap.pxH, dpr);
-        const built = buildBurnMap(snap.pxW, snap.pxH, igX, igY, noise, snap.origPixels);
-        burnMap = built.burnMap;
-        noiseCache = built.noiseCache;
-        burnWorkCanvas = document.createElement('canvas');
-        burnWorkCanvas.width = snap.pxW;
-        burnWorkCanvas.height = snap.pxH;
-        burnWorkCtx = burnWorkCanvas.getContext('2d');
-        if (burnWorkCtx) {
-          workImageData = burnWorkCtx.createImageData(snap.pxW, snap.pxH);
-        }
-        ghostBurnButton(true);
+        const snapDpr = snap.pxW / snap.cssW;
+        const igX = (burnRect.width / 2 + snap.pad) * snapDpr;
+        const igY = (burnRect.height - 6 + snap.pad) * snapDpr;
+        work = prepareBurnWorkTarget({
+          snap,
+          screenRect: burnRect,
+          igniteX: igX,
+          igniteY: igY,
+        });
+        if (work) ghostBurnButton(true);
       }
     }
 
@@ -213,83 +156,86 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       ? burnRect.top + burnRect.height * 0.85
       : window.innerHeight * 0.4;
 
-    seedIgnitionBurst(bags, startX, startY);
-    for (const r of otherRects.slice(0, 6)) {
-      spawnFlame(bags, r.left + r.width * 0.5, r.top + r.height * 0.9, 0.7);
-      spawnSpark(bags, r.left + r.width * 0.4, r.top + r.height * 0.8);
-    }
+    seedExtinguishBurst(bags, { x: startX, y: startY }, {
+      smokeCount: 14,
+      smokeSpreadX: 36,
+      smokeSpreadY: 12,
+      flameLife: 0.4,
+    });
+    seedSecondaryExtinguish(
+      bags,
+      otherRects.slice(0, 6).map((r) => ({
+        x: r.left + r.width * 0.5,
+        y: r.top + r.height * 0.7,
+      })),
+      { ashChance: 0.4 }
+    );
 
-    markTargets('front');
+    setSessionBurnPhase('front');
 
     let lastTime = performance.now();
     let elapsedSec = 0;
-    const burnDurationSec = BURN.finishMs / 1000;
     let collapsed = false;
-    let lastOtherFeed = 0;
+    const feedState: MidBurnFeedState = { lastFeedMs: 0 };
+    const glowCx = work?.glowX ?? window.innerWidth * 0.5;
+    const glowCy = work?.glowY ?? window.innerHeight * 0.4;
 
     const tick = (now: number) => {
-      if (abortedRef.current) return;
-      ensureCanvasSize();
-      const dt = Math.max(0.001, Math.min(0.033, (now - lastTime) / 1000));
+      if (life.abortedRef.current) return;
+      dpr = resize.onResize();
+      const dt = clampDt(now, lastTime);
       lastTime = now;
       elapsedSec += dt;
       const elapsedMs = elapsedSec * 1000;
 
-      // Keep snapshot anchored if layout shifts slightly during burn.
-      if (burnEl) {
-        liveRect = burnEl.getBoundingClientRect();
-      }
+      const { tNorm, front } = burnFrontFromElapsed(elapsedSec, BURN.finishMs);
 
-      const tNorm = Math.min(1, elapsedSec / Math.max(0.01, burnDurationSec * 0.85));
-      const easedProgress =
-        tNorm < 0.5 ? 1.7 * tNorm * tNorm : 1 - Math.pow(-2 * tNorm + 2, 2) / 2;
-      const front = 0.045 + easedProgress * 1.14;
-
-      let remainingButtonPixels = 0;
+      let remainingPixels = 0;
       let activeEmberCount = 0;
-      let emberPoints: number[] = [];
 
-      if (snap && burnMap && noiseCache && workImageData && burnWorkCtx && liveRect && tNorm < 1) {
-        const screenLeft = liveRect.left - snap.pad;
-        const screenTop = liveRect.top - snap.pad;
+      if (work && tNorm < 1) {
         const result = applyBurnFront({
-          pxW: snap.pxW,
-          pxH: snap.pxH,
-          dpr,
+          pxW: work.snap.pxW,
+          pxH: work.snap.pxH,
+          dpr: work.snapDpr,
           front,
           elapsed: elapsedSec,
-          origPixels: snap.origPixels,
-          workPixels: workImageData.data,
-          burnMap,
-          noiseCache,
-          screenLeft,
-          screenTop,
+          origPixels: work.snap.origPixels,
+          workPixels: work.workImageData.data,
+          burnMap: work.burnMap,
+          noiseCache: work.noiseCache,
+          screenLeft: work.screenLeft,
+          screenTop: work.screenTop,
+          mode: 'extinguish',
         });
-        remainingButtonPixels = result.remainingButtonPixels;
+        remainingPixels = result.remainingPixels;
         activeEmberCount = result.activeEmberCount;
-        emberPoints = result.emberPoints;
-        burnWorkCtx.putImageData(workImageData, 0, 0);
-        spawnFromEmberEdge(bags, emberPoints);
+        work.workCtx.putImageData(work.workImageData, 0, 0);
+        spawnFromEmberEdge(bags, result.emberPoints, {
+          flameBudget: Math.min(2, Math.max(0, Math.ceil(result.emberPoints.length / 48))),
+          spawnSparks: false,
+        });
       }
 
-      if (
-        elapsedMs - lastOtherFeed > 220 &&
-        elapsedMs < BURN.collapseAtMs + 80 &&
-        otherRects.length
-      ) {
-        lastOtherFeed = elapsedMs;
-        const r = otherRects[Math.floor(Math.random() * otherRects.length)]!;
-        const x = r.left + r.width * (0.2 + Math.random() * 0.6);
-        const y = r.top + r.height * (0.55 + Math.random() * 0.35);
-        spawnFlame(bags, x, y, 0.55 + Math.random() * 0.35);
-        if (Math.random() < 0.5) spawnSmoke(bags, x, y);
-        if (Math.random() < 0.6) spawnSpark(bags, x, y);
-        if (Math.random() < 0.35) spawnAsh(bags, x, y);
-      }
+      maybeFeedBurnParticles(bags, feedState, {
+        elapsedMs,
+        collapseAtMs: BURN.collapseAtMs,
+        intervalMs: 220,
+        collapsed,
+        mode: 'extinguish',
+        pickPoint: () => {
+          if (!otherRects.length) return null;
+          const r = otherRects[Math.floor(Math.random() * otherRects.length)]!;
+          return {
+            x: r.left + r.width * (0.2 + Math.random() * 0.6),
+            y: r.top + r.height * (0.55 + Math.random() * 0.35),
+          };
+        },
+      });
 
       if (!collapsed && elapsedMs >= BURN.collapseAtMs) {
         collapsed = true;
-        markTargets('collapse');
+        setSessionBurnPhase('collapse');
       }
 
       const w = window.innerWidth;
@@ -299,78 +245,49 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       ctx.globalAlpha = 1;
       ctx.clearRect(0, 0, w, h);
 
-      const fireIntensity = Math.min(
-        1,
-        bags.flames.length / 75 + activeEmberCount / (600 * dpr * dpr)
-      );
-      const glowCx = liveRect ? liveRect.left + liveRect.width / 2 : startX;
-      const glowCy = liveRect ? liveRect.top + liveRect.height / 2 - 12 : startY;
-      drawAmbientGlow(ctx, glowCx, glowCy, fireIntensity, elapsedSec);
+      const fireIntensity = fireIntensityFrom(bags, activeEmberCount, dpr);
+      const activeWork = work;
 
-      ctx.globalCompositeOperation = 'source-over';
-      updateAndDrawSmokes(ctx, bags, dt, elapsedSec, fireIntensity);
+      drawParticleLayers(ctx, bags, dt, elapsedSec, fireIntensity, {
+        glowX: glowCx,
+        glowY: glowCy,
+        glowScale: 0.4,
+        smokeFloor: 0.6,
+        layerAlpha: 1,
+        flameAlpha: 0.55,
+        drawSparks: false,
+        beforeFlames: () => {
+          if (activeWork && tNorm < 1 && remainingPixels > 0) {
+            ctx.drawImage(
+              activeWork.workCanvas,
+              activeWork.screenLeft,
+              activeWork.screenTop,
+              activeWork.snap.cssW,
+              activeWork.snap.cssH
+            );
+          }
+        },
+        afterLayers: () => drawEndVeil(ctx, bg, elapsedSec, BURN.finishMs),
+      });
 
-      if (
-        snap &&
-        burnWorkCanvas &&
-        liveRect &&
-        tNorm < 1 &&
-        remainingButtonPixels > 0
-      ) {
-        ctx.drawImage(
-          burnWorkCanvas,
-          liveRect.left - snap.pad,
-          liveRect.top - snap.pad,
-          snap.cssW,
-          snap.cssH
-        );
-      }
-
-      updateAndDrawAshes(ctx, bags, dt, elapsedSec);
-
-      ctx.globalCompositeOperation = 'lighter';
-      updateAndDrawFlames(ctx, bags, dt, elapsedSec);
-      updateAndDrawSparks(ctx, bags, dt, elapsedSec);
-      ctx.globalCompositeOperation = 'source-over';
-
-      // Soft veil into solid bg near the end so teardown doesn't flash.
-      const veilStart = burnDurationSec * 0.82;
-      if (elapsedSec >= veilStart) {
-        const raw = Math.min(1, (elapsedSec - veilStart) / (burnDurationSec * 0.18));
-        const eased = raw * raw * (3 - 2 * raw);
-        ctx.globalAlpha = eased * 0.92;
-        ctx.fillStyle = bg;
-        ctx.fillRect(0, 0, w, h);
-        ctx.globalAlpha = 1;
-      }
-
-      const stillBurningPixels = tNorm < 1 && remainingButtonPixels > 0;
+      const stillBurningPixels = tNorm < 1 && remainingPixels > 0;
       if (stillBurningPixels || hasLiveParticles(bags) || elapsedMs < BURN.finishMs) {
-        rafRef.current = requestAnimationFrame(tick);
+        life.rafRef.current = requestAnimationFrame(tick);
       } else {
-        rafRef.current = null;
+        life.rafRef.current = null;
         finish(true);
       }
     };
 
-    timeouts.push(
-      window.setTimeout(() => {
-        if (abortedRef.current || doneRef.current) return;
-        finish(true);
-      }, BURN.finishMs + 400)
-    );
-
-    rafRef.current = requestAnimationFrame(tick);
+    life.scheduleWatchdog(timeouts, BURN.finishMs, () => finish(true));
+    life.rafRef.current = requestAnimationFrame(tick);
 
     return () => {
-      abortedRef.current = true;
-      for (const id of timeouts) window.clearTimeout(id);
-      window.removeEventListener('resize', ensureCanvasSize);
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      abortBurnRun(life, timeouts, () => resize.detach());
       ghostBurnButton(false);
-      if (!doneRef.current) markTargets('clear');
+      if (!life.doneRef.current) setSessionBurnPhase('clear');
     };
-  }, [play, onComplete, reduceMotion]);
+  }, [play, reduceMotion, life]);
 
   if (!play) return null;
 
@@ -378,7 +295,7 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
   return (
     <>
-      <canvas id="burn-fire-canvas" ref={canvasRef} aria-hidden="true" />
+      <canvas id="burn-fire-canvas" ref={life.canvasRef} aria-hidden="true" />
       {showMorph && morphOrigin && (
         <motion.span
           layoutId={BURN.layoutId}
@@ -389,11 +306,11 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
             translate: '-50% -50%',
           }}
           initial={false}
-          animate={{ scale: 1.16, opacity: 0 }}
+          animate={{ scale: 0.35, opacity: 0 }}
           transition={BURN.layoutSpring}
           aria-hidden="true"
         >
-          <Flame className="h-5 w-5 opacity-90 drop-shadow-[0_0_5px_var(--fire-mid)]" />
+          <Flame className="h-5 w-5 opacity-70 drop-shadow-[0_0_4px_var(--fire-edge)]" />
         </motion.span>
       )}
     </>

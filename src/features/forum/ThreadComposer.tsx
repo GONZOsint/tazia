@@ -6,6 +6,7 @@ import { useT } from '../../i18n';
 import { MAX_BODY_CHARS, MAX_TITLE_CHARS } from '../../core/protocol';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
 import { PlaneSendIcon } from '../../components/ui/PlaneSendIcon';
+import { PeerAvatar } from '../../components/content/PeerAvatar';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface ThreadComposerProps {
@@ -49,7 +50,18 @@ export function ThreadComposer({
             <FileText className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('composerTitle')}
           </h2>
-          <p className="type-caption mt-1">{t('composerAs', { alias: identity.alias })}</p>
+          <p className="type-caption mt-1 inline-flex items-center gap-2">
+            <PeerAvatar
+              avatarSeed={identity.avatarSeed}
+              matrix={identity.identiconMatrix}
+              size={22}
+              label={identity.alias}
+              fg={identity.fg}
+              bg={identity.bg}
+              animated={false}
+            />
+            {t('composerAs', { alias: identity.alias })}
+          </p>
         </div>
         <motion.button
           whileTap={TAP}

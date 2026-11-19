@@ -19,14 +19,22 @@ export function syncPayloadTooLarge(events: unknown): boolean {
 export function snapshotForSync(localMessages: Map<string, ForumEvent>): ForumEvent[] {
   const all = [...localMessages.values()];
   const deleted = deletedThreadIds(all);
-  const list = all
+  let list = all
     .filter(
       (e) => !deleted.has(e.threadId) || !isContentForumType(e.type)
     )
     .sort((a, b) => a.createdAtMs - b.createdAtMs)
     .slice(-MAX_SYNC_MESSAGES);
-  if (syncPayloadTooLarge(list)) {
-    return list.slice(-Math.floor(list.length / 2));
+
+  // Keep halving until under wire budget (or empty).
+  while (list.length > 0 && syncPayloadTooLarge(list)) {
+    const next = Math.max(1, Math.floor(list.length / 2));
+    if (next >= list.length) {
+      list = list.slice(-1);
+      if (syncPayloadTooLarge(list)) return [];
+      break;
+    }
+    list = list.slice(-next);
   }
   return list;
 }

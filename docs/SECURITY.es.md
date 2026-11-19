@@ -38,16 +38,16 @@ La **frase** es la llave: Trystero deriva de ella el cifrado del handshake de de
 
 ### Identidad
 
-Cada pestaña/zona es un `userId` nuevo (`identity: 'none'`). **Quemar sesión** cierra todos los meshes locales de este dispositivo.
+Cada pestaña/zona es un `userId` nuevo (`identity: 'none'`). **Apagar la llama** cierra todos los meshes locales de este dispositivo.
 
-### Borrar una charla (voto de la tribu)
+### Apagar una hoguera (voto de la tribu)
 
-No hay “borrar mensaje” unilateral. En la Plaza, proponer borrar una charla congela el electorado (tribu online en ese momento) y exige **aye unánime** (`DELETE_PROPOSE` / `DELETE_VOTE` en [`PROTOCOL.es.md`](PROTOCOL.es.md)).
+No hay “borrar mensaje” unilateral. En el Foro, proponer apagar una hoguera (hilo) congela el electorado (tribu online en ese momento) y exige **aye unánime** (`DELETE_PROPOSE` / `DELETE_VOTE` en [`PROTOCOL.es.md`](PROTOCOL.es.md)).
 
-- Quien propone cuenta como aye; si estás solo, se borra al instante.
-- Los peers rechazan propuestas que **encojan** el electorado respecto a quien ya veían online (anti “borrar sin el resto”).
-- Una sola propuesta por charla; al completar, se purgan `NEW_THREAD` / `REPLY` y quedan tumbas firmadas (el sync no debe resucitar el contenido).
-- **No** es lo mismo que quemar: el voto borra esa charla en los peers que aplican el quórum; quemar olvida **toda** la sesión en **este** dispositivo.
+- Quien propone cuenta como aye; si estás solo, se apaga al instante.
+- Los peers rechazan propuestas que **encojan** el electorado respecto a quien ya veían online (anti “apagar sin el resto”).
+- Una sola propuesta por hoguera; al completar, se purgan `NEW_THREAD` / `REPLY` y quedan tumbas firmadas (el sync no debe resucitar el contenido).
+- **No** es lo mismo que apagar la llama: el voto apaga esa hoguera en los peers que aplican el quórum; apagar la llama olvida **todas** las zonas en **este** dispositivo.
 
 Detalle de reglas: [`threadDelete.ts`](../src/core/forum/threadDelete.ts).
 
@@ -61,7 +61,7 @@ Los **Susurros** van sellados (`seal: 2`) con AAD `tazep.dm.aad.v2:…`. Entrar 
 
 Si falla ICE (el navegador no logra la ruta P2P), el chat puede seguir por relés Nostr **cifrados** (PBKDF2 210k + HKDF `tazep/*`; blob `0x03` + AAD `tazep.fallback.aad.v3:{roomId}`; envelope `v: 2`).
 
-Ahí la autenticación es de la aplicación, no del cable WebRTC: los mensajes de foro se aceptan con Ed25519 y la clave **fijada** en el registro (sin inventar un `liveUserId`). La presence exige una attestation firmada `["tazep.presence.v3", …, atMs, alias]` (reloj ±5 min, `atMs` estricto) antes de fijar TOFU. El goodbye también va atestiguado; las respuestas `sync-res` van firmadas (también el sync WebRTC) y se fusionan hasta el timeout; se comprueba el reloj del EVENT; `schnorr.verify` corre **antes** de descifrar. Los rate limits del fallback (foro, DM, sync, presence/goodbye) usan la pubkey Nostr del EVENT, no solo el `userId` reclamado.
+Ahí la autenticación es de la aplicación, no del cable WebRTC: los mensajes de foro se aceptan con Ed25519 y la clave **fijada** en el registro (sin inventar un `liveUserId`). La presence exige una attestation firmada `["tazep.presence.v4", …, atMs, alias, avatarSeed]` (reloj ±5 min, `atMs` estricto) antes de fijar TOFU. El goodbye también va atestiguado; las respuestas `sync-res` van firmadas (también el sync WebRTC) y se fusionan hasta el timeout; se comprueba el reloj del EVENT; `schnorr.verify` corre **antes** de descifrar. Los rate limits del fallback (foro, DM, sync, presence/goodbye) usan la pubkey Nostr del EVENT, no solo el `userId` reclamado.
 
 La attestation liga claves a un `userId` reclamado (el primero que escribe gana el pin TOFU de firma+enc). Un cambio de firma (`changed`) **no** redirige la clave X25519 de Susurros. Presence WebRTC tiene prioridad sobre Nostr. **No** equivale al enlace WebRTC de Trystero. Los relés ven metadatos y bytes cifrados — no es P2P puro.
 
@@ -85,7 +85,7 @@ La frase en la URL se limpia (`public/scrub-phrase.js` + React).
 TURN es opcional: `sessionStorage` por defecto; `localStorage` solo con opt-in. Burn limpia sessionStorage, **no** el TURN recordado. Detalle: [`TURN.es.md`](TURN.es.md).  
 CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_headers`](../public/_headers) es plantilla para hosts que sí aplican cabeceras (Netlify/CF); Pages **no** aplica `_headers`, así que `frame-ancestors` / `X-Frame-Options` no están en el despliegue github.io por defecto.
 
-**Quemar sesión** cierra las redes locales, limpia la confianza guardada, borra referencias sensibles, hace `sessionStorage.clear` y recarga. **No** es borrado forense ni denegabilidad práctica ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
+**Apagar la llama** cierra las redes locales, limpia la confianza guardada, borra referencias sensibles, hace `sessionStorage.clear` y recarga. **No** es borrado forense ni denegabilidad práctica ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
 
 ---
 
@@ -97,7 +97,7 @@ CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_h
 - **DTLS como prueba de autoría** — no ([ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf)). DTLS ≠ E2E de Susurros.
 - **Deniability práctica** — no la reclamamos. Las firmas Ed25519 son atribuibles; burn limpia esta pestaña, no otros dispositivos ni relés.
 - **Burn ≠ secure delete** — no se pueden zeroizar `CryptoKey` no extractables; la recarga reduce superficie en RAM.
-- **Voto de borrado ≠ garantía global** — un peer que nunca recibió el ballot completo puede seguir mostrando la charla; no hay servidor que imponga el borrado a todos.
+- **Voto de apagado ≠ garantía global** — un peer que nunca recibió el ballot completo puede seguir mostrando la hoguera; no hay servidor que imponga el apagado a todos.
 - **MLS / Double Ratchet / Key Transparency** — necesitan identidad durable u operador de log; incompatibles con `identity: 'none'` + hosting estático puro ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
 - **Tor** — fuera de alcance.
 - **Wake Lock** — opcional; mantiene la pantalla, no evita que iOS mate WebRTC al backgroundear.

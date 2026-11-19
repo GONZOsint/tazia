@@ -101,5 +101,5 @@ References: [Chrome LNA](https://developer.chrome.com/blog/local-network-access)
 - TURN hides your IP from peers; the TURN operator sees yours. Use a server you trust (ideally one you run).
 - Messages are Ed25519-signed: TURN cannot forge signatures; it can see encrypted WebRTC traffic.
 - TAZIA does **not** ship a third-party TURN.
-- **Burn session** clears `sessionStorage` (default TURN). **Remember on this device** survives burn until you clear site data or uncheck it.
+- **Extinguish flame** clears `sessionStorage` (default TURN). **Remember on this device** survives extinguish until you clear site data or uncheck it.
 - Threat model: [`SECURITY.md`](SECURITY.md).

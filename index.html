@@ -21,7 +21,8 @@
     <script src="./theme-boot.js"></script>
     <!-- Blocking: lang + title before React (avoids ES flash for EN users). -->
     <script src="./locale-boot.js"></script>
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180" />
     <title>TAZIA — Zona Anónima Temporal en Acción</title>
     <meta
@@ -34,7 +35,8 @@
       content="Zona Anónima Temporal en Acción. Charla en directo entre navegadores; sin servidor de mensajes."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="brand/tazia-logo-dark.jpg" />
+    <!-- Raster: social crawlers do not reliably render SVG for og:image. -->
+    <meta property="og:image" content="pwa-512x512.png" />
   </head>
   <body class="bg-bg text-ink antialiased">
     <div id="root"></div>

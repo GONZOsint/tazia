@@ -2,7 +2,7 @@
 
 **Temporary Anonymous Zone In Action**
 
-A room that only exists while you’re inside it: no accounts, and no chat stored in our cloud. You share a phrase and talk live between browsers that are **online at the same time**. When nobody else is connected, the room goes quiet. When you **burn the session**, **this** device forgets the zone.
+A room that only exists while you’re inside it: no accounts, and no chat stored in our cloud. You share a phrase and talk live between browsers that are **online at the same time**. When nobody else is connected, the room goes quiet. When you **extinguish the flame**, **this** device forgets the zone.
 
 📱 On phones you can **Install / Add to Home Screen**.  
 🔗 Live site: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
@@ -16,11 +16,11 @@ A room that only exists while you’re inside it: no accounts, and no chat store
 | You want… | Go to… |
 | --- | --- |
 | 🚪 Open or join | **Zones** |
-| 💬 Group talk | **Plaza** |
-| 🗳️ Delete **one** talk (unanimous vote) | **Plaza** → flame → everyone **online** in the tribe votes yes |
+| 💬 Group talk | **Forum** |
+| 🗳️ Extinguish **one** bonfire (unanimous vote) | **Forum** → extinguish bonfire → everyone **online** in the tribe votes yes |
 | 👥 See who’s here / verify someone | **Tribe** |
 | 🤫 Private message | **Whispers** |
-| 🔥 Forget **all** zones on this device | **Burn session** |
+| 🔥 Forget **all** zones on this device | **Extinguish flame** |
 
 ---
 
@@ -32,9 +32,9 @@ A room that only exists while you’re inside it: no accounts, and no chat store
    You can also put it in the link — easier, less private.
 4. They join with **Enter with phrase**, the link, or the **QR**.
 5. The first time, the browser asks for a network permission so you can find each other on the same Wi‑Fi or LAN.
-6. When you’re done: **Burn session**.
+6. When you’re done: **Extinguish flame**.
 
-You can keep up to **three zones** open and switch between them. Leaving one does not drop the others; burn clears all on **this** browser.
+You can keep up to **three zones** open and switch between them. Burning one does not drop the others; extinguishing the flame clears all on **this** browser.
 
 ---
 
@@ -103,7 +103,7 @@ Get-FileHash .\release\tazia-single.html -Algorithm SHA256
 
 **🔑 Phrase.** It’s the key to the room — don’t post it in a public chat. Verifying in **Tribe** (emoji sequence) confirms you’re talking to the right person.
 
-**🗳️ Delete talk ≠ burn.** In Plaza, the flame proposes deleting **that** talk: everyone who was online when it was proposed must vote yes. **Burn session** only clears **this** browser (every zone); the rest of the tribe keeps going until they burn too.
+**🗳️ Extinguish bonfire ≠ extinguish flame.** In Forum, extinguishing a bonfire proposes deleting **that** thread: everyone who was online when it was proposed must vote yes. **Extinguish flame** only clears **this** browser (every zone); the rest of the tribe keeps going until they extinguish too.
 
 **⏳ Expectations.** Best for small groups. Not a daily messenger replacement: it’s a **temporary** zone.
 
@@ -119,8 +119,8 @@ Chrome, Brave, Firefox, and Safari. On the public internet you need **HTTPS**. L
 
 | Topic | Document |
 | --- | --- |
-| 🛡️ Risks and limits (burn vs talk delete) | [Security](docs/SECURITY.md) |
-| 📜 Message format and delete vote | [Protocol](docs/PROTOCOL.md) |
+| 🛡️ Risks and limits (extinguish flame vs extinguish bonfire) | [Security](docs/SECURITY.md) |
+| 📜 Message format and extinguish vote | [Protocol](docs/PROTOCOL.md) |
 | 📶 Can’t connect (TURN / Wi‑Fi) | [Connection](docs/TURN.md) |
 | 📚 Technical index | [docs/](docs/README.md) |
 

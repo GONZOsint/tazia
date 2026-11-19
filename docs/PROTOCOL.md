@@ -55,7 +55,7 @@ UI only (not on the wire): up to **3** concurrent zones (`MAX_ROOMS`).
 | Goodbye (Nostr) | unauthenticated | attested `tazep.goodbye.v1` |
 | Nostr `sync-res` | first encrypted reply wins | `fromUserId` + Ed25519 over `tazep.sync-res.v1` + events digest |
 | Verify keys | latest observed SPKI | **pinned** TOFU (sign+enc) until `repin` |
-| Presence attest | `tazep.presence.v1` (no time) | `tazep.presence.v3` + `atMs` + `alias` |
+| Presence attest | `tazep.presence.v1` (no time) | `tazep.presence.v4` + `atMs` + `alias` + `avatarSeed` |
 | WebRTC sync | raw `ForumEvent[]` | signed digest (`tazep.sync-res.v1`, reqId `webrtc-sync`) |
 | Talk delete | none (append-only) | unanimous `DELETE_PROPOSE` / `DELETE_VOTE` + tombstones |
 
@@ -68,7 +68,7 @@ UI only (not on the wire): up to **3** concurrent zones (`MAX_ROOMS`).
 | `forumMsg` | `makeAction` | Live publish (threads / replies / delete ballot) |
 | `directMsg` | `makeAction` | Whispers to a `target` |
 | `forumSync` | `makeAction(..., { kind: 'request' })` | Snapshot RPC for late joiners |
-| `presence` | `makeUserState` | Alias + signing pubkey + X25519 |
+| `presence` | `makeUserState` | Alias + signing pubkey + X25519 + avatarSeed |
 
 ```ts
 joinRoom(
@@ -88,19 +88,21 @@ Each UI zone is an isolated `joinP2pRoom`. Join **requires** SubtleCrypto X25519
   alias: string;              // 1–40 chars
   signPubKeySpkiB64: string;  // SPKI Ed25519, base64
   encPubKeyRawB64: string;    // X25519 raw, base64 — required
+  avatarSeed: string;         // compact flame seed — required
 }
 ```
 
 Without a valid `signPubKeySpkiB64`, that author’s messages are not accepted in **sync** (nor live until the key is known / pinned).  
-Without `encPubKeyRawB64`, presence is rejected; there are no cleartext Whispers.
+Without `encPubKeyRawB64`, presence is rejected; there are no cleartext Whispers.  
+`avatarSeed` must match `v1.<p>.<f>.<e>.<m>.<d>.<hex8>` (see [`src/core/avatar/avatarSeed.ts`](../src/core/avatar/avatarSeed.ts)); invalid or missing seed rejects the presence state.
 
 Nostr presence also carries `attestSig` over:
 
 ```
-["tazep.presence.v3", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs, alias]
+["tazep.presence.v4", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs, alias, avatarSeed]
 ```
 
-`atMs` must be within `LIVE_CLOCK_SKEW_MS` and **strictly increasing** per `userId` at the receiver. Attestation binds keys + alias to a claimed `userId` (first-writer TOFU). It does **not** equal Trystero WebRTC binding. Signing SPKI and X25519 enc are **pinned together**; a `changed` sign key does **not** update the enc key used for Susurros, and enc is not silently rotated under the same SPKI. WebRTC presence is preferred over Nostr when both exist for the same `userId`.
+`atMs` must be within `LIVE_CLOCK_SKEW_MS` and **strictly increasing** per `userId` at the receiver. Attestation binds keys + alias + avatar to a claimed `userId` (first-writer TOFU). It does **not** equal Trystero WebRTC binding. Signing SPKI and X25519 enc are **pinned together**; a `changed` sign key does **not** update the enc key used for Susurros, and enc is not silently rotated under the same SPKI. WebRTC presence is preferred over Nostr when both exist for the same `userId`.
 
 Nostr goodbye (on leave while fallback is active):
 
@@ -133,11 +135,11 @@ Goodbye only drops a peer when `signPubKeySpkiB64` matches the pinned key.
 
 | Type | Role |
 | --- | --- |
-| `NEW_THREAD` | Root of a talk (`parentMsgId` must be `null`; `body` non-empty) |
+| `NEW_THREAD` | Root of a bonfire (`parentMsgId` must be `null`; `body` non-empty) |
 | `REPLY` | Reply (`parentMsgId` = parent `msgId`; `body` non-empty) |
-| `DELETE_PROPOSE` / `DELETE_VOTE` | Ballot over a `threadId` — not shown as plaza posts |
+| `DELETE_PROPOSE` / `DELETE_VOTE` | Ballot over a `threadId` — not shown as forum posts |
 
-### Delete talk (unanimous tribe vote)
+### Extinguish bonfire (unanimous tribe vote)
 
 | Type | `parentMsgId` | `title` | `body` |
 | --- | --- | --- | --- |
@@ -158,7 +160,7 @@ vote → DELETE_VOTE (parent = propose)
     ↘ when |votes| == |electorate|: purge content, keep tombstones
 ```
 
-UI: Plaza flame → confirm → progress banner until unanimous. Alone in the zone ⇒ propose completes immediately.
+UI: Forum → extinguish bonfire → confirm → progress banner until unanimous. Alone in the zone ⇒ propose completes immediately.
 
 ### Signed canonical
 
@@ -211,7 +213,7 @@ Room material: PBKDF2 210k once (salt `tazep.fallback.v2:{roomId}`) + dual HKDF 
 | `t` | Fields (beyond `v: 2`) | Auth |
 | --- | --- | --- |
 | `forum` | `event` | Ed25519 on event; ingest without live transport binding |
-| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v3` |
+| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v4` |
 | `goodbye` | `userId`, keys, `atMs`, `attestSig` | `tazep.goodbye.v3` |
 | `dm` | `dm` | Same as Whisper wire |
 | `sync-req` | `fromUserId`, `reqId` | — |
@@ -247,7 +249,7 @@ late joiner → forumSync.requestMany / Nostr sync-req → sync-res (signed)
 | Concern | Path |
 | --- | --- |
 | Types / validators | [`src/core/protocol.ts`](../src/core/protocol.ts) |
-| Unanimous talk delete | [`src/core/forum/threadDelete.ts`](../src/core/forum/threadDelete.ts) |
+| Unanimous bonfire extinguish | [`src/core/forum/threadDelete.ts`](../src/core/forum/threadDelete.ts) |
 | Ed25519 sign/verify + sync-res | [`src/core/crypto/messageSigning.ts`](../src/core/crypto/messageSigning.ts) |
 | Presence / goodbye attest | [`src/core/crypto/presenceAttest.ts`](../src/core/crypto/presenceAttest.ts) |
 | DM seal | [`src/core/crypto/dmCrypto.ts`](../src/core/crypto/dmCrypto.ts) |
@@ -256,7 +258,7 @@ late joiner → forumSync.requestMany / Nostr sync-req → sync-res (signed)
 | Forum / DM ingest | [`forumIngest.ts`](../src/core/p2p/forumIngest.ts), [`dmIngest.ts`](../src/core/p2p/dmIngest.ts) |
 | Sync snapshot (tombstones) | [`syncCoordinator.ts`](../src/core/p2p/syncCoordinator.ts) |
 | Pinned verify cache | [`verifyKeyRegistry.ts`](../src/core/p2p/verifyKeyRegistry.ts) |
-| Nostr fallback | [`nostrFallback.ts`](../src/core/p2p/nostrFallback.ts), [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts) |
+| Nostr fallback | [`nostrFallback.ts`](../src/core/p2p/nostrFallback.ts), [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts), [`fallbackBridge.ts`](../src/core/p2p/fallbackBridge.ts) |
 | Multi-zone | [`src/hooks/useRoomManager.ts`](../src/hooks/useRoomManager.ts) |
 | Papers | [`papers/`](papers/) |
 
