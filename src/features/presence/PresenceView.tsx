@@ -94,7 +94,7 @@ export function PresenceView({
         for (const id of joined) cleaned.delete(id);
         return cleaned;
       });
-    }, 600);
+    }, 420);
     return () => window.clearTimeout(timer);
   }, [onlineUserIds]);
 

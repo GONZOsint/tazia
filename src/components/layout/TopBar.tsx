@@ -216,6 +216,9 @@ export function TopBar({
                 }
                 aria-hidden="true"
               />
+              <span className="burn-embers" aria-hidden="true">
+                <span /><span /><span /><span /><span />
+              </span>
               <Flame className="burn-flame-icon relative z-10 h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="relative z-10 hidden sm:inline">{t('leaveTab')}</span>
             </motion.button>

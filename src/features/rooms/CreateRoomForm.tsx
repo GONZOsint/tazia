@@ -65,7 +65,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
       }}
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-stretch lg:gap-5">
-        <div className="order-1 space-y-4 lg:order-1">
+        <div className="order-1 flex h-full flex-col gap-4 lg:order-1">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
@@ -154,7 +154,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
             transition={TAP_TRANSITION}
             type="submit"
             disabled={!createStrength.isAcceptable || isJoining}
-            className="btn-accent-sheen inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="btn-accent-sheen btn-ring-hover mt-auto inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {isJoining ? (
               <>
@@ -183,15 +183,15 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
             />
           </div>
 
-          <div className="mt-2.5 flex flex-1 items-center justify-center py-1">
-            <InviteQr inviteUrl={inviteUrl} size={212} includesSecret={Boolean(phraseForLink)} />
+          <div className="mt-2 flex items-start justify-center">
+            <InviteQr inviteUrl={inviteUrl} size={200} includesSecret={Boolean(phraseForLink)} />
           </div>
 
           <motion.label
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: DUR.tab, ease: EASE.outExpo }}
-            className="invite-opt mt-2 flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
+            transition={{ delay: 0.12, duration: DUR.tab, ease: EASE.outExpo }}
+            className="invite-opt mt-auto flex min-h-[44px] cursor-pointer items-center gap-3 pt-2 text-xs text-muted"
           >
             <span className="relative inline-flex">
               <input

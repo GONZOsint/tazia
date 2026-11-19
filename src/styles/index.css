@@ -25,14 +25,18 @@
   --icon-md: 20px;
 
   /* Mirror src/motion/tokens.ts DUR (seconds → ms) */
-  --dur-tap: 120ms;
-  --dur-micro: 150ms;
-  --dur-tab: 180ms;
-  --dur-medium: 220ms;
-  --dur-switch: 240ms;
-  --dur-burn: 380ms;
-  --dur-burn-ignition: 520ms;
-  --dur-ignite: 280ms;
+  --dur-tap: 100ms;
+  --dur-micro: 140ms;
+  --dur-tab: 160ms;
+  --dur-medium: 200ms;
+  --dur-switch: 220ms;
+  --dur-burn: 360ms;
+  --dur-burn-ignition: 400ms;
+  --dur-ignite: 240ms;
+  --dur-sheen: 300ms;
+  --dur-pulse: 450ms;
+  --dur-flash: 280ms;
+  --dur-ring: 400ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -432,13 +436,19 @@ html.dark {
     align-items: flex-start;
     gap: 0.5rem;
     margin-top: 0.35rem;
-    padding: 0.35rem 0.55rem;
+    padding: 0.4rem 0.6rem;
     border-radius: calc(var(--radius-ctrl) - 2px);
+    border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
     border-left: 3px solid var(--color-accent);
-    background: var(--color-bg);
+    background: color-mix(in oklab, var(--color-bg) 88%, var(--color-surface-raised));
     font-size: 11px;
     line-height: 1.35;
     color: var(--color-muted);
+  }
+  .thread-quote--composer {
+    margin-top: 0;
+    border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    background: color-mix(in oklab, var(--color-accent-soft) 35%, var(--color-bg));
   }
 
   .invite-panel {
@@ -455,12 +465,12 @@ html.dark {
   }
   /* Nested under panel-surface / zone card — avoid double frame */
   .invite-panel--embedded {
-    margin-top: 0.65rem;
+    margin-top: 0.5rem;
     border: 0;
     border-radius: 0;
     border-top: 1px solid color-mix(in oklab, var(--color-accent) 18%, var(--color-border));
     background: transparent;
-    padding: 0.75rem 0 0;
+    padding: 0.55rem 0 0;
   }
 
   .invite-opt {
@@ -517,6 +527,49 @@ html.dark {
     );
   }
 
+  /* Accent CTA: expand rings on hover (behind control; no orbiting dots) */
+  .btn-ring-hover {
+    position: relative;
+    isolation: isolate;
+  }
+  .btn-ring-hover::before,
+  .btn-ring-hover::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+    border: 1.5px solid color-mix(in oklab, var(--color-accent) 55%, transparent);
+    opacity: 0;
+    transform: scale(0.88);
+    pointer-events: none;
+    z-index: -1;
+    transition:
+      opacity var(--dur-sheen) var(--ease-out-expo),
+      transform var(--dur-sheen) var(--ease-out-expo);
+  }
+  .btn-ring-hover::after {
+    inset: -7px;
+    border-width: 1px;
+    border-color: color-mix(in oklab, var(--color-accent) 32%, transparent);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .btn-ring-hover:hover::before {
+      opacity: 0.7;
+      transform: scale(1.06);
+    }
+    .btn-ring-hover:hover::after {
+      opacity: 0.4;
+      transform: scale(1.14);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn-ring-hover::before,
+    .btn-ring-hover::after {
+      transition: none;
+      display: none;
+    }
+  }
+
   /* Primary CTA: brief directional sheen on hover (GPU transform only) */
   .btn-accent-sheen {
     position: relative;
@@ -534,7 +587,7 @@ html.dark {
     );
     transform: translateX(-120%);
     pointer-events: none;
-    transition: transform 0.45s var(--ease-out-expo);
+    transition: transform var(--dur-sheen) var(--ease-out-expo);
   }
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .btn-accent-sheen:hover::after {
@@ -570,6 +623,35 @@ html.dark {
     pointer-events: none;
     transition: transform var(--dur-burn-ignition) linear, opacity var(--dur-micro) ease;
   }
+  .burn-embers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    filter: url(#tazia-fire-goo);
+    opacity: 0;
+  }
+  .burn-embers span {
+    position: absolute;
+    bottom: 18%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--fire-core);
+    transform: translateX(-50%) scale(0.4);
+    opacity: 0;
+  }
+  .burn-embers span:nth-child(1) { left: 32%; background: var(--fire-mid); }
+  .burn-embers span:nth-child(2) { left: 48%; width: 4px; height: 4px; }
+  .burn-embers span:nth-child(3) { left: 62%; background: var(--fire-edge); width: 3px; height: 3px; }
+  .burn-embers span:nth-child(4) { left: 40%; background: var(--fire-core); width: 3.5px; height: 3.5px; }
+  .burn-embers span:nth-child(5) { left: 56%; background: var(--fire-mid); }
+  @keyframes burn-ember-rise {
+    0% { opacity: 0; transform: translate(-50%, 6px) scale(0.35); }
+    22% { opacity: 0.95; }
+    100% { opacity: 0; transform: translate(-50%, -18px) scale(0.15); }
+  }
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .burn-heat:hover {
       border-color: color-mix(in srgb, var(--fire-mid) 55%, var(--color-danger-border));
@@ -581,11 +663,29 @@ html.dark {
       animation: flame-flicker-hover 0.7s ease-in-out infinite alternate;
       color: var(--fire-mid);
     }
+    .burn-heat:hover .burn-embers {
+      opacity: 1;
+    }
+    .burn-heat:hover .burn-embers span {
+      animation: burn-ember-rise 0.7s var(--ease-out-expo) infinite;
+    }
+    .burn-heat:hover .burn-embers span:nth-child(2) { animation-delay: 0.08s; animation-duration: 0.62s; }
+    .burn-heat:hover .burn-embers span:nth-child(3) { animation-delay: 0.16s; animation-duration: 0.78s; }
+    .burn-heat:hover .burn-embers span:nth-child(4) { animation-delay: 0.22s; animation-duration: 0.66s; }
+    .burn-heat:hover .burn-embers span:nth-child(5) { animation-delay: 0.3s; animation-duration: 0.72s; }
   }
   .burn-heat.is-heating {
     animation: thermal-tremor 0.18s linear infinite;
     border-color: var(--fire-mid) !important;
     box-shadow: 0 0 18px color-mix(in oklab, var(--fire-mid) 32%, transparent) !important;
+  }
+  .burn-heat.is-heating .burn-embers {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .burn-heat.is-heating .burn-embers span {
+      animation: burn-ember-rise 0.48s var(--ease-out-expo) infinite;
+    }
   }
 
   .session-burn-target {
@@ -718,7 +818,7 @@ html.dark {
 
 .plane-launching {
   display: inline-flex;
-  animation: paper-plane-launch 0.36s var(--ease-out-expo);
+  animation: paper-plane-launch 0.26s var(--ease-out-expo);
 }
 
 @keyframes flame-flicker-hover {
@@ -740,12 +840,13 @@ html.dark {
 }
 
 .zone-join-pulse {
-  animation: zone-join-pulse 0.7s var(--ease-out-expo) 1;
+  animation: zone-join-pulse var(--dur-pulse) var(--ease-out-expo) 1;
 }
 
 /* --- Microinteraction one-shots (opt-in motion; final state always visible) --- */
 
 .session-ignite-target.igniting-front {
+  position: relative;
   border-color: color-mix(in oklab, var(--color-accent) 70%, var(--color-border)) !important;
   box-shadow:
     0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent),
@@ -754,6 +855,24 @@ html.dark {
   transition:
     border-color var(--dur-ignite) var(--ease-out-expo),
     box-shadow var(--dur-ignite) var(--ease-out-expo);
+}
+.session-ignite-target.igniting-front::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 1.5px solid color-mix(in oklab, var(--color-accent) 55%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .session-ignite-target.igniting-front::after {
+    animation: ignite-ring-expand 0.32s var(--ease-out-expo) 1;
+  }
+}
+@keyframes ignite-ring-expand {
+  0% { opacity: 0.75; transform: scale(0.92); }
+  100% { opacity: 0; transform: scale(1.18); }
 }
 
 @keyframes mesh-connected-flash {
@@ -772,7 +891,7 @@ html.dark {
 
 .mesh-connected-flash {
   @media (prefers-reduced-motion: no-preference) {
-    animation: mesh-connected-flash 0.38s var(--ease-out-expo) 1;
+    animation: mesh-connected-flash var(--dur-flash) var(--ease-out-expo) 1;
   }
 }
 
@@ -790,7 +909,7 @@ html.dark {
 
 .copy-ember-check {
   @media (prefers-reduced-motion: no-preference) {
-    animation: copy-ember 0.32s var(--ease-out-expo) 1 forwards;
+    animation: copy-ember 0.26s var(--ease-out-expo) 1 forwards;
   }
   color: var(--color-ok);
 }
@@ -814,11 +933,24 @@ html.dark {
 }
 
 .qr-secret-ring {
-  @media (prefers-reduced-motion: no-preference) {
-    animation: qr-secret-ring 0.55s var(--ease-out-expo) 1;
-  }
   outline: 1px solid color-mix(in oklab, var(--color-warn) 45%, transparent);
   outline-offset: 3px;
+}
+.qr-has-secret:not(.qr-secret-ring) {
+  outline: 1px solid color-mix(in oklab, var(--color-warn) 34%, transparent);
+  outline-offset: 2px;
+}
+@keyframes qr-secret-ignite {
+  0% { transform: scale(1); opacity: 1; }
+  40% { transform: scale(1.03); opacity: 0.92; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.qr-surface-3d.qr-secret-ring {
+  @media (prefers-reduced-motion: no-preference) {
+    animation:
+      qr-secret-ring var(--dur-ring) var(--ease-out-expo) 1,
+      qr-secret-ignite var(--dur-ring) var(--ease-out-expo) 1;
+  }
 }
 
 @keyframes strength-accept-tremor {
@@ -849,7 +981,7 @@ html.dark {
 
 .phrase-ignite {
   @media (prefers-reduced-motion: no-preference) {
-    animation: phrase-ignite 0.28s var(--ease-out-expo) 1;
+    animation: phrase-ignite 0.22s var(--ease-out-expo) 1;
   }
 }
 
@@ -867,7 +999,7 @@ html.dark {
 
 .peer-join-dot {
   @media (prefers-reduced-motion: no-preference) {
-    animation: peer-join-dot 0.55s var(--ease-out-expo) 2;
+    animation: peer-join-dot 0.4s var(--ease-out-expo) 1;
   }
   background-color: var(--color-accent) !important;
   opacity: 1;
@@ -966,22 +1098,21 @@ html.dark {
 }
 .qr-laser-line {
   position: absolute;
-  left: 6%;
-  right: 6%;
-  height: 3px;
+  left: 8%;
+  right: 8%;
+  height: 2px;
   border-radius: 999px;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in oklab, var(--color-accent) 35%, transparent) 18%,
+    color-mix(in oklab, var(--color-accent) 40%, transparent) 22%,
     var(--color-accent) 50%,
-    color-mix(in oklab, var(--color-accent) 35%, transparent) 82%,
+    color-mix(in oklab, var(--color-accent) 40%, transparent) 78%,
     transparent 100%
   );
   box-shadow:
-    0 0 10px color-mix(in oklab, var(--color-accent) 90%, transparent),
-    0 0 22px color-mix(in oklab, var(--color-accent) 55%, transparent),
-    0 0 36px color-mix(in oklab, var(--color-accent) 30%, transparent);
+    0 0 6px color-mix(in oklab, var(--color-accent) 70%, transparent),
+    0 0 14px color-mix(in oklab, var(--color-accent) 35%, transparent);
   opacity: 0;
   pointer-events: none;
   z-index: 3;
@@ -1002,13 +1133,13 @@ html.dark {
   pointer-events: none;
 }
 .qr-surface-3d.scanning .qr-laser-line {
-  animation: qr-scan-sweep 1.05s var(--ease-in-out-quart) infinite;
+  animation: qr-scan-sweep 1.15s var(--ease-in-out-quart) infinite;
 }
 @keyframes qr-scan-sweep {
-  0% { top: 7%; opacity: 0; }
-  12% { opacity: 1; }
-  88% { opacity: 1; }
-  100% { top: 91%; opacity: 0; }
+  0% { top: 8%; opacity: 0; transform: scaleX(0.92); }
+  10% { opacity: 0.95; transform: scaleX(1); }
+  88% { opacity: 0.85; transform: scaleX(1); }
+  100% { top: 90%; opacity: 0; transform: scaleX(0.94); }
 }
 
 #burn-fire-canvas {
@@ -1029,6 +1160,9 @@ html.dark {
   .plane-launching,
   .burn-heat.is-heating,
   .burn-heat:hover .burn-flame-icon,
+  .burn-heat:hover .burn-embers span,
+  .burn-heat.is-heating .burn-embers span,
+  .session-ignite-target.igniting-front::after,
   .mesh-radar-dot::before,
   .wifi-arc-1,
   .wifi-arc-2,
@@ -1045,6 +1179,14 @@ html.dark {
   .session-ignite-target.igniting-front {
     box-shadow: none;
     transition: border-color 120ms ease;
+  }
+  .session-ignite-target.igniting-front::after,
+  .burn-embers {
+    display: none !important;
+  }
+  .btn-ring-hover::before,
+  .btn-ring-hover::after {
+    display: none !important;
   }
   .phrase-ignite,
   .phrase-douse {

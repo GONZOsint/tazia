@@ -61,3 +61,26 @@ export function scrubPhraseFromLocationHash(roomId: string): void {
   const next = `${window.location.pathname}${window.location.search}#${encodeURIComponent(roomId)}`;
   window.history.replaceState(null, '', next);
 }
+
+const INVITE_BOOT_KEY = 'tazia-invite-boot';
+
+/** Read+clear phrase stashed by public/scrub-phrase.js before React booted. */
+export function takeBootstrappedInvitePhrase(roomId: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(INVITE_BOOT_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(INVITE_BOOT_KEY);
+    const parsed = JSON.parse(raw) as { roomId?: string; phrase?: string };
+    if (!parsed?.phrase || typeof parsed.phrase !== 'string') return null;
+    if (parsed.roomId && parsed.roomId !== roomId) return null;
+    const phrase = parsed.phrase.trim();
+    return phrase || null;
+  } catch {
+    try {
+      sessionStorage.removeItem(INVITE_BOOT_KEY);
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+}

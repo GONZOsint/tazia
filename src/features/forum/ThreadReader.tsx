@@ -140,9 +140,9 @@ function PostCard({
           onClick={onReply}
           aria-label={replyLabel}
           title={replyLabel}
-          className="icon-action icon-action--ghost text-muted hover:text-ink"
+          className="icon-action text-ink/75 hover:bg-bg hover:text-ink"
         >
-          <CornerDownRight className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+          <CornerDownRight className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
         </motion.button>
       </header>
 
@@ -323,15 +323,18 @@ export function ThreadReader({
                 transition={{ duration: DUR.tab, ease: EASE.outExpo }}
                 className="overflow-hidden"
               >
-                <div className="thread-quote mb-2 items-center justify-between">
-                  <span className="min-w-0 flex-1 truncate">
-                    {t('readerReplyingTo', { alias: resolveAlias(replyParent.authorUserId) })}
+                <div className="thread-quote thread-quote--composer mb-2 items-center justify-between">
+                  <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
+                    {t('readerReplyingTo', { alias: '' }).trimEnd()}{' '}
+                    <span className="font-semibold text-ink">
+                      {resolveAlias(replyParent.authorUserId)}
+                    </span>
                   </span>
                   <button
                     type="button"
                     onClick={() => setReplyParent(null)}
                     aria-label={t('readerClearQuote')}
-                    className="icon-action icon-action--ghost icon-action--dense pressable shrink-0"
+                    className="icon-action icon-action--dense pressable shrink-0 text-ink/70"
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={1.75} />
                   </button>
@@ -358,7 +361,7 @@ export function ThreadReader({
               transition={TAP_TRANSITION}
               type="submit"
               disabled={!replyBody.trim() || isBusy || submitting}
-              className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {isBusy && !planeLaunching ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

@@ -145,17 +145,17 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
     const spawnBurst = (rect: DOMRect, count: number) => {
       for (let i = 0; i < count; i++) {
-        const isSpark = Math.random() > 0.55;
+        const isSpark = Math.random() > 0.42;
         particlesRef.current.push({
-          x: rect.left + rect.width * (0.15 + Math.random() * 0.7),
-          y: rect.top + rect.height * (0.45 + Math.random() * 0.5),
-          vx: (Math.random() - 0.5) * (isSpark ? 1.4 : 0.7),
-          vy: -(0.9 + Math.random() * (isSpark ? 2.4 : 1.8)),
-          size: isSpark ? 1.2 + Math.random() * 1.8 : 5 + Math.random() * 8,
+          x: rect.left + rect.width * (0.12 + Math.random() * 0.76),
+          y: rect.top + rect.height * (0.55 + Math.random() * 0.4),
+          vx: (Math.random() - 0.5) * (isSpark ? 0.9 : 0.55),
+          vy: -(1.2 + Math.random() * (isSpark ? 2.8 : 1.6)),
+          size: isSpark ? 1.1 + Math.random() * 1.6 : 4.5 + Math.random() * 7,
           life: 1,
-          decay: 0.018 + Math.random() * 0.02,
+          decay: isSpark ? 0.012 + Math.random() * 0.014 : 0.02 + Math.random() * 0.022,
           wobble: Math.random() * Math.PI * 2,
-          stretch: isSpark ? 1.2 : 1.6 + Math.random() * 0.9,
+          stretch: isSpark ? 1.05 : 1.5 + Math.random() * 0.85,
           type: isSpark ? 'spark' : 'flame',
         });
       }
@@ -195,8 +195,9 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       for (let i = list.length - 1; i >= 0; i--) {
         const p = list[i]!;
         p.wobble += 0.08;
-        p.x += p.vx + Math.sin(p.wobble) * 0.35;
-        p.vy += 0.018;
+        p.x += p.vx + Math.sin(p.wobble) * (p.type === 'spark' ? 0.55 : 0.32);
+        // Embers rise with light drag; flames settle a touch faster.
+        p.vy += p.type === 'spark' ? 0.008 : 0.022;
         p.y += p.vy;
         p.life -= p.decay;
         if (p.life <= 0) {

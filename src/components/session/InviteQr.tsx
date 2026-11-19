@@ -5,10 +5,31 @@ import { useT } from '../../i18n';
 import { DUR, EASE } from '../../motion/tokens';
 import { useTheme } from '../../theme';
 
+const SCAN_SETTLE_MS = 2800;
+const SECRET_RING_MS = 400;
+
 interface InviteQrProps {
   inviteUrl: string;
   size?: number;
   includesSecret?: boolean;
+}
+
+function applyTilt(el: HTMLElement, clientX: number, clientY: number) {
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  // Normalize by half-size; outside the rect falloff keeps continuous tracking.
+  const nx = (clientX - cx) / (r.width * 0.5);
+  const ny = (clientY - cy) / (r.height * 0.5);
+  const dist = Math.hypot(nx, ny);
+  const falloff = 1 / (1 + Math.max(0, dist - 1) * 0.85);
+  const clampedX = Math.max(-1.35, Math.min(1.35, nx)) * falloff;
+  const clampedY = Math.max(-1.35, Math.min(1.35, ny)) * falloff;
+  const rotX = 8 - clampedY * 14;
+  const rotY = -7 + clampedX * 14;
+  const scale = 1 + 0.02 * Math.min(1, falloff);
+  el.style.transition = 'none';
+  el.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(8px) scale(${scale})`;
 }
 
 export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: InviteQrProps) {
@@ -21,7 +42,8 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   const surfaceRef = useRef<HTMLDivElement>(null);
   const scanTimer = useRef<number | null>(null);
   const ringTimer = useRef<number | null>(null);
-  const prevSecret = useRef(includesSecret);
+  const prevSecret = useRef(false);
+  const secretBootstrapped = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,7 +53,6 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
     const cs = getComputedStyle(document.documentElement);
     const ink = cs.getPropertyValue('--color-ink').trim() || '#121211';
     const raised = cs.getPropertyValue('--color-surface-raised').trim() || '#efede8';
-    /* High-contrast modules: dark ink on raised/white for reliable scanning */
     const dark = theme === 'dark' ? ink : '#0a0d06';
     const light = theme === 'dark' ? raised : '#ffffff';
     void import('qrcode')
@@ -47,8 +68,7 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
           setDataUrl(url);
           setScanning(true);
           if (scanTimer.current) window.clearTimeout(scanTimer.current);
-          /* Keep sweeping for several passes, then settle */
-          scanTimer.current = window.setTimeout(() => setScanning(false), 4200);
+          scanTimer.current = window.setTimeout(() => setScanning(false), SCAN_SETTLE_MS);
         }
       })
       .catch(() => {
@@ -64,40 +84,52 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   }, [inviteUrl, size, theme]);
 
   useEffect(() => {
+    const runSecretFx = () => {
+      setSecretRing(true);
+      setScanning(true);
+      if (ringTimer.current) window.clearTimeout(ringTimer.current);
+      if (scanTimer.current) window.clearTimeout(scanTimer.current);
+      ringTimer.current = window.setTimeout(() => setSecretRing(false), SECRET_RING_MS);
+      scanTimer.current = window.setTimeout(() => setScanning(false), SCAN_SETTLE_MS);
+    };
+
+    if (!secretBootstrapped.current) {
+      secretBootstrapped.current = true;
+      prevSecret.current = includesSecret;
+      if (includesSecret && dataUrl) runSecretFx();
+      return;
+    }
+
     if (prevSecret.current === includesSecret) return;
     prevSecret.current = includesSecret;
     if (!includesSecret) {
       setSecretRing(false);
       return;
     }
-    setSecretRing(true);
-    setScanning(true);
-    if (ringTimer.current) window.clearTimeout(ringTimer.current);
-    if (scanTimer.current) window.clearTimeout(scanTimer.current);
-    ringTimer.current = window.setTimeout(() => setSecretRing(false), 560);
-    scanTimer.current = window.setTimeout(() => setScanning(false), 4200);
+    runSecretFx();
     return () => {
       if (ringTimer.current) window.clearTimeout(ringTimer.current);
     };
-  }, [includesSecret]);
+  }, [includesSecret, dataUrl]);
 
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const el = surfaceRef.current;
-    if (!el || window.matchMedia('(hover: none)').matches) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const r = el.getBoundingClientRect();
-    const nx = (e.clientX - r.left) / r.width - 0.5;
-    const ny = (e.clientY - r.top) / r.height - 0.5;
-    el.style.transition = 'none';
-    el.style.transform = `rotateX(${8 - ny * 18}deg) rotateY(${-7 + nx * 18}deg) translateZ(8px) scale(1.03)`;
-  };
-
-  const onPointerLeave = () => {
+  useEffect(() => {
+    if (!dataUrl) return;
     const el = surfaceRef.current;
     if (!el) return;
-    el.style.transition = '';
-    el.style.transform = '';
-  };
+
+    const onMove = (e: PointerEvent) => {
+      if (window.matchMedia('(hover: none)').matches) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      applyTilt(el, e.clientX, e.clientY);
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      el.style.transition = '';
+      el.style.transform = '';
+    };
+  }, [dataUrl]);
 
   if (error) {
     return <p className="text-center text-xs text-danger-ink">{t('qrError')}</p>;
@@ -116,15 +148,13 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-2.5">
+    <div className="flex w-full flex-col items-center gap-2">
       <div className="qr-perspective mx-auto">
         <div
           ref={surfaceRef}
           className={`qr-surface-3d rounded-[var(--radius-ctrl)] p-2.5 ${
             scanning ? 'scanning' : ''
-          } ${secretRing ? 'qr-secret-ring' : ''}`}
-          onPointerMove={onPointerMove}
-          onPointerLeave={onPointerLeave}
+          } ${secretRing ? 'qr-secret-ring' : ''} ${includesSecret ? 'qr-has-secret' : ''}`}
         >
           <div className="qr-laser-line" aria-hidden="true" />
           <img
@@ -145,9 +175,9 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
         {includesSecret && (
           <motion.p
             key="secret-warn"
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
+            exit={{ opacity: 0, y: -3 }}
             transition={{ duration: DUR.tab, ease: EASE.outExpo }}
             className="text-center text-[11px] font-medium text-warn"
           >

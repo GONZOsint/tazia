@@ -5,7 +5,7 @@ import type { DirectMessage } from '../../core/protocol';
 import { useLocale, useT } from '../../i18n';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
-import { TAP, TAP_TRANSITION, bubbleEnter, sealIcon } from '../../motion/tokens';
+import { SEAL_FLASH_MS, TAP, TAP_TRANSITION, bubbleEnter, sealIcon } from '../../motion/tokens';
 
 interface DmConversationViewProps {
   selfUserId: string;
@@ -16,16 +16,16 @@ interface DmConversationViewProps {
   onBack: () => void;
 }
 
-function SealedMark({ isSelf }: { isSelf: boolean }) {
+function SealedFlash({ isSelf }: { isSelf: boolean }) {
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
-    const id = window.setTimeout(() => setOpen(false), isSelf ? 420 : 520);
+    const id = window.setTimeout(() => setOpen(false), SEAL_FLASH_MS);
     return () => window.clearTimeout(id);
-  }, [isSelf]);
+  }, []);
 
   const Icon = isSelf ? Lock : open ? LockOpen : Lock;
-  const tone = isSelf ? 'text-on-accent/70' : 'text-muted';
+  const tone = isSelf ? 'text-on-accent/75' : 'text-muted';
 
   return (
     <AnimatePresence initial={false}>
@@ -35,10 +35,10 @@ function SealedMark({ isSelf }: { isSelf: boolean }) {
           initial={sealIcon.initial}
           animate={sealIcon.animate}
           exit={sealIcon.exit}
-          className={`mb-1 inline-flex ${tone}`}
+          className={`mt-0.5 inline-flex shrink-0 ${tone}`}
           aria-hidden="true"
         >
-          <Icon className="h-3 w-3" strokeWidth={2} />
+          <Icon className="h-3.5 w-3.5" strokeWidth={2} />
         </motion.span>
       )}
     </AnimatePresence>
@@ -112,15 +112,26 @@ export function DmConversationView({
                 <div
                   className={`dm-bubble max-w-[80%] ${isSelf ? 'dm-bubble--self' : ''}`}
                 >
-                  {sealed && <SealedMark isSelf={isSelf} />}
-                  <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                  <p
-                    className={`mt-1 text-[10px] ${
-                      isSelf ? 'text-on-accent/60' : 'text-muted'
-                    }`}
-                  >
-                    {formatClockTime(msg.createdAtMs, locale)}
-                  </p>
+                  <div className="flex items-start gap-1.5">
+                    {sealed && <SealedFlash isSelf={isSelf} />}
+                    <div className="min-w-0 flex-1">
+                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                      <p
+                        className={`mt-1 inline-flex items-center gap-1 text-[10px] ${
+                          isSelf ? 'text-on-accent/60' : 'text-muted'
+                        }`}
+                      >
+                        {sealed && (
+                          <Lock
+                            className="h-2.5 w-2.5 shrink-0 opacity-80"
+                            strokeWidth={2.25}
+                            aria-hidden="true"
+                          />
+                        )}
+                        {formatClockTime(msg.createdAtMs, locale)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             );

@@ -12,6 +12,8 @@ interface BottomNavProps {
   roomsCount?: number;
 }
 
+const LIFT = { type: 'spring' as const, stiffness: 520, damping: 34, mass: 0.7 };
+
 export function BottomNav({
   activeTab,
   onSelectTab,
@@ -41,8 +43,7 @@ export function BottomNav({
           return (
             <li key={id} className="flex-1">
               <motion.button
-                whileTap={TAP}
-                transition={TAP_TRANSITION}
+                whileTap={{ ...TAP, transition: TAP_TRANSITION }}
                 type="button"
                 aria-current={active ? 'page' : undefined}
                 aria-label={
@@ -53,22 +54,31 @@ export function BottomNav({
                     : t(labelKey)
                 }
                 onClick={() => onSelectTab(id)}
+                animate={{ y: active ? -3 : 0 }}
+                transition={LIFT}
                 className={`relative flex w-full min-h-[48px] flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
                   active ? 'text-ink' : 'text-muted'
                 }`}
               >
-                <span className="relative">
-                  <motion.span
-                    animate={{ scale: active ? 1.05 : 1 }}
-                    transition={{ duration: DUR.tab, ease: EASE.outExpo }}
-                    className="inline-flex"
-                  >
-                    <Icon
-                      className={`h-5 w-5 ${active ? 'text-ink' : 'text-faint'}`}
-                      aria-hidden="true"
-                      strokeWidth={1.75}
-                    />
-                  </motion.span>
+                <span className="relative inline-flex h-8 w-8 items-center justify-center">
+                  <AnimatePresence initial={false}>
+                    {active && (
+                      <motion.span
+                        key="disc"
+                        initial={{ scale: 0.55, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.75, opacity: 0 }}
+                        transition={{ duration: 0.16, ease: EASE.outExpo }}
+                        className="absolute inset-0 rounded-full bg-accent/18"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </AnimatePresence>
+                  <Icon
+                    className={`relative z-[1] h-5 w-5 ${active ? 'text-ink' : 'text-faint'}`}
+                    aria-hidden="true"
+                    strokeWidth={1.75}
+                  />
                   <AnimateBadge count={badge} />
                 </span>
                 {active && (
@@ -97,7 +107,7 @@ function AnimateBadge({ count }: { count: number }) {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.6, opacity: 0 }}
           transition={{ duration: DUR.micro }}
-          className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-on-accent"
+          className="absolute -right-1 -top-0.5 z-[2] flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-on-accent"
         >
           {count > 9 ? '9+' : count}
         </motion.span>

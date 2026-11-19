@@ -91,7 +91,7 @@ export function RoomEntryView({
       setCreateFormKey((k) => k + 1);
       if (newlyJoined) {
         setPulseRoomId(newlyJoined);
-        const t = window.setTimeout(() => setPulseRoomId((cur) => (cur === newlyJoined ? null : cur)), 700);
+        const t = window.setTimeout(() => setPulseRoomId((cur) => (cur === newlyJoined ? null : cur)), 450);
         return () => window.clearTimeout(t);
       }
     }

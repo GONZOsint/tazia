@@ -47,10 +47,10 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
           />
         </div>
 
-        <div className="mt-2.5 flex justify-center">
+        <div className="mt-2 flex justify-center">
           <InviteQr
             inviteUrl={inviteUrl}
-            size={compact ? 168 : 188}
+            size={compact ? 152 : 172}
             includesSecret={includePhrase && Boolean(phrase)}
           />
         </div>

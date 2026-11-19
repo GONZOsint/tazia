@@ -15,7 +15,11 @@ import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useT } from '../i18n';
 import { DUR, EASE, IGNITE, TAP, TAP_TRANSITION, contentSwitch, enterPlaza } from '../motion/tokens';
-import { parseInviteInput, scrubPhraseFromLocationHash } from '../core/utils/inviteLink';
+import {
+  parseInviteInput,
+  scrubPhraseFromLocationHash,
+  takeBootstrappedInvitePhrase,
+} from '../core/utils/inviteLink';
 
 const ForumWorkspace = lazy(() => import('../features/forum/ForumWorkspace'));
 const HowItWorksView = lazy(() => import('../features/how/HowItWorksView'));
@@ -38,9 +42,13 @@ function TabSkeleton() {
 
 function readInitialInvite() {
   const parsed = parseInviteInput(window.location.hash);
-  if (parsed?.phrase) {
+  if (!parsed) return null;
+  if (parsed.phrase) {
     scrubPhraseFromLocationHash(parsed.roomId);
+    return parsed;
   }
+  const bootPhrase = takeBootstrappedInvitePhrase(parsed.roomId);
+  if (bootPhrase) return { roomId: parsed.roomId, phrase: bootPhrase };
   return parsed;
 }
 
@@ -234,6 +242,21 @@ export default function App() {
         ref={mainRef}
         className="min-h-screen bg-bg text-ink pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0"
       >
+        {/* Gooey filter for burn-button embers — scoped via CSS url(#tazia-fire-goo) */}
+        <svg width="0" height="0" className="absolute" aria-hidden="true" focusable="false">
+          <defs>
+            <filter id="tazia-fire-goo">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="blur" />
+              <feColorMatrix
+                in="blur"
+                mode="matrix"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+                result="goo"
+              />
+              <feBlend in="SourceGraphic" in2="goo" />
+            </filter>
+          </defs>
+        </svg>
         <TopBar
           activeTab={activeTab}
           onSelectTab={selectTab}

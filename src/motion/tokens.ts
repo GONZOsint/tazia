@@ -1,14 +1,14 @@
 /** Canonical motion tokens — keep in sync with `--dur-*` in styles/index.css. */
 
 export const DUR = {
-  tap: 0.12,
-  micro: 0.15,
-  tab: 0.18,
-  medium: 0.22,
-  switch: 0.24,
-  burn: 0.38,
-  modal: 0.2,
-  plane: 0.36,
+  tap: 0.1,
+  micro: 0.14,
+  tab: 0.16,
+  medium: 0.2,
+  switch: 0.22,
+  burn: 0.36,
+  modal: 0.22,
+  plane: 0.26,
 } as const;
 
 export const EASE = {
@@ -17,25 +17,28 @@ export const EASE = {
   easeIn: [0.4, 0, 1, 1] as const,
   exit: [0.4, 0, 1, 1] as const,
   inOut: [0.76, 0, 0.24, 1] as const,
-  spring: { type: 'spring' as const, stiffness: 380, damping: 30 },
+  spring: { type: 'spring' as const, stiffness: 420, damping: 32 },
   /** Soft overshoot for chat bubbles (Telegram-lite). */
-  bubbleSpring: { type: 'spring' as const, stiffness: 420, damping: 28 },
+  bubbleSpring: { type: 'spring' as const, stiffness: 440, damping: 30 },
 };
 
 /** Shared burn choreography — keep TopBar / overlay / CSS collapse in sync. */
 export const BURN = {
-  ignitionMs: 520,
-  collapseAtMs: 220,
-  finishMs: 720,
+  ignitionMs: 400,
+  collapseAtMs: 200,
+  finishMs: 620,
   reducedFrontMs: 80,
-  reducedCollapseMs: 160,
+  reducedCollapseMs: 140,
 } as const;
 
 /** Zone ignite (inverse of burn) — CSS/useAnimate glow, no canvas. */
 export const IGNITE = {
-  glowMs: 280,
-  finishMs: 400,
+  glowMs: 240,
+  finishMs: 360,
 } as const;
+
+/** Sealed whisper flash hold before fade (permanent mark stays on timestamp). */
+export const SEAL_FLASH_MS = 1300;
 
 export const TAP = { scale: 0.97 } as const;
 export const TAP_TRANSITION = { duration: DUR.tap } as const;
@@ -46,7 +49,7 @@ export const zoneCardExit = {
   exit: {
     opacity: 0,
     scale: 0.98,
-    transition: { duration: DUR.medium, ease: EASE.easeIn },
+    transition: { duration: DUR.tab, ease: EASE.easeIn },
   },
 };
 
@@ -124,6 +127,6 @@ export const sealIcon = {
   },
 };
 
-export const staggerChild = (index: number, step = 0.04) => ({
+export const staggerChild = (index: number, step = 0.035) => ({
   transition: { delay: index * step, duration: DUR.switch, ease: EASE.outExpo },
 });

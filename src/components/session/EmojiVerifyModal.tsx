@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
-import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, stagger, useAnimate, useReducedMotion } from 'motion/react';
 import { deriveEmojiSafetyCode } from '../../core/trust/trustStore';
 import { useT } from '../../i18n';
 import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
@@ -58,6 +58,8 @@ export function EmojiVerifyModal({
     if (open) dialogRef.current?.focus();
   }, [open]);
 
+  const glyphs = code ? Array.from(code) : [];
+
   const handleMatch = async () => {
     if (verifying) return;
     setVerifying(true);
@@ -70,11 +72,19 @@ export function EmojiVerifyModal({
     }
     if (emojiScope.current) {
       await animate(
-        emojiScope.current,
+        '[data-emoji-cell]',
         reduceMotion
-          ? { opacity: [1, 0.55, 1], color: 'var(--color-accent)' }
-          : { opacity: [1, 0.7, 1], scale: [1, 1.06, 1], color: 'var(--color-accent)' },
-        { duration: 0.26, ease: EASE.outExpo }
+          ? { opacity: [1, 0.55, 1] }
+          : {
+              opacity: [1, 0.85, 1],
+              scale: [1, 1.08, 1],
+              backgroundColor: [
+                'var(--color-surface)',
+                'color-mix(in oklab, var(--color-accent) 35%, var(--color-surface))',
+                'var(--color-surface)',
+              ],
+            },
+        { duration: 0.2, delay: stagger(0.035), ease: EASE.outExpo }
       );
     } else {
       await new Promise((r) => window.setTimeout(r, 220));
@@ -129,14 +139,29 @@ export function EmojiVerifyModal({
               <p className="mt-1 text-xs font-semibold text-ink">{peerAlias}</p>
 
               {code ? (
-                <p
+                <div
                   ref={emojiScope}
-                  className="mx-auto mt-4 text-4xl tracking-widest"
+                  className="mx-auto mt-4 grid max-w-[14rem] grid-cols-3 gap-2"
                   role="img"
                   aria-label={t('trustEmojiLabel')}
                 >
-                  {code}
-                </p>
+                  {glyphs.map((glyph, i) => (
+                    <motion.span
+                      key={`${glyph}-${i}`}
+                      data-emoji-cell
+                      initial={reduceMotion ? false : { opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        delay: reduceMotion ? 0 : i * 0.035,
+                        duration: DUR.micro,
+                        ease: EASE.outExpo,
+                      }}
+                      className="flex h-11 items-center justify-center rounded-[var(--radius-ctrl)] bg-surface text-2xl"
+                    >
+                      {glyph}
+                    </motion.span>
+                  ))}
+                </div>
               ) : (
                 <p className="mt-4 text-sm text-muted">…</p>
               )}

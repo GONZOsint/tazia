@@ -26,11 +26,13 @@ export function JoinRoomForm({
 }: JoinRoomFormProps) {
   const t = useT();
   const [joinInviteInput, setJoinInviteInput] = useState(
-    initialRoomId ? buildInviteUrl(initialRoomId) : ''
+    initialRoomId
+      ? buildInviteUrl(initialRoomId, initialPhrase ?? undefined)
+      : ''
   );
   const [joinRoomId, setJoinRoomId] = useState(initialRoomId);
   const [joinPhrase, setJoinPhrase] = useState(initialPhrase ?? '');
-  const [showJoinPhrase, setShowJoinPhrase] = useState(false);
+  const [showJoinPhrase, setShowJoinPhrase] = useState(Boolean(initialPhrase));
   const [joinAlias, setJoinAlias] = useState('');
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(Boolean(initialRoomId));

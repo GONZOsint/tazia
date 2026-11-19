@@ -109,7 +109,7 @@ export function RoomSidebar({
             </p>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           <CopyButton
             text={invite}
             label={t('roomsCopyLink')}
