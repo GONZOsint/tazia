@@ -1,4 +1,8 @@
 import {
+  deletedThreadIds,
+  isContentForumType,
+} from '../forum/threadDelete';
+import {
   MAX_SYNC_MESSAGES,
   MAX_SYNC_PEER_TARGETS,
   MAX_SYNC_TOTAL_BYTES,
@@ -13,7 +17,12 @@ export function syncPayloadTooLarge(events: unknown): boolean {
 }
 
 export function snapshotForSync(localMessages: Map<string, ForumEvent>): ForumEvent[] {
-  const list = [...localMessages.values()]
+  const all = [...localMessages.values()];
+  const deleted = deletedThreadIds(all);
+  const list = all
+    .filter(
+      (e) => !deleted.has(e.threadId) || !isContentForumType(e.type)
+    )
     .sort((a, b) => a.createdAtMs - b.createdAtMs)
     .slice(-MAX_SYNC_MESSAGES);
   if (syncPayloadTooLarge(list)) {

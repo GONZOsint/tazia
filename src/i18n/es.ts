@@ -50,6 +50,8 @@ export const es: Messages = {
   roomsHeroBodyBurn: 'quemáis la sesión.',
   roomsHeroCreate: 'Abrir zona',
   roomsHeroJoin: 'Entrar con frase',
+  roomsEntryBack: 'Volver',
+  roomsInviteHint: 'QR y enlace para la tribu',
   roomsCreate: 'Abrir',
   roomsJoin: 'Entrar',
   roomsPhraseLabel: 'Frase',
@@ -135,6 +137,15 @@ export const es: Messages = {
   readerReplyingTo: 'Respondiendo a {alias}',
   readerClearQuote: 'Quitar cita',
   readerReplyToSnippet: 're: {snippet}',
+  readerDeleteTalk: 'Borrar charla',
+  readerDeleteProposeTitle: '¿Borrar esta charla?',
+  readerDeleteProposeBody:
+    'Todos los miembros de la tribu que estén en línea deben votar a favor. La charla desaparece para todos cuando el voto sea unánime.',
+  readerDeleteProposeAction: 'Proponer borrado',
+  readerDeleteVoteAye: 'Votar a favor del borrado',
+  readerDeleteVoteProgress: 'Voto de borrado: {have}/{need}',
+  readerDeleteVoteWaiting: 'Falta: {names}',
+  readerDeleteVoteYouVoted: 'Ya has votado.',
 
   presenceEmptyTitle: 'Tribu vacía',
   presenceEmptyBody: 'Abre o entra a una zona para ver a la tribu.',
@@ -169,6 +180,9 @@ export const es: Messages = {
   helpZonesTitle: 'Varias zonas',
   helpZonesBody:
     'Puedes estar en hasta 3 zonas a la vez. Cambia o sal de una en Zonas; Plaza, Tribu y Susurros muestran la zona activa. Quemar borra todas las zonas en este dispositivo.',
+  helpDeleteTitle: 'Borrar una charla',
+  helpDeleteBody:
+    'En Plaza, la llama propone borrar esa charla. Tiene que votar a favor toda la tribu que estaba online al proponer. No es lo mismo que quemar la sesión: el voto quita la charla en quienes aplican el quórum; quemar solo limpia este navegador.',
   helpRelayTitle: 'Si no os conectáis directo',
   helpRelayBody:
     'A veces la red no deja hablar de navegador a navegador. En ese caso el chat puede seguir por un camino cifrado a través de servidores de ayuda. Preferid la misma Wi‑Fi; si hace falta, abrid Arreglar en Zonas.',
@@ -179,10 +193,12 @@ export const es: Messages = {
     'Cada mensaje lleva una marca que solo su autor puede poner. Así nadie puede fingir ser otra persona al actualizar el historial.',
   helpSafety3: 'Meter la frase en el enlace es cómodo, pero arriesgado si se reenvía.',
   helpSafety4: 'El QR se genera en tu dispositivo; no se sube a ningún sitio.',
+  helpSafety5:
+    'Borrar una charla exige voto unánime de la tribu online; no borra otros dispositivos que no recibieron el quórum.',
   helpMore: 'Detalle técnico',
   helpMoreHide: 'Ocultar detalle técnico',
   helpMoreBody:
-    '• Mesh P2P con WebRTC vía Trystero\n• Si falla ICE: fallback de datos cifrado por relés Nostr (solo ciphertext; no es P2P puro)\n• Protocolo TAZEP (tazep-v2) con Ed25519 + Susurros solo sellados (X25519)\n• TURN opcional (coturn) para rescate ICE u ocultar IP\n• Confianza TOFU + código de 6 emojis ligado a roomId (SAS ~48 bits)\n• Docs: docs/SECURITY.es.md, docs/PROTOCOL.es.md, docs/TURN.es.md, docs/papers/',
+    '• Mesh P2P con WebRTC vía Trystero\n• Si falla ICE: fallback de datos cifrado por relés Nostr (solo ciphertext; no es P2P puro)\n• Protocolo TAZEP (tazep-v2) con Ed25519 + Susurros solo sellados (X25519)\n• Borrado de charla: DELETE_PROPOSE / DELETE_VOTE unánime + tumbas en sync\n• TURN opcional (coturn) para rescate ICE u ocultar IP\n• Confianza TOFU + código de 6 emojis ligado a roomId (SAS ~48 bits)\n• Docs: docs/SECURITY.es.md, docs/PROTOCOL.es.md, docs/TURN.es.md, docs/papers/',
   helpForgetDevice: 'Olvidar este dispositivo',
   helpForgetDone: 'Aviso de dirección borrado en este navegador.',
   helpForgetHint: 'Volverá a pedir el aviso de dirección la próxima vez que entres a una zona.',

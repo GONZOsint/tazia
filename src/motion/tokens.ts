@@ -11,7 +11,7 @@
  *   - Confetti / seal / mesh birth → Motion presets (ritual tier; confetti = create+verify only)
  *
  * Tiers (NN/g + Fluent hierarchy):
- *   frequent ≤150ms  |  panel ~200–220ms  |  ritual ≤400ms spring  |  climax BURN ~1s
+ *   frequent ≤150ms  |  panel ~200–220ms  |  ritual ≤400ms spring  |  climax BURN ~1.3s
  */
 
 export const MOTION_TIER = {
@@ -72,24 +72,24 @@ export const EASE = {
  * Shared burn choreography — keep TopBar / overlay / CSS collapse in sync.
  *
  * Timeline (full motion):
- *   0ms     ignition front + seed burst
- *   peakAt  secondary peak burst (flames crest)
+ *   0ms     ignition front + seed burst (anticipation)
+ *   peakAt  mid-ignition crest (bar still filling to ignitionMs)
  *   collapse card incinerates while residual embers rise
  *   finish  teardown + session wipe
  */
 export const BURN = {
   ignitionMs: 480,
-  peakAtMs: 180,
-  collapseAtMs: 360,
-  finishMs: 960,
+  peakAtMs: 300,
+  collapseAtMs: 560,
+  finishMs: 1280,
   reducedFrontMs: 80,
   reducedCollapseMs: 140,
   layoutId: 'burn-flame',
   /** Shared layoutId spring: TopBar flame → BurnFireOverlay. */
   layoutSpring: {
     type: 'spring' as const,
-    visualDuration: 0.32,
-    bounce: 0.18,
+    visualDuration: 0.36,
+    bounce: 0.1,
   },
 } as const;
 
@@ -110,24 +110,67 @@ export const IGNITE = {
  * Full-screen cold splash (Telegram / Duolingo beat) — once per session.
  * Marks ZONE_BOOT.storageKey so the hero does not re-ritualize after.
  *
+ * Timing (Motion docs + UX):
+ *   - Entrances use outExpo / duration-based springs (`visualDuration`) so
+ *     tweens and springs share one clock (motion.dev/docs/react-transitions).
+ *   - Part stagger ~80–120ms — cascade without watching a queue
+ *     (staggerChildren sweet spot; Systra / Magic UI).
+ *   - Tween parts ~0.4–0.5s; springs visualDuration ~0.42s (pleasant UI band).
+ *   - Total finish under ~2s brand beat — splash should not invent long waits
+ *     (Material / UXPin: prefer recognition over forced admire-time).
+ *
  * Timeline (full):
- *   0ms        black field + mark scale-in
- *   ~200ms     island / flag spring
- *   ~340ms     chevron slides in
- *   hapticMs   light tap
- *   finish−exit fade veil
- *   finishMs   unmount
+ *   0ms          black field + stage opacity/scale
+ *   delay.outlineA / outlineB  cream strokes
+ *   delay.island               lime island spring
+ *   delay.arrow                chevron spring
+ *   delay.wordmark + hapticMs  name + light tap
+ *   finish−exit                fade veil (easeIn, shorter than enter)
+ *   finishMs                   unmount
  */
 export const APP_SPLASH = {
-  hapticMs: 360,
+  /** Align with wordmark settle so the tap lands as the mark “locks”. */
+  hapticMs: 720,
   /** Invite deep-link — hold + fade, no part stagger. */
-  shortMs: 560,
-  finishMs: 980,
-  exitMs: 260,
+  shortMs: 780,
+  finishMs: 1680,
+  exitMs: 360,
   /** Must stay ≥ exitMs so reduced-motion still gets a clean fade. */
-  reducedMs: 320,
+  reducedMs: 400,
   markPx: 128,
   storageKey: 'tazia.splashSeen',
+  /** Stage veil — opacity tween (fast-in / slow-out entrance curve). */
+  stageOpacityDur: 0.36,
+  /** Cream outline strokes (tween). */
+  partTweenDur: 0.42,
+  /** Wordmark rise after the mark assembles. */
+  wordmarkDur: 0.4,
+  /**
+   * Island / chevron — duration-based spring so settle lines up with tweens.
+   * @see https://motion.dev/docs/react-transitions#visualduration
+   */
+  partSpring: {
+    type: 'spring' as const,
+    visualDuration: 0.42,
+    bounce: 0.16,
+  },
+  /** Stage scale uses a slightly longer settle than parts. */
+  stageSpring: {
+    type: 'spring' as const,
+    visualDuration: 0.48,
+    bounce: 0.14,
+  },
+  /**
+   * Assembly order (paint order): outlines → island → arrow → wordmark.
+   * Gaps sit in the 0.08–0.2s stagger band so the eye reads sequence, not lag.
+   */
+  delay: {
+    outlineA: 0.08,
+    outlineB: 0.18,
+    island: 0.34,
+    arrow: 0.54,
+    wordmark: 0.72,
+  },
 } as const;
 
 /**
@@ -201,12 +244,33 @@ export const NAV_INDICATOR = {
 /** Icon-only press — slightly deeper than full-button TAP. */
 export const NAV_TAP = { scale: 0.9 } as const;
 
-/** Cold leave — opacity + scale; pair with AnimatePresence popLayout (no height CSS). */
+/**
+ * Cold leave — Motion must own opacity/scale/y/filter while incinerating.
+ * CSS `.incinerated-collapse` only collapses max-height (Motion does not set it);
+ * Motion inline styles otherwise win and the CSS fade never shows.
+ */
 export const zoneCardExit = {
-  initial: { opacity: 1, scale: 1 },
+  initial: { opacity: 1, scale: 1, y: 0, filter: 'blur(0px) brightness(1) saturate(1)' },
+  /** Pre-unmount incinerate — duration must match DUR.burn / --dur-burn. */
+  incinerate: {
+    opacity: 0,
+    scale: 0.96,
+    y: 4,
+    filter: 'blur(4px) brightness(0.4) saturate(0.55)',
+    transition: { duration: DUR.burn, ease: EASE.easeIn },
+  },
+  incinerateReduced: {
+    opacity: 0,
+    scale: 0.98,
+    y: 0,
+    filter: 'blur(0px) brightness(1) saturate(1)',
+    transition: { duration: BURN.reducedCollapseMs / 1000, ease: EASE.easeIn },
+  },
   exit: {
     opacity: 0,
     scale: 0.98,
+    y: 4,
+    filter: 'blur(6px) brightness(0.4) saturate(0.5)',
     transition: { duration: DUR.tab, ease: EASE.easeIn },
   },
 };
@@ -225,6 +289,21 @@ export const contentSwitch = {
 
 /** Alias for create/join form panels — same motor as contentSwitch. */
 export const panelEnter = contentSwitch;
+
+/**
+ * Hero ↔ configure stage swap (same viewport, no stack/scroll).
+ * Fuller fade than contentSwitch so the handoff reads clearly; still panel-tier timing.
+ */
+export const stageSwitch = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: DUR.micro, ease: EASE.easeIn },
+  },
+  transition: { duration: DUR.switch, ease: EASE.outExpo },
+};
 
 /** ZONE_BOOT mark settle (full choreography). */
 export const zoneBootMark = {

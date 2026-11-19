@@ -73,13 +73,28 @@ function rgba(hex: string, alpha: number): string {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
+/** Linear mix of two hex colors (t = 0 → a, 1 → b). */
+function mixHex(a: string, b: string, t: number): string {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  if (!ca || !cb) return a;
+  const k = Math.max(0, Math.min(1, t));
+  const r = Math.round(ca.r + (cb.r - ca.r) * k);
+  const g = Math.round(ca.g + (cb.g - ca.g) * k);
+  const bl = Math.round(ca.b + (cb.b - ca.b) * k);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1)}`;
+}
+
 function markTargets(phase: 'front' | 'collapse' | 'clear') {
   const nodes = document.querySelectorAll('.session-burn-target');
   for (const el of nodes) {
     if (phase === 'clear') {
       el.classList.remove('burning-front', 'incinerated-collapse');
     } else if (phase === 'front') {
-      el.classList.add('burning-front');
+      // Burn control already has .is-heating glow — avoid stacking burn-front-pulse.
+      if (!el.classList.contains('burn-heat')) {
+        el.classList.add('burning-front');
+      }
     } else {
       el.classList.add('incinerated-collapse');
     }
@@ -112,7 +127,9 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
   /** Destination layoutId must exist on first paint (same commit as TopBar drops source). */
   const morphOrigin = useMemo(() => {
     if (!play || reduceMotion) return null;
-    const r = collectTargetRects()[0];
+    // Prefer the burn control so the shared flame morphs in place (not to the zone chip).
+    const burnBtn = document.querySelector('.burn-heat.session-burn-target');
+    const r = burnBtn?.getBoundingClientRect() ?? collectTargetRects()[0];
     if (!r) return null;
     return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.55 };
   }, [play, reduceMotion]);
@@ -123,7 +140,9 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       setMorphGone(false);
       return;
     }
-    const hide = window.setTimeout(() => setMorphGone(true), BURN.peakAtMs);
+    // Let the layout spring finish fading before unmount (visualDuration ~360ms).
+    const morphMs = Math.round(BURN.layoutSpring.visualDuration * 1000);
+    const hide = window.setTimeout(() => setMorphGone(true), Math.max(BURN.peakAtMs, morphMs));
     return () => window.clearTimeout(hide);
   }, [play]);
 
@@ -145,6 +164,13 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     }
 
     const palette = readFirePalette();
+    const tipHot = mixHex(palette.core, palette.accent, 0.32);
+    const sparkHot = mixHex(palette.core, palette.accent, 0.36);
+    const ambientAccent = mixHex(palette.mid, palette.accent, 0.28);
+    const ashMid = mixHex(palette.edge, palette.bg, 0.55);
+    const ashOuter = mixHex(palette.edge, palette.bg, 0.82);
+    const veilMid = mixHex(palette.edge, palette.bg, 0.65);
+    const veilOuter = mixHex(palette.edge, palette.bg, 0.88);
     const startedAt = performance.now();
     let phase: BurstMode = 'seed';
     let heat = 0;
@@ -233,34 +259,39 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
         const sparkish = type === 'spark' || type === 'ember';
         const ashy = type === 'ash';
+        // ~35% lower lift than the previous climax for a softer plume.
         const lift =
           type === 'spark'
-            ? 2.6 + Math.random() * 4.2
+            ? 1.7 + Math.random() * 2.7
             : type === 'ember'
-              ? 1.8 + Math.random() * 2.8
+              ? 1.15 + Math.random() * 1.85
               : ashy
-                ? 0.55 + Math.random() * 1.35
-                : 1.7 + Math.random() * 2.8;
+                ? 0.35 + Math.random() * 0.9
+                : 1.1 + Math.random() * 1.85;
 
         pushParticle({
-          x: rect.left + rect.width * along + (Math.random() - 0.5) * 10,
+          x: rect.left + rect.width * along + (Math.random() - 0.5) * 8,
           y: rect.top + rect.height * fromBottom,
-          vx: (Math.random() - 0.5) * (sparkish ? 2.8 : ashy ? 1.25 : 1.55),
+          vx: (Math.random() - 0.5) * (sparkish ? 1.8 : ashy ? 0.85 : 1.05),
           vy: -lift,
           size: sparkish
-            ? 1.2 + Math.random() * (type === 'ember' ? 2.8 : 2.1)
+            ? 1.1 + Math.random() * (type === 'ember' ? 2.4 : 1.8)
             : ashy
-              ? 4 + Math.random() * 7
-              : 7 + Math.random() * 13,
+              ? 3.5 + Math.random() * 5.5
+              : 5.5 + Math.random() * 8.5,
           decay: sparkish
-            ? 0.012 + Math.random() * 0.018
+            ? 0.008 + Math.random() * 0.012
             : ashy
-              ? 0.006 + Math.random() * 0.01
-              : 0.014 + Math.random() * 0.018,
+              ? 0.004 + Math.random() * 0.007
+              : 0.009 + Math.random() * 0.012,
           wobble: Math.random() * Math.PI * 2,
-          wobbleSpeed: 0.08 + Math.random() * (sparkish ? 0.18 : 0.12),
-          stretch: sparkish ? 1.05 + Math.random() * 0.35 : ashy ? 1.15 + Math.random() * 0.45 : 1.65 + Math.random() * 1.05,
-          heat: 0.65 + Math.random() * 0.35,
+          wobbleSpeed: 0.055 + Math.random() * (sparkish ? 0.12 : 0.08),
+          stretch: sparkish
+            ? 1.02 + Math.random() * 0.28
+            : ashy
+              ? 1.1 + Math.random() * 0.35
+              : 1.45 + Math.random() * 0.65,
+          heat: 0.6 + Math.random() * 0.35,
           type,
         });
       }
@@ -280,9 +311,10 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
         const rx = Math.max(rect.width * 0.72, 80);
         const ry = Math.max(rect.height * 1.35, 90);
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-        g.addColorStop(0, rgba(palette.core, 0.22 * intensity));
-        g.addColorStop(0.35, rgba(palette.mid, 0.14 * intensity));
-        g.addColorStop(0.7, rgba(palette.edge, 0.05 * intensity));
+        g.addColorStop(0, rgba(palette.core, 0.16 * intensity));
+        g.addColorStop(0.28, rgba(ambientAccent, 0.08 * intensity));
+        g.addColorStop(0.55, rgba(palette.mid, 0.1 * intensity));
+        g.addColorStop(0.8, rgba(palette.edge, 0.04 * intensity));
         g.addColorStop(1, rgba(palette.edge, 0));
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -295,12 +327,11 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     const drawHeatVeil = (w: number, h: number, intensity: number, cover: number) => {
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
-      // Warm darkening that builds with the burn, then yields to page-bg cover.
       const remain = Math.max(0, 1 - cover);
       const g = ctx.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.78);
-      g.addColorStop(0, rgba(palette.mid, 0.04 * intensity * remain));
-      g.addColorStop(0.55, `rgba(12, 8, 4, ${0.18 * intensity * remain})`);
-      g.addColorStop(1, `rgba(8, 6, 4, ${0.42 * intensity * remain + cover * 0.35})`);
+      g.addColorStop(0, rgba(palette.mid, 0.035 * intensity * remain));
+      g.addColorStop(0.45, rgba(veilMid, 0.14 * intensity * remain));
+      g.addColorStop(1, rgba(veilOuter, 0.32 * intensity * remain + cover * 0.28));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
       if (cover > 0.01) {
@@ -320,40 +351,39 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
       ctx.save();
       ctx.translate(p.x, p.y);
-      ctx.rotate(Math.sin(p.wobble) * 0.22);
+      ctx.rotate(Math.sin(p.wobble) * 0.16);
       ctx.globalCompositeOperation = 'lighter';
 
-      // Soft outer bloom
       const bloom = ctx.createRadialGradient(0, tip * 0.15, 0, 0, 0, s * 1.55);
-      bloom.addColorStop(0, rgba(palette.core, a * 0.55 * p.heat));
-      bloom.addColorStop(0.45, rgba(palette.mid, a * 0.28 * p.heat));
+      bloom.addColorStop(0, rgba(tipHot, a * 0.42 * p.heat));
+      bloom.addColorStop(0.4, rgba(palette.core, a * 0.38 * p.heat));
+      bloom.addColorStop(0.7, rgba(palette.mid, a * 0.2 * p.heat));
       bloom.addColorStop(1, rgba(palette.edge, 0));
       ctx.fillStyle = bloom;
       ctx.beginPath();
-      ctx.ellipse(0, tip * 0.2, s * 0.85, s * p.stretch * 0.95, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, tip * 0.2, s * 0.8, s * p.stretch * 0.9, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Teardrop body
       const body = ctx.createLinearGradient(0, tip, 0, base);
-      body.addColorStop(0, rgba(palette.core, a * 0.98));
-      body.addColorStop(0.45, rgba(palette.mid, a * 0.82));
-      body.addColorStop(1, rgba(palette.edge, a * 0.15));
+      body.addColorStop(0, rgba(tipHot, a * 0.88));
+      body.addColorStop(0.35, rgba(palette.core, a * 0.9));
+      body.addColorStop(0.7, rgba(palette.mid, a * 0.7));
+      body.addColorStop(1, rgba(palette.edge, a * 0.12));
       ctx.fillStyle = body;
       ctx.beginPath();
       ctx.moveTo(0, tip);
-      ctx.bezierCurveTo(s * 0.72, tip * 0.35, s * 0.7, base * 0.55, 0, base);
-      ctx.bezierCurveTo(-s * 0.7, base * 0.55, -s * 0.72, tip * 0.35, 0, tip);
+      ctx.bezierCurveTo(s * 0.68, tip * 0.35, s * 0.66, base * 0.55, 0, base);
+      ctx.bezierCurveTo(-s * 0.66, base * 0.55, -s * 0.68, tip * 0.35, 0, tip);
       ctx.closePath();
       ctx.fill();
 
-      // Hot white-yellow core
       const core = ctx.createRadialGradient(0, tip * 0.35, 0, 0, tip * 0.1, s * 0.42);
-      core.addColorStop(0, `rgba(255, 248, 220, ${a * 0.85 * p.heat})`);
-      core.addColorStop(0.55, rgba(palette.core, a * 0.55));
+      core.addColorStop(0, rgba(tipHot, a * 0.72 * p.heat));
+      core.addColorStop(0.55, rgba(palette.core, a * 0.48));
       core.addColorStop(1, rgba(palette.core, 0));
       ctx.fillStyle = core;
       ctx.beginPath();
-      ctx.ellipse(0, tip * 0.28, s * 0.28, s * 0.55, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, tip * 0.28, s * 0.26, s * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     };
@@ -361,16 +391,16 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     const drawSpark = (p: Particle) => {
       const a = p.life;
       const speed = Math.hypot(p.vx, p.vy) || 1;
-      const trail = Math.min(14, 3 + speed * 1.4);
+      const trail = Math.min(11, 2.5 + speed * 1.15);
       const angle = Math.atan2(p.vy, p.vx);
       const hex =
         p.type === 'ember'
           ? p.life > 0.5
             ? palette.core
             : palette.mid
-          : p.life > 0.6
-            ? palette.accent
-            : p.life > 0.3
+          : p.life > 0.65
+            ? sparkHot
+            : p.life > 0.35
               ? palette.core
               : palette.mid;
       const r = p.size * Math.max(0.2, p.life);
@@ -381,20 +411,20 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       ctx.rotate(angle);
       const streak = ctx.createLinearGradient(-trail, 0, r, 0);
       streak.addColorStop(0, rgba(hex, 0));
-      streak.addColorStop(0.55, rgba(hex, a * 0.55));
-      streak.addColorStop(1, rgba(hex, a * 0.95));
+      streak.addColorStop(0.55, rgba(hex, a * 0.42));
+      streak.addColorStop(1, rgba(hex, a * 0.85));
       ctx.fillStyle = streak;
       ctx.beginPath();
-      ctx.ellipse(-trail * 0.25, 0, trail * 0.65, r * 0.55, 0, 0, Math.PI * 2);
+      ctx.ellipse(-trail * 0.25, 0, trail * 0.6, r * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = rgba(hex, a);
+      ctx.fillStyle = rgba(hex, a * 0.9);
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
       if (p.type === 'ember' && p.life > 0.35) {
-        ctx.fillStyle = `rgba(255, 250, 230, ${a * 0.55})`;
+        ctx.fillStyle = rgba(tipHot, a * 0.45);
         ctx.beginPath();
-        ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2);
+        ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
@@ -406,12 +436,12 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, s);
-      grad.addColorStop(0, rgba(palette.edge, a * 0.3));
-      grad.addColorStop(0.5, `rgba(40, 28, 18, ${a * 0.16})`);
-      grad.addColorStop(1, `rgba(20, 14, 10, 0)`);
+      grad.addColorStop(0, rgba(palette.edge, a * 0.26));
+      grad.addColorStop(0.5, rgba(ashMid, a * 0.14));
+      grad.addColorStop(1, rgba(ashOuter, 0));
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.ellipse(p.x, p.y, s * 0.85, s * 1.15, Math.sin(p.wobble) * 0.4, 0, Math.PI * 2);
+      ctx.ellipse(p.x, p.y, s * 0.85, s * 1.15, Math.sin(p.wobble) * 0.35, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     };
@@ -425,20 +455,19 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       const h = window.innerHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      // Heat envelope: rise fast, hold, then soft fade into veil.
-      const rise = Math.min(1, elapsed / 160);
+      // Heat envelope: slower rise, longer hold, softer fade into veil.
+      const rise = Math.min(1, elapsed / 280);
       const hold =
-        elapsed < BURN.collapseAtMs + 80
+        elapsed < BURN.collapseAtMs + 100
           ? 1
-          : Math.max(0.35, 1 - (elapsed - BURN.collapseAtMs - 80) / 280);
+          : Math.max(0.3, 1 - (elapsed - BURN.collapseAtMs - 100) / 360);
       heat = rise * hold;
-      const veilStart = BURN.finishMs - 220;
-      veil = elapsed >= veilStart ? Math.min(1, (elapsed - veilStart) / 200) : 0;
+      const veilStart = BURN.finishMs - 280;
+      veil = elapsed >= veilStart ? Math.min(1, (elapsed - veilStart) / 260) : 0;
 
-      // Continuous feed keeps the burn alive between burst peaks.
-      if (elapsed - lastFeed > (phase === 'peak' ? 55 : 70) && elapsed < BURN.collapseAtMs + 120) {
+      if (elapsed - lastFeed > (phase === 'peak' ? 95 : 120) && elapsed < BURN.collapseAtMs + 60) {
         lastFeed = elapsed;
-        const feedCount = phase === 'peak' ? 10 : phase === 'ember' ? 6 : 7;
+        const feedCount = phase === 'peak' ? 5 : phase === 'ember' ? 3 : 4;
         for (const r of rects) spawnBurst(r, feedCount, phase === 'ember' ? 'ember' : 'feed');
       }
 
@@ -456,11 +485,11 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
         p.wobble += p.wobbleSpeed;
         const sway =
           Math.sin(p.wobble) *
-          (p.type === 'spark' ? 0.85 : p.type === 'ember' ? 0.7 : p.type === 'ash' ? 1.15 : 0.48);
-        const turbulence = Math.sin(p.wobble * 1.7 + p.x * 0.02) * (p.type === 'flame' ? 0.22 : 0.12);
-        p.vx *= 0.992;
+          (p.type === 'spark' ? 0.6 : p.type === 'ember' ? 0.5 : p.type === 'ash' ? 0.85 : 0.35);
+        const turbulence = Math.sin(p.wobble * 1.5 + p.x * 0.02) * (p.type === 'flame' ? 0.16 : 0.09);
+        p.vx *= 0.994;
         p.x += p.vx + sway + turbulence;
-        p.vy += p.type === 'spark' ? 0.01 : p.type === 'ember' ? 0.014 : p.type === 'ash' ? 0.003 : 0.026;
+        p.vy += p.type === 'spark' ? 0.008 : p.type === 'ember' ? 0.011 : p.type === 'ash' ? 0.002 : 0.018;
         p.y += p.vy;
         p.life -= p.decay;
         if (p.life <= 0) {
@@ -485,15 +514,15 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
     // Phase 1 — ignition front + seed burst
     markTargets('front');
-    for (const r of rects) spawnBurst(r, 48, 'seed');
+    for (const r of rects) spawnBurst(r, 28, 'seed');
     ensureLoop();
 
-    // Phase 2 — peak crest
+    // Phase 2 — peak crest (near ignition-bar end)
     timeouts.push(
       window.setTimeout(() => {
         if (abortedRef.current) return;
         phase = 'peak';
-        for (const r of rects) spawnBurst(r, 64, 'peak');
+        for (const r of rects) spawnBurst(r, 36, 'peak');
         ensureLoop();
       }, BURN.peakAtMs)
     );
@@ -503,7 +532,7 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       window.setTimeout(() => {
         if (abortedRef.current) return;
         phase = 'ember';
-        for (const r of rects) spawnBurst(r, 44, 'ember');
+        for (const r of rects) spawnBurst(r, 22, 'ember');
         markTargets('collapse');
         ensureLoop();
       }, BURN.collapseAtMs)
@@ -538,8 +567,8 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
             translate: '-50% -50%',
           }}
           initial={false}
-          animate={{ scale: 2.4, opacity: 0 }}
-          transition={{ type: 'spring', visualDuration: 0.3, bounce: 0.1 }}
+          animate={{ scale: 1.75, opacity: 0 }}
+          transition={{ type: 'spring', visualDuration: 0.36, bounce: 0.08 }}
           aria-hidden="true"
         >
           <Flame className="h-5 w-5 drop-shadow-[0_0_10px_var(--fire-mid)]" />

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Radio, ShieldAlert, Users, WifiOff, Wrench } from 'lucide-react';
+import { Flame, Radio, ShieldAlert, Users, WifiOff, Wrench } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useT } from '../../i18n';
 import { clearIpConsent } from '../../core/utils/ipConsent';
@@ -33,6 +33,7 @@ export function HowItWorksView() {
   const infoBlocks = [
     { icon: Radio, titleKey: 'helpDirectTitle' as const, bodyKey: 'helpDirectBody' as const },
     { icon: Users, titleKey: 'helpGroupTitle' as const, bodyKey: 'helpGroupBody' as const },
+    { icon: Flame, titleKey: 'helpDeleteTitle' as const, bodyKey: 'helpDeleteBody' as const },
     { icon: Radio, titleKey: 'helpZonesTitle' as const, bodyKey: 'helpZonesBody' as const },
     { icon: WifiOff, titleKey: 'helpRelayTitle' as const, bodyKey: 'helpRelayBody' as const },
     { icon: WifiOff, titleKey: 'helpNoServerTitle' as const, bodyKey: 'helpNoServerBody' as const },
@@ -98,6 +99,7 @@ export function HowItWorksView() {
             <li>{t('helpSafety2')}</li>
             <li>{t('helpSafety3')}</li>
             <li>{t('helpSafety4')}</li>
+            <li>{t('helpSafety5')}</li>
           </ul>
         </li>
       </ul>

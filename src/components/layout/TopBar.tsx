@@ -213,7 +213,7 @@ export function TopBar({
               disabled={burnHeating}
               aria-label={t('leaveTab')}
               title={t('leaveTab')}
-              className={`burn-heat inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg text-xs font-semibold text-danger-ink whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80 sm:w-[9.75rem] sm:px-3 ${
+              className={`burn-heat session-burn-target inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg text-xs font-semibold text-danger-ink whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80 sm:w-[9.75rem] sm:px-3 ${
                 burnHeating ? 'is-heating' : ''
               }`}
             >
@@ -226,12 +226,6 @@ export function TopBar({
                 }
                 aria-hidden="true"
               />
-              {/* Gooey rising blobs — CodePen-style plume (palette via CSS) */}
-              <span className="burn-embers" aria-hidden="true">
-                {Array.from({ length: 20 }, (_, i) => (
-                  <span key={i} className="burn-embers__p" />
-                ))}
-              </span>
               {burnHeating ? (
                 <span className="relative z-10 inline-flex h-4 w-4 shrink-0" aria-hidden="true" />
               ) : (

@@ -77,15 +77,16 @@
   --dur-ritual: 220ms;
   --dur-confetti: 400ms;
   /* APP_SPLASH / ZONE_BOOT — mirror src/motion/tokens.ts */
-  --dur-splash-finish: 980ms;
-  --dur-splash-exit: 260ms;
+  --dur-splash-finish: 1680ms;
+  --dur-splash-exit: 360ms;
   --dur-boot-spark: 80ms;
   --dur-boot-glow: 200ms;
   --dur-boot-chain: 280ms;
   --dur-boot-finish: 640ms;
   --dur-boot-revisit: 200ms;
   --dur-burn-shimmer: 480ms;
-  --dur-burn-front-pulse: 320ms;
+  --dur-burn-front-pulse: 520ms;
+  --dur-burn-heat-glow: 560ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -902,86 +903,94 @@ html.dark {
     }
   }
   /*
-   * Hero burn phrase — same ExpozyR goo technique as .burn-embers,
-   * sized for inline lede text (filter lives on particles only so type stays sharp).
+   * Hero burn phrase — soft plume rises FROM BEHIND sharp type (never filtered).
+   * Particles use #tazia-fire-plume (goo only, no SourceGraphic dots).
    */
   .hero-burn-phrase {
     position: relative;
     display: inline-block;
+    isolation: isolate;
     white-space: nowrap;
     vertical-align: baseline;
-    padding-top: 0.15em; /* room for rising plume */
-    margin-top: -0.15em;
+    padding-top: 0.55em; /* room for plume above glyphs */
+    margin-top: -0.45em;
+    overflow: visible;
   }
   .hero-burn-phrase__text {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     font-weight: 650;
-    color: color-mix(in oklab, var(--fire-mid) 72%, var(--color-ink));
-    text-shadow:
-      0 0 10px color-mix(in oklab, var(--fire-core) 35%, transparent),
-      0 0 2px color-mix(in oklab, var(--fire-edge) 25%, transparent);
+    /* Readable ink with a warm tint — no heavy glow that looks melted */
+    color: color-mix(in oklab, var(--fire-mid) 42%, var(--color-ink));
+    text-shadow: 0 0 0.5px color-mix(in oklab, var(--fire-edge) 30%, transparent);
   }
   @media (prefers-reduced-motion: no-preference) {
     .hero-burn-phrase:not(.hero-burn-phrase--static) .hero-burn-phrase__text {
-      animation: hero-burn-text-flicker 2.4s ease-in-out infinite;
+      animation: hero-burn-text-flicker 3.2s ease-in-out infinite;
     }
   }
   .hero-burn-phrase__embers {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0.05em;
-    height: 1.15em;
+    left: -0.15em;
+    right: -0.15em;
+    bottom: 0.02em;
+    height: 1.35em;
     pointer-events: none;
     z-index: 0;
     overflow: visible;
-    filter: url(#tazia-fire-goo);
+    opacity: 0.72;
+    filter: url(#tazia-fire-plume);
   }
   .hero-burn-phrase__p {
     position: absolute;
-    bottom: 0;
-    width: 0.34em;
-    height: 0.34em;
+    bottom: 0.08em;
+    width: 0.22em;
+    height: 0.22em;
     border-radius: 50%;
     background: var(--fire-mid);
     pointer-events: none;
-    animation-duration: 1.15s;
+    animation-duration: 1.45s;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
   }
-  .hero-burn-phrase__p:nth-child(1)  { left: 2%;  background: var(--fire-edge); animation-name: burn-rise-1;  animation-delay: -0.43s; }
-  .hero-burn-phrase__p:nth-child(2)  { left: 9%;  background: var(--fire-mid);  animation-name: burn-rise-2;  animation-delay: -0.65s; }
-  .hero-burn-phrase__p:nth-child(3)  { left: 16%; background: var(--fire-core); animation-name: burn-rise-3;  animation-delay: 0s; }
-  .hero-burn-phrase__p:nth-child(4)  { left: 23%; background: var(--fire-mid);  animation-name: burn-rise-4;  animation-delay: -0.9s; }
-  .hero-burn-phrase__p:nth-child(5)  { left: 30%; background: color-mix(in oklab, var(--color-accent) 45%, var(--fire-core)); animation-name: burn-rise-5;  animation-delay: -0.3s; }
-  .hero-burn-phrase__p:nth-child(6)  { left: 37%; background: var(--fire-core); animation-name: burn-rise-6;  animation-delay: 0s; }
-  .hero-burn-phrase__p:nth-child(7)  { left: 44%; background: var(--fire-mid);  animation-name: burn-rise-7;  animation-delay: -0.84s; }
-  .hero-burn-phrase__p:nth-child(8)  { left: 51%; background: var(--fire-edge); animation-name: burn-rise-8;  animation-delay: -0.36s; }
-  .hero-burn-phrase__p:nth-child(9)  { left: 58%; background: var(--fire-core); animation-name: burn-rise-9;  animation-delay: -0.33s; }
-  .hero-burn-phrase__p:nth-child(10) { left: 65%; background: color-mix(in oklab, var(--color-accent) 35%, var(--fire-core)); animation-name: burn-rise-10; animation-delay: -0.96s; }
-  .hero-burn-phrase__p:nth-child(11) { left: 72%; background: var(--fire-mid);  animation-name: burn-rise-11; animation-delay: -0.67s; }
-  .hero-burn-phrase__p:nth-child(12) { left: 79%; background: var(--fire-core); animation-name: burn-rise-12; animation-delay: -0.36s; }
-  .hero-burn-phrase__p:nth-child(13) { left: 86%; background: var(--fire-edge); animation-name: burn-rise-13; animation-delay: -0.96s; }
-  .hero-burn-phrase__p:nth-child(14) { left: 93%; background: var(--fire-mid);  animation-name: burn-rise-14; animation-delay: -0.98s; }
+  .hero-burn-phrase__p:nth-child(1)  { left: 4%;  background: var(--fire-edge); animation-name: hero-plume-1;  animation-delay: -0.43s; }
+  .hero-burn-phrase__p:nth-child(2)  { left: 11%; background: var(--fire-mid);  animation-name: hero-plume-2;  animation-delay: -0.65s; }
+  .hero-burn-phrase__p:nth-child(3)  { left: 18%; background: var(--fire-core); animation-name: hero-plume-3;  animation-delay: 0s; }
+  .hero-burn-phrase__p:nth-child(4)  { left: 25%; background: var(--fire-mid);  animation-name: hero-plume-1;  animation-delay: -0.9s; }
+  .hero-burn-phrase__p:nth-child(5)  { left: 32%; background: color-mix(in oklab, var(--color-accent) 35%, var(--fire-core)); animation-name: hero-plume-2;  animation-delay: -0.3s; }
+  .hero-burn-phrase__p:nth-child(6)  { left: 39%; background: var(--fire-core); animation-name: hero-plume-3;  animation-delay: -0.12s; }
+  .hero-burn-phrase__p:nth-child(7)  { left: 46%; background: var(--fire-mid);  animation-name: hero-plume-1;  animation-delay: -0.84s; }
+  .hero-burn-phrase__p:nth-child(8)  { left: 53%; background: var(--fire-edge); animation-name: hero-plume-2;  animation-delay: -0.36s; }
+  .hero-burn-phrase__p:nth-child(9)  { left: 60%; background: var(--fire-core); animation-name: hero-plume-3;  animation-delay: -0.33s; }
+  .hero-burn-phrase__p:nth-child(10) { left: 67%; background: color-mix(in oklab, var(--color-accent) 28%, var(--fire-core)); animation-name: hero-plume-1; animation-delay: -0.96s; }
+  .hero-burn-phrase__p:nth-child(11) { left: 74%; background: var(--fire-mid);  animation-name: hero-plume-2; animation-delay: -0.67s; }
+  .hero-burn-phrase__p:nth-child(12) { left: 81%; background: var(--fire-core); animation-name: hero-plume-3; animation-delay: -0.36s; }
+  .hero-burn-phrase__p:nth-child(13) { left: 88%; background: var(--fire-edge); animation-name: hero-plume-1; animation-delay: -0.96s; }
+  .hero-burn-phrase__p:nth-child(14) { left: 94%; background: var(--fire-mid);  animation-name: hero-plume-2; animation-delay: -0.98s; }
+
+  /* Short rise: flame peeks from glyph baseline upward, not a tall covering plume */
+  @keyframes hero-plume-1 {
+    from { transform: translate(0, 0.15em) scale(0.85); opacity: 0.35; }
+    40%  { transform: translate(-0.04em, -0.55em) scale(1); opacity: 0.85; }
+    to   { transform: translate(0.02em, -1.05em) scale(0.2); opacity: 0; }
+  }
+  @keyframes hero-plume-2 {
+    from { transform: translate(0, 0.12em) scale(0.8); opacity: 0.3; }
+    45%  { transform: translate(0.05em, -0.62em) scale(1.05); opacity: 0.8; }
+    to   { transform: translate(-0.03em, -1.15em) scale(0.15); opacity: 0; }
+  }
+  @keyframes hero-plume-3 {
+    from { transform: translate(0, 0.1em) scale(0.75); opacity: 0.28; }
+    50%  { transform: translate(-0.02em, -0.48em) scale(1); opacity: 0.75; }
+    to   { transform: translate(0.04em, -0.95em) scale(0.18); opacity: 0; }
+  }
 
   @keyframes hero-burn-text-flicker {
     0%, 100% {
-      color: color-mix(in oklab, var(--fire-mid) 72%, var(--color-ink));
-      text-shadow:
-        0 0 8px color-mix(in oklab, var(--fire-core) 28%, transparent),
-        0 0 2px color-mix(in oklab, var(--fire-edge) 20%, transparent);
+      color: color-mix(in oklab, var(--fire-mid) 42%, var(--color-ink));
     }
-    45% {
-      color: color-mix(in oklab, var(--fire-core) 80%, var(--color-ink));
-      text-shadow:
-        0 0 14px color-mix(in oklab, var(--fire-core) 48%, transparent),
-        0 0 4px color-mix(in oklab, var(--fire-mid) 30%, transparent);
-    }
-    70% {
-      color: color-mix(in oklab, var(--fire-edge) 55%, var(--color-ink));
-      text-shadow:
-        0 0 6px color-mix(in oklab, var(--fire-mid) 22%, transparent);
+    50% {
+      color: color-mix(in oklab, var(--fire-mid) 52%, var(--color-ink));
     }
   }
 
@@ -1079,8 +1088,7 @@ html.dark {
 
   .burn-heat {
     position: relative;
-    /* Visible so the gooey plume can rise above the chip */
-    overflow: visible;
+    overflow: hidden;
     isolation: isolate;
     transition:
       border-color var(--dur-micro) var(--ease-out-expo),
@@ -1116,85 +1124,6 @@ html.dark {
     transition: transform var(--dur-burn-ignition) linear, opacity var(--dur-micro) ease;
   }
 
-  /*
-   * Gooey rising fire — CodePen ExpozyR technique, TAZIA palette.
-   * Blobs + SVG #tazia-fire-goo metaball; hover = slow plume, heating = fast.
-   */
-  .burn-embers {
-    position: absolute;
-    /* Anchor over the flame icon (left on wide chip; centered on icon-only) */
-    left: 50%;
-    bottom: 32%;
-    width: 2.5rem;
-    height: 2.5rem;
-    margin-left: -1.25rem;
-    pointer-events: none;
-    z-index: 2;
-    filter: url(#tazia-fire-goo);
-    opacity: 0;
-    transition: opacity var(--dur-micro) ease;
-  }
-  @media (min-width: 640px) {
-    .burn-embers {
-      left: 1.35rem;
-      margin-left: 0;
-    }
-  }
-  .burn-embers__p {
-    position: absolute;
-    width: 0.42rem;
-    height: 0.42rem;
-    border-radius: 50%;
-    background: var(--fire-mid);
-    pointer-events: none;
-    animation-duration: 1s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-play-state: paused;
-  }
-  /* Arc of seed blobs across the chip — rises into a continuous flame via goo */
-  .burn-embers__p:nth-child(1)  { top: calc(50% - 0.39rem); left: 0.08rem; background: var(--fire-edge); animation-name: burn-rise-1;  animation-delay: -0.43s; }
-  .burn-embers__p:nth-child(2)  { top: calc(50% - 0.53rem); left: 0.2rem;  background: var(--fire-mid);  animation-name: burn-rise-2;  animation-delay: -0.65s; }
-  .burn-embers__p:nth-child(3)  { top: calc(50% - 0.66rem); left: 0.32rem; background: var(--fire-core); animation-name: burn-rise-3;  animation-delay: 0s; }
-  .burn-embers__p:nth-child(4)  { top: calc(50% - 0.78rem); left: 0.44rem; background: var(--fire-mid);  animation-name: burn-rise-4;  animation-delay: -0.9s; }
-  .burn-embers__p:nth-child(5)  { top: calc(50% - 0.89rem); left: 0.56rem; background: color-mix(in oklab, var(--color-accent) 55%, var(--fire-core)); animation-name: burn-rise-5;  animation-delay: -0.3s; }
-  .burn-embers__p:nth-child(6)  { top: calc(50% - 0.98rem); left: 0.68rem; background: var(--fire-core); animation-name: burn-rise-6;  animation-delay: 0s; }
-  .burn-embers__p:nth-child(7)  { top: calc(50% - 1.05rem); left: 0.8rem;  background: var(--fire-mid);  animation-name: burn-rise-7;  animation-delay: -0.84s; }
-  .burn-embers__p:nth-child(8)  { top: calc(50% - 1.11rem); left: 0.92rem; background: var(--fire-edge); animation-name: burn-rise-8;  animation-delay: -0.36s; }
-  .burn-embers__p:nth-child(9)  { top: calc(50% - 1.14rem); left: 1.04rem; background: var(--fire-core); animation-name: burn-rise-9;  animation-delay: -0.33s; }
-  .burn-embers__p:nth-child(10) { top: calc(50% - 1.15rem); left: 1.16rem; background: color-mix(in oklab, var(--color-accent) 40%, var(--fire-core)); animation-name: burn-rise-10; animation-delay: -0.96s; }
-  .burn-embers__p:nth-child(11) { top: calc(50% - 1.14rem); left: 1.28rem; background: var(--fire-mid);  animation-name: burn-rise-11; animation-delay: -0.67s; }
-  .burn-embers__p:nth-child(12) { top: calc(50% - 1.11rem); left: 1.4rem;  background: var(--fire-core); animation-name: burn-rise-12; animation-delay: -0.36s; }
-  .burn-embers__p:nth-child(13) { top: calc(50% - 1.05rem); left: 1.52rem; background: var(--fire-edge); animation-name: burn-rise-13; animation-delay: -0.96s; }
-  .burn-embers__p:nth-child(14) { top: calc(50% - 0.98rem); left: 1.64rem; background: var(--fire-mid);  animation-name: burn-rise-14; animation-delay: -0.98s; }
-  .burn-embers__p:nth-child(15) { top: calc(50% - 0.89rem); left: 1.76rem; background: color-mix(in oklab, var(--color-accent) 50%, var(--fire-mid)); animation-name: burn-rise-15; animation-delay: -0.93s; }
-  .burn-embers__p:nth-child(16) { top: calc(50% - 0.78rem); left: 1.88rem; background: var(--fire-core); animation-name: burn-rise-16; animation-delay: -0.44s; }
-  .burn-embers__p:nth-child(17) { top: calc(50% - 0.66rem); left: 2rem;    background: var(--fire-mid);  animation-name: burn-rise-17; animation-delay: -0.86s; }
-  .burn-embers__p:nth-child(18) { top: calc(50% - 0.53rem); left: 2.12rem; background: var(--fire-edge); animation-name: burn-rise-18; animation-delay: -0.49s; }
-  .burn-embers__p:nth-child(19) { top: calc(50% - 0.39rem); left: 2.24rem; background: var(--fire-core); animation-name: burn-rise-19; animation-delay: -0.28s; }
-  .burn-embers__p:nth-child(20) { top: calc(50% - 0.25rem); left: 2.36rem; background: var(--fire-mid);  animation-name: burn-rise-20; animation-delay: -0.11s; }
-
-  @keyframes burn-rise-1  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -1.05em) scale(1); } to { transform: translate(-0.25em, -2.1em) scale(0); } }
-  @keyframes burn-rise-2  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.08em, -1.35em) scale(1); } to { transform: translate(-0.18em, -2.7em) scale(0); } }
-  @keyframes burn-rise-3  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.05em, -0.67em) scale(1); } to { transform: translate(-0.1em, -1.34em) scale(0); } }
-  @keyframes burn-rise-4  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.02em, -0.72em) scale(1); } to { transform: translate(-0.04em, -1.44em) scale(0); } }
-  @keyframes burn-rise-5  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.08em, -1.27em) scale(1); } to { transform: translate(-0.14em, -2.54em) scale(0); } }
-  @keyframes burn-rise-6  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.09em, -0.88em) scale(1); } to { transform: translate(-0.09em, -1.76em) scale(0); } }
-  @keyframes burn-rise-7  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.04em, -0.83em) scale(1); } to { transform: translate(0.1em, -1.66em) scale(0); } }
-  @keyframes burn-rise-8  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.59em) scale(1); } to { transform: translate(0.01em, -1.18em) scale(0); } }
-  @keyframes burn-rise-9  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.07em, -0.64em) scale(1); } to { transform: translate(-0.22em, -1.28em) scale(0); } }
-  @keyframes burn-rise-10 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.06em, -0.53em) scale(1); } to { transform: translate(-0.05em, -1.06em) scale(0); } }
-  @keyframes burn-rise-11 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.77em) scale(1); } to { transform: translate(-0.19em, -1.54em) scale(0); } }
-  @keyframes burn-rise-12 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.04em, -0.97em) scale(1); } to { transform: translate(0.07em, -1.94em) scale(0); } }
-  @keyframes burn-rise-13 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.01em, -0.81em) scale(1); } to { transform: translate(0.12em, -1.62em) scale(0); } }
-  @keyframes burn-rise-14 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.61em) scale(1); } to { transform: translate(0.18em, -1.22em) scale(0); } }
-  @keyframes burn-rise-15 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.09em, -1.22em) scale(1); } to { transform: translate(0.22em, -2.44em) scale(0); } }
-  @keyframes burn-rise-16 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.07em, -1.1em) scale(1); } to { transform: translate(-0.18em, -2.2em) scale(0); } }
-  @keyframes burn-rise-17 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.94em) scale(1); } to { transform: translate(0.03em, -1.88em) scale(0); } }
-  @keyframes burn-rise-18 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.02em, -0.5em) scale(1); } to { transform: translate(0.12em, -1em) scale(0); } }
-  @keyframes burn-rise-19 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.1em, -0.8em) scale(1); } to { transform: translate(0.08em, -1.6em) scale(0); } }
-  @keyframes burn-rise-20 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.09em, -1.08em) scale(1); } to { transform: translate(0.12em, -2.16em) scale(0); } }
-
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .burn-heat:hover:not(.is-heating) {
       border-color: color-mix(in srgb, var(--fire-mid) 60%, var(--color-danger-border));
@@ -1207,30 +1136,23 @@ html.dark {
       color: var(--fire-mid);
       transform: scale(1.06);
     }
-    .burn-heat:hover:not(.is-heating) .burn-embers {
-      opacity: 1;
-    }
-    .burn-heat:hover:not(.is-heating) .burn-embers__p {
-      animation-play-state: running;
-      animation-duration: 1s;
-    }
+  }
+  .burn-heat .burn-flame-icon {
+    transition:
+      color var(--dur-micro) var(--ease-out-expo),
+      transform var(--dur-micro) var(--ease-out-expo),
+      filter var(--dur-micro) ease;
   }
   .burn-heat.is-heating {
-    animation: thermal-tremor 0.1s linear infinite;
+    /* Base glow; keyframes pulse over it (no !important — that blocked the animation). */
+    animation: burn-heat-glow var(--dur-burn-heat-glow) ease-in-out infinite alternate;
     border-color: var(--fire-mid) !important;
     color: color-mix(in oklab, var(--color-danger-ink) 45%, var(--fire-core)) !important;
     background-color: color-mix(in oklab, var(--color-danger-bg) 40%, var(--fire-edge)) !important;
     box-shadow:
-      0 0 28px color-mix(in oklab, var(--fire-mid) 52%, transparent),
-      0 0 52px color-mix(in oklab, var(--color-accent) 18%, transparent),
-      inset 0 0 14px color-mix(in oklab, var(--fire-edge) 24%, transparent) !important;
-  }
-  .burn-heat.is-heating .burn-embers {
-    opacity: 1;
-  }
-  .burn-heat.is-heating .burn-embers__p {
-    animation-play-state: running;
-    animation-duration: var(--dur-burn);
+      0 0 22px color-mix(in oklab, var(--fire-mid) 40%, transparent),
+      0 0 40px color-mix(in oklab, var(--color-accent) 14%, transparent),
+      inset 0 0 12px color-mix(in oklab, var(--fire-edge) 18%, transparent);
   }
   .burn-heat.is-heating .burn-ignition-bar {
     opacity: 0.72;
@@ -1252,11 +1174,11 @@ html.dark {
   }
   .session-burn-target.burning-front {
     box-shadow:
-      0 0 28px color-mix(in oklab, var(--fire-mid) 42%, transparent),
-      0 0 56px color-mix(in oklab, var(--fire-edge) 18%, transparent),
-      inset 0 0 26px color-mix(in oklab, var(--fire-edge) 26%, transparent);
+      0 0 20px color-mix(in oklab, var(--fire-mid) 32%, transparent),
+      0 0 40px color-mix(in oklab, var(--fire-edge) 12%, transparent),
+      inset 0 0 18px color-mix(in oklab, var(--fire-edge) 16%, transparent);
     border-color: var(--fire-mid) !important;
-    filter: saturate(1.15) brightness(1.04);
+    filter: saturate(1.06) brightness(1.02);
     animation: burn-front-pulse var(--dur-burn-front-pulse) ease-in-out infinite alternate;
   }
   .session-burn-target.incinerated-collapse {
@@ -1268,8 +1190,8 @@ html.dark {
     padding-bottom: 0 !important;
     border-width: 0 !important;
     overflow: hidden;
-    filter: blur(10px) brightness(0.28) saturate(0.4);
-    transform: scale(0.92) translateY(6px);
+    filter: blur(4px) brightness(0.4) saturate(0.55);
+    transform: scale(0.96) translateY(4px);
     transition:
       max-height var(--dur-burn) var(--ease-in-out-quart),
       opacity var(--dur-burn) var(--ease-exit),
@@ -1421,12 +1343,19 @@ html.dark {
   100% { transform: scale(1.14) rotate(4deg); filter: drop-shadow(0 0 8px var(--fire-core)); }
 }
 
-@keyframes thermal-tremor {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  20% { transform: translate(-1.5px, 0.9px) rotate(-0.6deg); }
-  40% { transform: translate(1.6px, -1px) rotate(0.6deg); }
-  60% { transform: translate(-1.3px, -1.1px) rotate(-0.45deg); }
-  80% { transform: translate(1.4px, 1.1px) rotate(0.45deg); }
+@keyframes burn-heat-glow {
+  0% {
+    box-shadow:
+      0 0 18px color-mix(in oklab, var(--fire-mid) 32%, transparent),
+      0 0 32px color-mix(in oklab, var(--color-accent) 10%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--fire-edge) 14%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 26px color-mix(in oklab, var(--fire-mid) 46%, transparent),
+      0 0 44px color-mix(in oklab, var(--color-accent) 16%, transparent),
+      inset 0 0 14px color-mix(in oklab, var(--fire-edge) 20%, transparent);
+  }
 }
 
 @keyframes burn-ignition-shimmer {
@@ -1437,15 +1366,15 @@ html.dark {
 @keyframes burn-front-pulse {
   0% {
     box-shadow:
-      0 0 22px color-mix(in oklab, var(--fire-mid) 34%, transparent),
-      0 0 44px color-mix(in oklab, var(--fire-edge) 14%, transparent),
-      inset 0 0 20px color-mix(in oklab, var(--fire-edge) 20%, transparent);
+      0 0 16px color-mix(in oklab, var(--fire-mid) 26%, transparent),
+      0 0 32px color-mix(in oklab, var(--fire-edge) 10%, transparent),
+      inset 0 0 14px color-mix(in oklab, var(--fire-edge) 12%, transparent);
   }
   100% {
     box-shadow:
-      0 0 34px color-mix(in oklab, var(--fire-mid) 52%, transparent),
-      0 0 64px color-mix(in oklab, var(--fire-edge) 24%, transparent),
-      inset 0 0 30px color-mix(in oklab, var(--fire-edge) 30%, transparent);
+      0 0 24px color-mix(in oklab, var(--fire-mid) 38%, transparent),
+      0 0 44px color-mix(in oklab, var(--fire-edge) 16%, transparent),
+      inset 0 0 20px color-mix(in oklab, var(--fire-edge) 18%, transparent);
   }
 }
 
@@ -1965,7 +1894,6 @@ html.dark {
   .cta-ignite-spark,
   .burn-heat.is-heating,
   .burn-heat.is-heating .burn-ignition-bar,
-  .burn-heat.is-heating .burn-embers__p,
   .session-burn-target.burning-front,
   .session-ignite-target.igniting-front::after,
   .mesh-radar-dot.is-birthing::before,
@@ -1986,8 +1914,7 @@ html.dark {
     box-shadow: none;
     transition: border-color 120ms ease;
   }
-  .session-ignite-target.igniting-front::after,
-  .burn-embers {
+  .session-ignite-target.igniting-front::after {
     display: none !important;
   }
   .btn-ring-hover::before,

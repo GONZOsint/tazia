@@ -2,10 +2,10 @@
 
 **Temporary Anonymous Zone In Action**
 
-A room that only exists while you’re inside it: no accounts, and no message server of ours. You share a phrase, talk live, then **burn the session** when you’re done.
+A room that only exists while you’re inside it: no accounts, and no chat stored in our cloud. You share a phrase and talk live between browsers that are **online at the same time**. When nobody else is connected, the room goes quiet. When you **burn the session**, **this** device forgets the zone.
 
-On phones you can **Install / Add to Home Screen**.  
-Live site: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
+📱 On phones you can **Install / Add to Home Screen**.  
+🔗 Live site: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
 
 [Español](README.es.md)
 
@@ -13,15 +13,14 @@ Live site: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
 
 ## In short
 
-TAZIA does not store chats in the cloud. Conversation lives between browsers that are **online at the same time**. When nobody else is connected, the room goes quiet. When you burn, **this** device forgets the zone.
-
 | You want… | Go to… |
 | --- | --- |
-| Open or join | **Zones** |
-| Group talk | **Plaza** |
-| See who’s here / verify someone | **Tribe** |
-| Private message | **Whispers** |
-| Clear everything on this device | **Burn session** |
+| 🚪 Open or join | **Zones** |
+| 💬 Group talk | **Plaza** |
+| 🗳️ Delete **one** talk (unanimous vote) | **Plaza** → flame → everyone **online** in the tribe votes yes |
+| 👥 See who’s here / verify someone | **Tribe** |
+| 🤫 Private message | **Whispers** |
+| 🔥 Forget **all** zones on this device | **Burn session** |
 
 ---
 
@@ -100,11 +99,13 @@ Get-FileHash .\release\tazia-single.html -Algorithm SHA256
 
 ## Tips
 
-**Connection.** Same Wi‑Fi usually works better. If you can’t connect, **Zones → Fix** walks through next steps. Sometimes you need your own TURN server ([guide](docs/TURN.md)): a relay that helps when direct P2P can’t get through the router or CGNAT.
+**📶 Connection.** Same Wi‑Fi usually works better. If you can’t connect, **Zones → Fix** walks through next steps. Sometimes you need your own TURN server ([guide](docs/TURN.md)): a relay that helps when direct P2P can’t get through the router or CGNAT.
 
-**Phrase.** It’s the key to the room — don’t post it in a public chat. Verifying in **Tribe** (emoji sequence) confirms you’re talking to the right person.
+**🔑 Phrase.** It’s the key to the room — don’t post it in a public chat. Verifying in **Tribe** (emoji sequence) confirms you’re talking to the right person.
 
-**Expectations.** Best for small groups. Not a daily messenger replacement: it’s a **temporary** zone. Burn clears this device; the other side keeps theirs until they burn too.
+**🗳️ Delete talk ≠ burn.** In Plaza, the flame proposes deleting **that** talk: everyone who was online when it was proposed must vote yes. **Burn session** only clears **this** browser (every zone); the rest of the tribe keeps going until they burn too.
+
+**⏳ Expectations.** Best for small groups. Not a daily messenger replacement: it’s a **temporary** zone.
 
 ---
 
@@ -118,9 +119,10 @@ Chrome, Brave, Firefox, and Safari. On the public internet you need **HTTPS**. L
 
 | Topic | Document |
 | --- | --- |
-| Risks and limits | [Security](docs/SECURITY.md) |
-| Can’t connect (TURN / Wi‑Fi) | [Connection](docs/TURN.md) |
-| Technical index | [docs/](docs/README.md) |
+| 🛡️ Risks and limits (burn vs talk delete) | [Security](docs/SECURITY.md) |
+| 📜 Message format and delete vote | [Protocol](docs/PROTOCOL.md) |
+| 📶 Can’t connect (TURN / Wi‑Fi) | [Connection](docs/TURN.md) |
+| 📚 Technical index | [docs/](docs/README.md) |
 
 ---
 

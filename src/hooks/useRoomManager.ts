@@ -247,13 +247,28 @@ export function useRoomManager(
               const forumFocused = forumFocusedRef?.current === true;
               const isSelf = message.authorUserId === r.selfUserId;
               const bumpUnread =
-                !isSelf && !r.isSyncing && !(roomIsActive && forumFocused);
+                !isSelf &&
+                message.type !== 'DELETE_VOTE' &&
+                !r.isSyncing &&
+                !(roomIsActive && forumFocused);
               return {
                 ...r,
                 messages: msgs,
                 unreadCount: bumpUnread ? r.unreadCount + 1 : r.unreadCount,
               };
             });
+          },
+          onThreadDeleted: (threadId) => {
+            if (!roomsRef.current.has(roomIdTrim)) return;
+            updateRoom(roomIdTrim, (r) => ({
+              ...r,
+              messages: r.messages.filter(
+                (m) =>
+                  m.threadId !== threadId ||
+                  m.type === 'DELETE_PROPOSE' ||
+                  m.type === 'DELETE_VOTE'
+              ),
+            }));
           },
           onPresenceChange: (userId, state, removed) => {
             if (!roomsRef.current.has(roomIdTrim)) return;

@@ -3,8 +3,8 @@ import { useReducedMotion } from 'motion/react';
 const EMBER_COUNT = 14;
 
 /**
- * Inline phrase with CodePen ExpozyR-style gooey fire:
- * rising blobs + SVG filter `#tazia-fire-goo` (no extra library).
+ * Inline phrase: soft fire plume rises from behind sharp type
+ * (`#tazia-fire-plume` on particles only — text is never filtered).
  */
 export function BurningPhrase({ children }: { children: string }) {
   const reduceMotion = useReducedMotion();

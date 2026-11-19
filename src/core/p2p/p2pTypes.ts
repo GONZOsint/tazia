@@ -44,6 +44,8 @@ export interface JoinP2pRoomOptions {
   roomId: string;
   password: string;
   onForumMessage: (message: ForumEvent) => void;
+  /** Unanimous tribe delete — drop talk content from UI state. */
+  onThreadDeleted?: (threadId: string) => void;
   onPresenceChange: (userId: string, state: PresenceState | null, removed: boolean) => void;
   onPeerPresence: (onlineUserIds: string[]) => void;
   onUserJoined?: (userId: string) => void;

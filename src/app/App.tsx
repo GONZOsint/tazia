@@ -28,6 +28,7 @@ import {
 } from '../motion/tokens';
 import { haptic, HAPTIC_RITUAL, HAPTIC_TAP } from '../motion/haptic';
 import { cachedPeerVisual } from '../core/crypto/identity';
+import { DELETE_VOTE_AYE, encodeElectorate } from '../core/forum/threadDelete';
 import {
   parseInviteInput,
   scrubPhraseFromLocationHash,
@@ -309,18 +310,17 @@ export default function App() {
         ref={mainRef}
         className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-0"
       >
-        {/* Gooey fire filter (CodePen ExpozyR technique) — CSS url(#tazia-fire-goo) */}
+        {/* Soft plume filter for hero burn phrase (no SourceGraphic — no hard dots on letters). */}
         <svg width="0" height="0" className="pointer-events-none absolute" aria-hidden="true" focusable="false">
           <defs>
-            <filter id="tazia-fire-goo" x="-50%" y="-80%" width="200%" height="220%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <filter id="tazia-fire-plume" x="-40%" y="-120%" width="180%" height="260%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="blur" />
               <feColorMatrix
                 in="blur"
                 mode="matrix"
-                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
-                result="goo"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 12 -5"
+                result="plume"
               />
-              <feBlend in="SourceGraphic" in2="goo" />
             </filter>
           </defs>
         </svg>
@@ -474,6 +474,7 @@ export default function App() {
                         selfUserId={selfUserId}
                         messages={messages}
                         presenceAliases={presenceAliases}
+                        onlineUserIds={onlineUserIds}
                         onlineCount={peerOnlineCount}
                         meshStatus={meshStatus}
                         relayActive={Boolean(activeRoom?.relayFallbackActive)}
@@ -503,6 +504,33 @@ export default function App() {
                             parentMsgId,
                             title: '',
                             body,
+                          });
+                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                          return ok;
+                        }}
+                        onProposeDeleteThread={async (threadId, electorate) => {
+                          const body = encodeElectorate(electorate);
+                          if (!body) {
+                            toast.push(t('toastPublishFailed'), 'error');
+                            return false;
+                          }
+                          const ok = await publish({
+                            type: 'DELETE_PROPOSE',
+                            threadId,
+                            parentMsgId: null,
+                            title: '',
+                            body,
+                          });
+                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                          return ok;
+                        }}
+                        onVoteDeleteThread={async (threadId, proposalMsgId) => {
+                          const ok = await publish({
+                            type: 'DELETE_VOTE',
+                            threadId,
+                            parentMsgId: proposalMsgId,
+                            title: '',
+                            body: DELETE_VOTE_AYE,
                           });
                           if (!ok) toast.push(t('toastPublishFailed'), 'error');
                           return ok;

@@ -48,6 +48,8 @@ export const en = {
   roomsHeroBodyBurn: 'burn the session.',
   roomsHeroCreate: 'Open zone',
   roomsHeroJoin: 'Enter with phrase',
+  roomsEntryBack: 'Back',
+  roomsInviteHint: 'QR and link for the group',
   roomsCreate: 'Open',
   roomsJoin: 'Enter',
   roomsPhraseLabel: 'Phrase',
@@ -133,6 +135,15 @@ export const en = {
   readerReplyingTo: 'Replying to {alias}',
   readerClearQuote: 'Clear quote',
   readerReplyToSnippet: 're: {snippet}',
+  readerDeleteTalk: 'Delete talk',
+  readerDeleteProposeTitle: 'Delete this talk?',
+  readerDeleteProposeBody:
+    'Everyone in the tribe who is online must vote yes. The talk disappears for all of you when the vote is unanimous.',
+  readerDeleteProposeAction: 'Propose delete',
+  readerDeleteVoteAye: 'Vote to delete',
+  readerDeleteVoteProgress: 'Delete vote: {have}/{need}',
+  readerDeleteVoteWaiting: 'Waiting for: {names}',
+  readerDeleteVoteYouVoted: 'You already voted.',
 
   presenceEmptyTitle: 'Empty tribe',
   presenceEmptyBody: 'Open or enter a zone to see the tribe.',
@@ -167,6 +178,9 @@ export const en = {
   helpZonesTitle: 'Several zones',
   helpZonesBody:
     'You can join up to 3 zones at once. Switch or leave one in Zones; Plaza, Tribe, and Whispers show the active zone. Burn clears all zones on this device.',
+  helpDeleteTitle: 'Delete a talk',
+  helpDeleteBody:
+    'In Plaza, the flame proposes deleting that talk. Everyone in the tribe who was online when it was proposed must vote yes. Not the same as burning the session: the vote removes the talk on peers that apply the quorum; burn only clears this browser.',
   helpRelayTitle: "When you can't connect directly",
   helpRelayBody:
     'Sometimes the network will not let browsers talk directly. Then chat can continue over an encrypted path through helper servers. Prefer the same Wi‑Fi; if needed, open Fix under Zones.',
@@ -177,10 +191,12 @@ export const en = {
     'Each message carries a mark only its author can make. So nobody can pretend to be someone else when history updates.',
   helpSafety3: 'Putting the phrase in the link is convenient, but risky if reshared.',
   helpSafety4: 'The QR is made on your device; it is not uploaded anywhere.',
+  helpSafety5:
+    'Deleting a talk needs a unanimous vote from the online tribe; it does not erase other devices that never got the quorum.',
   helpMore: 'Technical detail',
   helpMoreHide: 'Hide technical detail',
   helpMoreBody:
-    '• P2P mesh over WebRTC via Trystero\n• If ICE fails: encrypted Nostr relay data-plane fallback (ciphertext only; not true P2P)\n• Protocol TAZEP (tazep-v2) with Ed25519 + sealed-only Susurros (X25519)\n• Optional TURN (coturn) for ICE rescue or hiding IP\n• TOFU trust + 6-emoji safety code bound to roomId (~48-bit SAS)\n• Docs: docs/SECURITY.md, docs/PROTOCOL.md, docs/TURN.md, docs/papers/',
+    '• P2P mesh over WebRTC via Trystero\n• If ICE fails: encrypted Nostr relay data-plane fallback (ciphertext only; not true P2P)\n• Protocol TAZEP (tazep-v2) with Ed25519 + sealed-only Susurros (X25519)\n• Talk delete: unanimous DELETE_PROPOSE / DELETE_VOTE + sync tombstones\n• Optional TURN (coturn) for ICE rescue or hiding IP\n• TOFU trust + 6-emoji safety code bound to roomId (~48-bit SAS)\n• Docs: docs/SECURITY.md, docs/PROTOCOL.md, docs/TURN.md, docs/papers/',
   helpForgetDevice: 'Forget this device',
   helpForgetDone: 'Address notice cleared in this browser.',
   helpForgetHint: 'You will see the address notice again next time you enter a zone.',

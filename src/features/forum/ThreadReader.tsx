@@ -1,16 +1,18 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CornerDownRight, X } from 'lucide-react';
+import { CornerDownRight, Flame, X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   visualFromUserId,
   type LocalProfile,
   type PeerVisual,
 } from '../../core/crypto/identity';
+import type { ThreadDeleteBallot } from '../../core/forum/threadDelete';
 import { useLocale, useT } from '../../i18n';
 import { MAX_BODY_CHARS, type ForumMessage } from '../../core/protocol';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { Identicon } from '../../components/content/Identicon';
 import { SafeMessageBody } from '../../components/content/SafeMessageBody';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { PlaneSendIcon } from '../../components/ui/PlaneSendIcon';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
@@ -32,8 +34,12 @@ interface ThreadReaderProps {
   presenceAliases: Record<string, string>;
   authorVisuals: AuthorVisualCache;
   onAuthorVisuals: (next: AuthorVisualCache) => void;
+  onlineUserIds: string[];
+  deleteBallot: ThreadDeleteBallot | null;
   isBusy: boolean;
   onReplyThread: (threadId: string, parentMsgId: string, body: string) => Promise<boolean>;
+  onProposeDeleteThread: (threadId: string, electorate: string[]) => Promise<boolean>;
+  onVoteDeleteThread: (threadId: string, proposalMsgId: string) => Promise<boolean>;
 }
 
 type TreeNode = {
@@ -195,8 +201,12 @@ export function ThreadReader({
   presenceAliases,
   authorVisuals,
   onAuthorVisuals,
+  onlineUserIds,
+  deleteBallot,
   isBusy,
   onReplyThread,
+  onProposeDeleteThread,
+  onVoteDeleteThread,
 }: ThreadReaderProps) {
   const t = useT();
   const { locale } = useLocale();
@@ -205,6 +215,8 @@ export function ThreadReader({
   const [replyParent, setReplyParent] = useState<ForumMessage | null>(null);
   const { planeKey, launching: planeLaunching, trigger: triggerPlane } = usePlaneLaunch();
   const [submitting, setSubmitting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   /** After first paint, new posts may land with bubbleEnter. */
   const enterReadyRef = useRef(false);
@@ -313,6 +325,50 @@ export function ThreadReader({
     setHighlightId(msg.msgId);
   };
 
+  const selfHasVoted = Boolean(
+    deleteBallot && deleteBallot.votes.includes(selfUserId)
+  );
+
+  const waitingNames = useMemo(() => {
+    if (!deleteBallot) return '';
+    const pending = deleteBallot.electorate.filter((id) => !deleteBallot.votes.includes(id));
+    return pending
+      .map(
+        (id) =>
+          presenceAliases[id] ||
+          (id === selfUserId ? identity.alias : undefined) ||
+          authorVisuals[id]?.suggestedAlias ||
+          t('presenceNoAlias')
+      )
+      .join(', ');
+  }, [deleteBallot, presenceAliases, selfUserId, identity.alias, authorVisuals, t]);
+
+  const handleProposeDelete = async () => {
+    if (isBusy || deleteBusy || deleteBallot) return;
+    setDeleteBusy(true);
+    try {
+      const electorate = [
+        ...new Set([selfUserId, ...onlineUserIds.filter(Boolean)]),
+      ];
+      const ok = await onProposeDeleteThread(thread.threadId, electorate);
+      if (ok) haptic(HAPTIC_TAP);
+    } finally {
+      setDeleteBusy(false);
+      setDeleteConfirmOpen(false);
+    }
+  };
+
+  const handleVoteDelete = async () => {
+    if (!deleteBallot || isBusy || deleteBusy || selfHasVoted) return;
+    setDeleteBusy(true);
+    try {
+      const ok = await onVoteDeleteThread(thread.threadId, deleteBallot.proposalMsgId);
+      if (ok) haptic(HAPTIC_TAP);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyBody.trim() || isBusy || submitting) return;
@@ -394,11 +450,66 @@ export function ThreadReader({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="plaza-title shrink-0">
-        <h2 className="type-title text-ink">
+      <div className="plaza-title flex shrink-0 items-start justify-between gap-2">
+        <h2 className="type-title min-w-0 flex-1 text-ink">
           {thread.title}
         </h2>
+        {!deleteBallot && (
+          <motion.button
+            whileTap={TAP}
+            transition={TAP_TRANSITION}
+            type="button"
+            onClick={() => setDeleteConfirmOpen(true)}
+            disabled={isBusy || deleteBusy}
+            aria-label={t('readerDeleteTalk')}
+            title={t('readerDeleteTalk')}
+            className="icon-action icon-action--danger shrink-0 disabled:opacity-50"
+          >
+            <Flame className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
+          </motion.button>
+        )}
       </div>
+
+      {deleteBallot && (
+        <div className="mb-2 shrink-0 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-3 py-2">
+          <p className="text-sm font-semibold text-ink">
+            {t('readerDeleteVoteProgress', {
+              have: deleteBallot.votes.length,
+              need: deleteBallot.electorate.length,
+            })}
+          </p>
+          {waitingNames ? (
+            <p className="type-caption mt-0.5 text-ink/70">
+              {t('readerDeleteVoteWaiting', { names: waitingNames })}
+            </p>
+          ) : null}
+          {selfHasVoted ? (
+            <p className="type-caption mt-1 text-ink/60">{t('readerDeleteVoteYouVoted')}</p>
+          ) : (
+            <motion.button
+              whileTap={TAP}
+              transition={TAP_TRANSITION}
+              type="button"
+              onClick={() => void handleVoteDelete()}
+              disabled={isBusy || deleteBusy}
+              className="mt-2 inline-flex min-h-[40px] items-center rounded-[var(--radius-ctrl)] bg-danger px-3 py-1.5 text-sm font-semibold text-on-danger hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+            >
+              {t('readerDeleteVoteAye')}
+            </motion.button>
+          )}
+        </div>
+      )}
+
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        title={t('readerDeleteProposeTitle')}
+        body={t('readerDeleteProposeBody')}
+        confirmLabel={t('readerDeleteProposeAction')}
+        danger
+        icon={Flame}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        onConfirm={() => void handleProposeDelete()}
+      />
 
       <div
         className={`min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain py-2 md:space-y-2 md:pb-4 ${

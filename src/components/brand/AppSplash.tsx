@@ -38,6 +38,8 @@ interface AppSplashProps {
 /**
  * Cold-start full-screen mark — Telegram/Duolingo beat, once per session.
  * Blocks clicks while visible; respects prefers-reduced-motion.
+ *
+ * Choreography tokens live in APP_SPLASH (Motion transitions + UX timing band).
  */
 export function AppSplash({ short = false }: AppSplashProps) {
   const t = useT();
@@ -52,8 +54,11 @@ export function AppSplash({ short = false }: AppSplashProps) {
       ? APP_SPLASH.shortMs
       : APP_SPLASH.finishMs;
   // Keep a readable hold; exit fade is owned by AnimatePresence only.
-  const exitMs = Math.min(APP_SPLASH.exitMs, Math.max(120, Math.floor(finishMs * 0.4)));
+  // Exit stays shorter than enter (Material / NN/g); cap so short mode still fades cleanly.
+  const exitMs = Math.min(APP_SPLASH.exitMs, Math.max(120, Math.floor(finishMs * 0.28)));
   const skipParts = Boolean(reduceMotion) || short;
+  const { delay, partTweenDur, partSpring, stageSpring, stageOpacityDur, wordmarkDur } =
+    APP_SPLASH;
 
   useEffect(() => {
     if (!open) return;
@@ -93,15 +98,15 @@ export function AppSplash({ short = false }: AppSplashProps) {
           <div className="app-splash__glow" />
           <motion.div
             className="app-splash__stage"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.86 }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.88 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.05 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.04 }}
             transition={
               reduceMotion
-                ? { duration: 0.14, ease: EASE.outExpo }
+                ? { duration: 0.16, ease: EASE.outExpo }
                 : {
-                    opacity: { duration: 0.22, ease: EASE.outExpo },
-                    scale: EASE.ritualSpring,
+                    opacity: { duration: stageOpacityDur, ease: EASE.outExpo },
+                    scale: stageSpring,
                   }
             }
           >
@@ -116,9 +121,9 @@ export function AppSplash({ short = false }: AppSplashProps) {
                         initial: { opacity: 0, scale: 0.94 },
                         animate: { opacity: 1, scale: 1 },
                         transition: {
-                          duration: 0.28,
+                          duration: partTweenDur,
                           ease: EASE.outExpo,
-                          delay: 0.04,
+                          delay: delay.outlineA,
                         },
                         style: { transformOrigin: '50% 50%' },
                       },
@@ -126,27 +131,27 @@ export function AppSplash({ short = false }: AppSplashProps) {
                         initial: { opacity: 0, scale: 0.94 },
                         animate: { opacity: 1, scale: 1 },
                         transition: {
-                          duration: 0.28,
+                          duration: partTweenDur,
                           ease: EASE.outExpo,
-                          delay: 0.1,
+                          delay: delay.outlineB,
                         },
                         style: { transformOrigin: '50% 50%' },
                       },
                       island: {
-                        initial: { opacity: 0, scale: 0.55, y: 10 },
+                        initial: { opacity: 0, scale: 0.55, y: 12 },
                         animate: { opacity: 1, scale: 1, y: 0 },
                         transition: {
-                          ...EASE.ritualSpring,
-                          delay: 0.2,
+                          ...partSpring,
+                          delay: delay.island,
                         },
                         style: { transformOrigin: '50% 60%' },
                       },
                       arrow: {
-                        initial: { opacity: 0, x: -12, scale: 0.88 },
+                        initial: { opacity: 0, x: -14, scale: 0.88 },
                         animate: { opacity: 1, x: 0, scale: 1 },
                         transition: {
-                          ...EASE.ritualSpring,
-                          delay: 0.34,
+                          ...partSpring,
+                          delay: delay.arrow,
                         },
                         style: { transformOrigin: '20% 50%' },
                       },
@@ -155,13 +160,13 @@ export function AppSplash({ short = false }: AppSplashProps) {
             />
             <motion.p
               className="app-splash__wordmark type-display"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
               transition={{
-                duration: reduceMotion ? 0.12 : 0.26,
+                duration: reduceMotion ? 0.14 : wordmarkDur,
                 ease: EASE.outExpo,
-                delay: skipParts ? 0.04 : 0.42,
+                delay: skipParts ? 0.06 : delay.wordmark,
               }}
             >
               {t('brand')}

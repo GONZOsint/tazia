@@ -3,6 +3,11 @@ import { List, MessageSquare, MessageSquarePlus } from 'lucide-react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { AnimatePresence, motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
+import {
+  deletedThreadIds,
+  isContentForumType,
+  openBallotForThread,
+} from '../../core/forum/threadDelete';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
 import { TAP, TAP_TRANSITION, contentSwitch, drawerPanel, modalScrim } from '../../motion/tokens';
@@ -17,6 +22,7 @@ interface ForumWorkspaceProps {
   selfUserId: string;
   messages: ForumMessage[];
   presenceAliases: Record<string, string>;
+  onlineUserIds: string[];
   onlineCount: number;
   meshStatus: MeshStatus;
   relayActive?: boolean;
@@ -28,6 +34,8 @@ interface ForumWorkspaceProps {
   onSyncNow: () => Promise<void>;
   onCreateThread: (title: string, body: string) => Promise<boolean>;
   onReplyThread: (threadId: string, parentMsgId: string, body: string) => Promise<boolean>;
+  onProposeDeleteThread: (threadId: string, electorate: string[]) => Promise<boolean>;
+  onVoteDeleteThread: (threadId: string, proposalMsgId: string) => Promise<boolean>;
 }
 
 export function ForumWorkspace({
@@ -37,6 +45,7 @@ export function ForumWorkspace({
   selfUserId,
   messages,
   presenceAliases,
+  onlineUserIds,
   onlineCount,
   meshStatus,
   relayActive = false,
@@ -48,6 +57,8 @@ export function ForumWorkspace({
   onSyncNow,
   onCreateThread,
   onReplyThread,
+  onProposeDeleteThread,
+  onVoteDeleteThread,
 }: ForumWorkspaceProps) {
   const t = useT();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -56,9 +67,13 @@ export function ForumWorkspace({
   const [authorVisuals, setAuthorVisuals] = useState<AuthorVisualCache>({});
   const [topicsOpen, setTopicsOpen] = useState(false);
 
+  const deletedIds = useMemo(() => deletedThreadIds(messages), [messages]);
+
   const threads = useMemo<ThreadGroup[]>(() => {
     const map = new Map<string, ForumMessage[]>();
     for (const msg of messages) {
+      if (!isContentForumType(msg.type)) continue;
+      if (deletedIds.has(msg.threadId)) continue;
       const arr = map.get(msg.threadId) ?? [];
       arr.push(msg);
       map.set(msg.threadId, arr);
@@ -68,7 +83,8 @@ export function ForumWorkspace({
     for (const [threadId, list] of map.entries()) {
       const sorted = [...list].sort((a, b) => a.createdAtMs - b.createdAtMs);
       const root = sorted.find((m) => m.type === 'NEW_THREAD') ?? sorted[0];
-      const replies = sorted.filter((m) => m.msgId !== root.msgId);
+      if (!root || root.type !== 'NEW_THREAD') continue;
+      const replies = sorted.filter((m) => m.msgId !== root.msgId && m.type === 'REPLY');
       groups.push({
         threadId,
         title: root.title || t('readerUntitled'),
@@ -88,9 +104,11 @@ export function ForumWorkspace({
         g.rootPost.body.toLowerCase().includes(q) ||
         g.replies.some((r) => r.body.toLowerCase().includes(q))
     );
-  }, [messages, searchQuery, t]);
+  }, [messages, deletedIds, searchQuery, t]);
 
-  const hasAnyThreads = messages.length > 0;
+  const hasAnyThreads = messages.some(
+    (m) => isContentForumType(m.type) && !deletedIds.has(m.threadId)
+  );
 
   const activeThread = useMemo(() => {
     if (threads.length === 0) return null;
@@ -100,6 +118,11 @@ export function ForumWorkspace({
     }
     return threads[0];
   }, [threads, selectedThreadId]);
+
+  const activeDeleteBallot = useMemo(() => {
+    if (!activeThread) return null;
+    return openBallotForThread(messages, activeThread.threadId);
+  }, [messages, activeThread]);
 
   const isBusy = isPublishing;
 
@@ -252,8 +275,12 @@ export function ForumWorkspace({
                     presenceAliases={presenceAliases}
                     authorVisuals={authorVisuals}
                     onAuthorVisuals={setAuthorVisuals}
+                    onlineUserIds={onlineUserIds}
+                    deleteBallot={activeDeleteBallot}
                     isBusy={isBusy}
                     onReplyThread={onReplyThread}
+                    onProposeDeleteThread={onProposeDeleteThread}
+                    onVoteDeleteThread={onVoteDeleteThread}
                   />
                 ) : (
                   <div className="panel-surface p-8 text-center sm:p-10">

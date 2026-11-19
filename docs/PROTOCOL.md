@@ -57,6 +57,7 @@ UI only (not on the wire): up to **3** concurrent zones (`MAX_ROOMS`).
 | Verify keys | latest observed SPKI | **pinned** TOFU (sign+enc) until `repin` |
 | Presence attest | `tazep.presence.v1` (no time) | `tazep.presence.v3` + `atMs` + `alias` |
 | WebRTC sync | raw `ForumEvent[]` | signed digest (`tazep.sync-res.v1`, reqId `webrtc-sync`) |
+| Talk delete | none (append-only) | unanimous `DELETE_PROPOSE` / `DELETE_VOTE` + tombstones |
 
 ---
 
@@ -64,7 +65,7 @@ UI only (not on the wire): up to **3** concurrent zones (`MAX_ROOMS`).
 
 | Channel | Type | Use |
 | --- | --- | --- |
-| `forumMsg` | `makeAction` | Live publish (threads / replies) |
+| `forumMsg` | `makeAction` | Live publish (threads / replies / delete ballot) |
 | `directMsg` | `makeAction` | Whispers to a `target` |
 | `forumSync` | `makeAction(..., { kind: 'request' })` | Snapshot RPC for late joiners |
 | `presence` | `makeUserState` | Alias + signing pubkey + X25519 |
@@ -117,7 +118,7 @@ Goodbye only drops a peer when `signPubKeySpkiB64` matches the pinned key.
 {
   protocolVersion: 2;
   msgId: string;
-  type: 'NEW_THREAD' | 'REPLY';
+  type: 'NEW_THREAD' | 'REPLY' | 'DELETE_PROPOSE' | 'DELETE_VOTE';
   threadId: string;
   parentMsgId: string | null;
   title: string;
@@ -127,6 +128,37 @@ Goodbye only drops a peer when `signPubKeySpkiB64` matches the pinned key.
   sig: string; // Ed25519 over canonical, base64 (IEEE P1363 / raw)
 }
 ```
+
+### Talk content vs delete ballot
+
+| Type | Role |
+| --- | --- |
+| `NEW_THREAD` | Root of a talk (`parentMsgId` must be `null`; `body` non-empty) |
+| `REPLY` | Reply (`parentMsgId` = parent `msgId`; `body` non-empty) |
+| `DELETE_PROPOSE` / `DELETE_VOTE` | Ballot over a `threadId` — not shown as plaza posts |
+
+### Delete talk (unanimous tribe vote)
+
+| Type | `parentMsgId` | `title` | `body` |
+| --- | --- | --- | --- |
+| `DELETE_PROPOSE` | `null` | `""` | Sorted unique online `userId`s (`localeCompare` `en`, comma-separated); must include author |
+| `DELETE_VOTE` | propose `msgId` | `""` | `"aye"` |
+
+Rules (source: [`threadDelete.ts`](../src/core/forum/threadDelete.ts), enforced in [`forumIngest.ts`](../src/core/p2p/forumIngest.ts) for remote **and** local publish):
+
+1. **One propose per `threadId`** — further `DELETE_PROPOSE` are rejected. Only the **earliest** ballot can authorize a purge.
+2. **Electorate cover (live / Nostr fallback)** — body must include every peer this receiver already considered online at `createdAtMs` (±2 s join skew: peers first seen after that may be omitted). Historical **sync** skips cover (tombstones already agreed elsewhere).
+3. **Votes** — parent must exist as that primary `DELETE_PROPOSE`, matching `threadId`; author ∈ electorate. Orphan votes queue briefly for the parent, then drop.
+4. **Completion** — proposer counts as aye. When every elector has voted aye, peers purge `NEW_THREAD` / `REPLY` for that `threadId`, keep `DELETE_*` tombstones, and omit talk content from sync snapshots ([`syncCoordinator.ts`](../src/core/p2p/syncCoordinator.ts)).
+
+```
+propose(onlineIds) → DELETE_PROPOSE
+                  ↘ peers: cover check + store
+vote → DELETE_VOTE (parent = propose)
+    ↘ when |votes| == |electorate|: purge content, keep tombstones
+```
+
+UI: Plaza flame → confirm → progress banner until unanimous. Alone in the zone ⇒ propose completes immediately.
 
 ### Signed canonical
 
@@ -195,8 +227,11 @@ Room material: PBKDF2 210k once (salt `tazep.fallback.v2:{roomId}`) + dual HKDF 
 ## Flow
 
 ```
-publish → Ed25519_sign → forumMsg.send
-                      ↘ onMessage: author==userId + verify(pinned)
+publish → Ed25519_sign → forumIngest (same rules as remote) → forumMsg.send
+                      ↘ onMessage: author==userId + verify(pinned) + delete guards
+
+delete  → DELETE_PROPOSE / DELETE_VOTE (same forumMsg channel)
+                      ↘ unanimous → purge content; sync keeps tombstones only
 
 whisper → X25519 seal + Ed25519_sign → directMsg.send({ target })
                       ↘ seal=2 required; open with peer encPub
@@ -212,12 +247,14 @@ late joiner → forumSync.requestMany / Nostr sync-req → sync-res (signed)
 | Concern | Path |
 | --- | --- |
 | Types / validators | [`src/core/protocol.ts`](../src/core/protocol.ts) |
+| Unanimous talk delete | [`src/core/forum/threadDelete.ts`](../src/core/forum/threadDelete.ts) |
 | Ed25519 sign/verify + sync-res | [`src/core/crypto/messageSigning.ts`](../src/core/crypto/messageSigning.ts) |
 | Presence / goodbye attest | [`src/core/crypto/presenceAttest.ts`](../src/core/crypto/presenceAttest.ts) |
 | DM seal | [`src/core/crypto/dmCrypto.ts`](../src/core/crypto/dmCrypto.ts) |
 | Passphrase | [`src/core/crypto/passphraseWords.ts`](../src/core/crypto/passphraseWords.ts) |
 | Mesh | [`src/core/p2p/p2pRoom.ts`](../src/core/p2p/p2pRoom.ts) |
 | Forum / DM ingest | [`forumIngest.ts`](../src/core/p2p/forumIngest.ts), [`dmIngest.ts`](../src/core/p2p/dmIngest.ts) |
+| Sync snapshot (tombstones) | [`syncCoordinator.ts`](../src/core/p2p/syncCoordinator.ts) |
 | Pinned verify cache | [`verifyKeyRegistry.ts`](../src/core/p2p/verifyKeyRegistry.ts) |
 | Nostr fallback | [`nostrFallback.ts`](../src/core/p2p/nostrFallback.ts), [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts) |
 | Multi-zone | [`src/hooks/useRoomManager.ts`](../src/hooks/useRoomManager.ts) |

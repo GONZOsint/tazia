@@ -104,6 +104,8 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const selfRef = { userId: '' };
   const unsubs: Unsubscribe[] = [];
   const fallbackPeers = new Map<string, number>();
+  /** First time each peer appeared in the online set (ms). */
+  const peerFirstSeenAtMs = new Map<string, number>();
   const pendingSync = new Map<
     string,
     { resolve: (n: number) => void; added: number; timer: number }
@@ -119,6 +121,27 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   let lastPresence: PresenceState | null = null;
   let room!: Room;
 
+  const readOnlineUserIds = (): string[] => {
+    const ids = new Set<string>();
+    try {
+      if (room) {
+        for (const id of Object.keys(room.getUsers())) ids.add(id);
+      }
+    } catch {
+      /* room not ready */
+    }
+    for (const id of fallbackPeers.keys()) ids.add(id);
+    if (selfRef.userId) ids.add(selfRef.userId);
+    return [...ids];
+  };
+
+  const noteOnlinePeers = (ids: string[]) => {
+    const now = Date.now();
+    for (const id of ids) {
+      if (!peerFirstSeenAtMs.has(id)) peerFirstSeenAtMs.set(id, now);
+    }
+  };
+
   const registry = new VerifyKeyRegistry({
     trustStore,
     onKeyChange: options.onKeyChange,
@@ -133,6 +156,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     registry,
     localMessages,
     onForumMessage: options.onForumMessage,
+    onThreadDeleted: options.onThreadDeleted,
+    getOnlineUserIds: readOnlineUserIds,
+    peerFirstSeenAtMs: (userId) => peerFirstSeenAtMs.get(userId),
     onRejectedSync: () => {
       rejectedSyncCount += 1;
     },
@@ -161,8 +187,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   }, 5 * 60_000);
 
   const mergeOnline = () => {
-    const ids = new Set([...Object.keys(room.getUsers()), ...fallbackPeers.keys()]);
-    options.onPeerPresence([...ids]);
+    const ids = readOnlineUserIds();
+    noteOnlinePeers(ids);
+    options.onPeerPresence(ids);
   };
 
   /**
@@ -252,6 +279,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   await room.ready;
   const self = await room.getSelf();
   selfRef.userId = self.userId;
+  peerFirstSeenAtMs.set(self.userId, Date.now());
   knownEncPubKeys.set(self.userId, encIdentity.publicKeyRawB64);
   await registry.observe(self.userId, signing.publicKeySpkiB64, encIdentity.publicKeyRawB64);
   webrtcPinned.add(self.userId);
@@ -715,8 +743,16 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         throw new P2pActionError('unknown', 'Signed event failed local validation');
       }
 
-      localMessages.set(signed.msgId, signed);
-      options.onForumMessage(signed);
+      // Same delete/content guards as remote ingest (skip second rate-limit token).
+      const accepted = await forumIngest.ingest(signed, {
+        liveUserId: selfRef.userId,
+        source: 'live',
+        skipRateLimit: true,
+      });
+      if (!accepted) {
+        throw new P2pActionError('unknown', 'Signed event rejected by local ingest');
+      }
+
       try {
         await forumMsg.send(signed);
       } catch {
@@ -894,10 +930,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       }
       return out;
     },
-    getOnlineUserIds: () => {
-      const ids = new Set([...Object.keys(room.getUsers()), ...fallbackPeers.keys()]);
-      return [...ids];
-    },
+    getOnlineUserIds: () => readOnlineUserIds(),
     getRejectedSyncCount: () => rejectedSyncCount,
     invalidatePeerKey: async (userId: string) => {
       const enc = trustStore.getPinnedEnc(userId);

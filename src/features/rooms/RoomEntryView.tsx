@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { KeyRound, LogOut, PlusCircle, QrCode } from 'lucide-react';
+import { ArrowLeft, KeyRound, LogOut, PlusCircle, QrCode } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react';
 import { identiconVisualFromHex } from '../../core/crypto/identity';
 import {
@@ -28,6 +28,7 @@ import {
   contentSwitch,
   forgeEnter,
   listRowEnter,
+  stageSwitch,
   zoneBootCopy,
   zoneBootMark,
   zoneBootMarkShort,
@@ -114,18 +115,46 @@ export function RoomEntryView({
     bootModeRef.current =
       reduceMotion || hasInvite ? 'short' : readBootSeen() ? 'revisit' : 'full';
   }
-  if (hasZones) bootModeRef.current = null;
+  const stageTitleRef = useRef<HTMLHeadingElement>(null);
+  /** After hero→configure once, skip ZONE_BOOT replay when returning via Back. */
+  const heroBootPlayedRef = useRef(false);
+  if (hasZones) {
+    bootModeRef.current = null;
+    heroBootPlayedRef.current = false;
+  }
   const bootMode = bootModeRef.current ?? 'short';
   const [bootRing, setBootRing] = useState(false);
   const bootHapticRef = useRef(false);
+  /** Cold start: hero and configure swap in one viewport (no stacked scroll). */
+  const stageMode = !hasZones;
+  const showHeroStage = stageMode && (!entryTab || browserBlocked);
+  const showConfigStage = stageMode && Boolean(entryTab) && !browserBlocked;
+  const showHubEntry = hasZones && Boolean(entryTab) && !browserBlocked;
+  const skipHeroBootMotion = heroBootPlayedRef.current;
 
   useEffect(() => {
     if (initialRoomId) setEntryTab('join');
   }, [initialRoomId, initialPhrase, inviteNonce]);
 
+  useEffect(() => {
+    if (!showConfigStage || !entryTab) return;
+    heroBootPlayedRef.current = true;
+    document.getElementById('main-content')?.scrollTo(0, 0);
+    const id = window.requestAnimationFrame(() => {
+      stageTitleRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [showConfigStage, entryTab]);
+
   // ZONE_BOOT timeline — CTAs stay interactive; ornament is non-blocking.
   useEffect(() => {
-    if (hasZones) return;
+    if (hasZones || !showHeroStage) return;
+    // Returning from configure: stageSwitch already covered the handoff.
+    if (heroBootPlayedRef.current) {
+      markBootSeen();
+      setBootRing(false);
+      return;
+    }
     bootHapticRef.current = false;
     setBootRing(false);
 
@@ -155,7 +184,7 @@ export function RoomEntryView({
       window.clearTimeout(hapticAt);
       window.clearTimeout(doneAt);
     };
-  }, [hasZones, bootMode, reduceMotion, inviteNonce]);
+  }, [hasZones, showHeroStage, bootMode, reduceMotion, inviteNonce]);
 
   useEffect(() => {
     if (showIceHint && hasZones) setEntryTab((cur) => cur ?? 'join');
@@ -194,7 +223,8 @@ export function RoomEntryView({
 
   const openEntry = (tab: 'create' | 'join') => {
     if (atCap) return;
-    if (entryTab === tab) {
+    // Hub: same CTA toggles the panel closed. Cold start uses Back instead.
+    if (hasZones && entryTab === tab) {
       setEntryTab(null);
       return;
     }
@@ -202,9 +232,52 @@ export function RoomEntryView({
     setEntryTab(tab);
   };
 
+  const closeEntry = () => {
+    haptic(HAPTIC_TAP);
+    setEntryTab(null);
+  };
+
   const enterZone = (roomId: string) => {
     onSwitchRoom?.(roomId);
   };
+
+  const entryForms = (
+    <>
+      {errorMsg && (
+        <AlertBanner tone="error" className="mb-4">
+          {errorMsg}
+        </AlertBanner>
+      )}
+
+      {showIceHint && (
+        <AlertBanner tone="warning" role="status" className="mb-4">
+          {t('errIceHint')}
+        </AlertBanner>
+      )}
+
+      <AnimatePresence mode="wait" initial={false}>
+        {entryTab === 'create' ? (
+          <CreateRoomForm
+            key={`create-${createFormKey}`}
+            isJoining={isJoining}
+            onJoinRoom={onJoinRoom}
+            douseKey={douseKey}
+          />
+        ) : (
+          <JoinRoomForm
+            key={`join-${inviteNonce}-${initialRoomId}`}
+            initialRoomId={initialRoomId}
+            initialPhrase={initialPhrase}
+            isJoining={isJoining}
+            onJoinRoom={onJoinRoom}
+            douseKey={douseKey}
+          />
+        )}
+      </AnimatePresence>
+
+      <TurnRelaySettings forceOpen={showIceHint} />
+    </>
+  );
 
   return (
     <main className="mx-auto max-w-[1280px] space-y-4 px-4 py-3 sm:px-8 sm:py-5 lg:py-6">
@@ -220,129 +293,200 @@ export function RoomEntryView({
       )}
 
       {!hasZones && (
-        <section className="hero-landing px-5 py-14 sm:px-10 sm:py-20">
-          <div
-            className={`hero-glow${bootMode === 'full' && !reduceMotion ? ' zone-boot-glow' : ''}`}
-            aria-hidden="true"
-          />
-          <div className="relative mx-auto flex max-w-md flex-col items-center text-center">
-            <motion.div
-              initial={
-                reduceMotion
-                  ? zoneBootReduced.initial
-                  : bootMode === 'full'
-                    ? zoneBootMark.initial
-                    : zoneBootMarkShort.initial
-              }
-              animate={
-                reduceMotion
-                  ? zoneBootReduced.animate
-                  : bootMode === 'full'
-                    ? zoneBootMark.animate
-                    : zoneBootMarkShort.animate
-              }
+        <AnimatePresence mode="wait" initial={false}>
+          {showHeroStage ? (
+            <motion.section
+              key="hero-landing"
+              initial={reduceMotion ? false : stageSwitch.initial}
+              animate={stageSwitch.animate}
+              exit={reduceMotion ? { opacity: 0 } : stageSwitch.exit}
               transition={
                 reduceMotion
-                  ? zoneBootReduced.transition
-                  : bootMode === 'full'
-                    ? zoneBootMark.transition
-                    : zoneBootMarkShort.transition
+                  ? { duration: DUR.micro, ease: EASE.outExpo }
+                  : stageSwitch.transition
               }
-              whileHover={reduceMotion || browserBlocked ? undefined : { scale: 1.04 }}
-              className={`hero-landing-mark-wrap${bootRing ? ' zone-boot-mark-ring' : ''}`}
+              className="hero-landing px-5 py-14 sm:px-10 sm:py-20"
             >
-              <TaziaLogo
-                size={88}
-                sharedMark
-                className="hero-landing-mark relative z-[1]"
+              <div
+                className={`hero-glow${bootMode === 'full' && !reduceMotion ? ' zone-boot-glow' : ''}`}
+                aria-hidden="true"
               />
-            </motion.div>
-            <motion.h1
-              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
-              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
-              transition={{
-                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
-                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.sparkMs / 1000,
-              }}
-              className="type-display mt-6 text-ink"
-            >
-              {t('brand')}
-            </motion.h1>
-            <motion.p
-              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
-              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
-              transition={{
-                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
-                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.glowMs / 1000,
-              }}
-              className="type-subtitle mt-2.5 text-ink"
-            >
-              {t('roomsHeroTitle')}
-            </motion.p>
-            <motion.p
-              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
-              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
-              transition={{
-                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
-                delay:
-                  reduceMotion || bootMode !== 'full'
-                    ? 0
-                    : (ZONE_BOOT.glowMs + 60) / 1000,
-              }}
-              className="type-lede mt-3 max-w-sm text-balance"
-            >
-              {t('roomsHeroBodyLead')}
-              <BurningPhrase>{t('roomsHeroBodyBurn')}</BurningPhrase>
-            </motion.p>
+              <div className="relative mx-auto flex max-w-md flex-col items-center text-center">
+                <motion.div
+                  initial={
+                    skipHeroBootMotion
+                      ? false
+                      : reduceMotion
+                        ? zoneBootReduced.initial
+                        : bootMode === 'full'
+                          ? zoneBootMark.initial
+                          : zoneBootMarkShort.initial
+                  }
+                  animate={
+                    reduceMotion
+                      ? zoneBootReduced.animate
+                      : bootMode === 'full'
+                        ? zoneBootMark.animate
+                        : zoneBootMarkShort.animate
+                  }
+                  transition={
+                    reduceMotion
+                      ? zoneBootReduced.transition
+                      : bootMode === 'full'
+                        ? zoneBootMark.transition
+                        : zoneBootMarkShort.transition
+                  }
+                  whileHover={reduceMotion || browserBlocked ? undefined : { scale: 1.04 }}
+                  className={`hero-landing-mark-wrap${bootRing ? ' zone-boot-mark-ring' : ''}`}
+                >
+                  <TaziaLogo
+                    size={88}
+                    sharedMark
+                    className="hero-landing-mark relative z-[1]"
+                  />
+                </motion.div>
+                <motion.h1
+                  initial={
+                    skipHeroBootMotion
+                      ? false
+                      : reduceMotion
+                        ? zoneBootReduced.initial
+                        : zoneBootCopy.initial
+                  }
+                  animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+                  transition={{
+                    ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                    delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.sparkMs / 1000,
+                  }}
+                  className="type-display mt-6 text-ink"
+                >
+                  {t('brand')}
+                </motion.h1>
+                <motion.p
+                  initial={
+                    skipHeroBootMotion
+                      ? false
+                      : reduceMotion
+                        ? zoneBootReduced.initial
+                        : zoneBootCopy.initial
+                  }
+                  animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+                  transition={{
+                    ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                    delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.glowMs / 1000,
+                  }}
+                  className="type-subtitle mt-2.5 text-ink"
+                >
+                  {t('roomsHeroTitle')}
+                </motion.p>
+                <motion.p
+                  initial={
+                    skipHeroBootMotion
+                      ? false
+                      : reduceMotion
+                        ? zoneBootReduced.initial
+                        : zoneBootCopy.initial
+                  }
+                  animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+                  transition={{
+                    ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                    delay:
+                      reduceMotion || bootMode !== 'full'
+                        ? 0
+                        : (ZONE_BOOT.glowMs + 60) / 1000,
+                  }}
+                  className="type-lede mt-3 max-w-sm text-balance"
+                >
+                  {t('roomsHeroBodyLead')}
+                  <BurningPhrase>{t('roomsHeroBodyBurn')}</BurningPhrase>
+                </motion.p>
 
-            <motion.div
-              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
-              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
-              transition={{
-                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
-                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.ctaAtMs / 1000,
-              }}
-              className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
+                <motion.div
+                  initial={
+                    skipHeroBootMotion
+                      ? false
+                      : reduceMotion
+                        ? zoneBootReduced.initial
+                        : zoneBootCopy.initial
+                  }
+                  animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+                  transition={{
+                    ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                    delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.ctaAtMs / 1000,
+                  }}
+                  className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
+                >
+                  <motion.button
+                    whileHover={browserBlocked || reduceMotion ? undefined : { y: -1 }}
+                    whileTap={browserBlocked ? undefined : TAP}
+                    transition={TAP_TRANSITION}
+                    type="button"
+                    disabled={browserBlocked}
+                    onClick={() => {
+                      haptic(HAPTIC_TAP);
+                      openEntry('create');
+                    }}
+                    className="hero-cta-primary btn-accent-sheen btn-ring-hover inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-4 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <PlusCircle className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
+                    {t('roomsHeroCreate')}
+                  </motion.button>
+                  <motion.button
+                    whileHover={browserBlocked || reduceMotion ? undefined : { y: -1 }}
+                    whileTap={browserBlocked ? undefined : TAP}
+                    transition={TAP_TRANSITION}
+                    type="button"
+                    disabled={browserBlocked}
+                    onClick={() => {
+                      haptic(HAPTIC_TAP);
+                      openEntry('join');
+                    }}
+                    className="hero-cta-secondary inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-bg/80 px-4 text-sm font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <KeyRound className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
+                    {t('roomsHeroJoin')}
+                  </motion.button>
+                </motion.div>
+              </div>
+            </motion.section>
+          ) : showConfigStage ? (
+            <motion.section
+              key={`entry-stage-${entryTab}`}
+              initial={reduceMotion ? { opacity: 0 } : stageSwitch.initial}
+              animate={stageSwitch.animate}
+              exit={reduceMotion ? { opacity: 0 } : stageSwitch.exit}
+              transition={
+                reduceMotion
+                  ? { duration: DUR.micro, ease: EASE.outExpo }
+                  : stageSwitch.transition
+              }
+              className="panel-surface p-4 sm:p-5"
+              aria-labelledby="rooms-entry-stage-title"
             >
-              <motion.button
-                whileHover={browserBlocked || reduceMotion ? undefined : { y: -1 }}
-                whileTap={browserBlocked ? undefined : TAP}
-                transition={TAP_TRANSITION}
-                type="button"
-                disabled={browserBlocked}
-                onClick={() => {
-                  haptic(HAPTIC_TAP);
-                  openEntry('create');
-                }}
-                className={`hero-cta-primary btn-accent-sheen btn-ring-hover inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold bg-accent text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
-                  entryTab === 'join' ? 'sm:opacity-90' : ''
-                }`}
-              >
-                <PlusCircle className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
-                {t('roomsHeroCreate')}
-              </motion.button>
-              <motion.button
-                whileHover={browserBlocked || reduceMotion ? undefined : { y: -1 }}
-                whileTap={browserBlocked ? undefined : TAP}
-                transition={TAP_TRANSITION}
-                type="button"
-                disabled={browserBlocked}
-                onClick={() => {
-                  haptic(HAPTIC_TAP);
-                  openEntry('join');
-                }}
-                className={`hero-cta-secondary inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-bg/80 px-4 text-sm font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
-                  entryTab === 'join'
-                    ? 'border-accent/50 bg-accent text-on-accent hover:bg-accent-hover'
-                    : ''
-                }`}
-              >
-                <KeyRound className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
-                {t('roomsHeroJoin')}
-              </motion.button>
-            </motion.div>
-          </div>
-        </section>
+              <div className="mb-4 flex items-center gap-2">
+                <motion.button
+                  whileTap={TAP}
+                  transition={TAP_TRANSITION}
+                  type="button"
+                  onClick={closeEntry}
+                  className="icon-action icon-action--ghost pressable shrink-0 focus-visible:outline-2 focus-visible:outline-accent"
+                  aria-label={t('roomsEntryBack')}
+                >
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                </motion.button>
+                <h2
+                  id="rooms-entry-stage-title"
+                  ref={stageTitleRef}
+                  tabIndex={-1}
+                  className="type-title min-w-0 flex-1 text-ink outline-none"
+                >
+                  {entryTab === 'create' ? t('roomsHeroCreate') : t('roomsHeroJoin')}
+                </h2>
+              </div>
+              {entryForms}
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
       )}
 
       {hasZones && (
@@ -371,6 +515,9 @@ export function RoomEntryView({
                 const incinerating = leavingId === room.roomId;
                 const enter =
                   justBorn && !reduceMotion ? forgeEnter : listRowEnter;
+                const leaveAnimate = reduceMotion
+                  ? zoneCardExit.incinerateReduced
+                  : zoneCardExit.incinerate;
                 const zoneIcon = identiconVisualFromHex(room.roomId);
                 return (
                   <motion.li
@@ -378,8 +525,12 @@ export function RoomEntryView({
                     layout={!incinerating}
                     layoutDependency={leavingId ?? 'stable'}
                     initial={enter.initial}
-                    animate={enter.animate}
-                    exit={zoneCardExit.exit}
+                    animate={incinerating ? leaveAnimate : enter.animate}
+                    exit={
+                      reduceMotion
+                        ? zoneCardExit.incinerateReduced
+                        : zoneCardExit.exit
+                    }
                     data-zone-id={room.roomId}
                     data-zone-card={room.roomId}
                     className={`session-burn-target session-ignite-target relative overflow-hidden rounded-[var(--radius-ctrl)] border ${
@@ -387,9 +538,10 @@ export function RoomEntryView({
                         ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                         : 'border-border bg-bg'
                     } ${justJoined ? 'zone-join-pulse igniting-front' : ''} ${
-                      incinerating ? 'incinerated-collapse' : ''
+                      incinerating ? 'incinerated-collapse pointer-events-none' : ''
                     } ${room.relayFallbackActive ? 'relay-channel-tint' : ''}`}
                     aria-current={isActive ? 'true' : undefined}
+                    aria-busy={incinerating || undefined}
                   >
                     {justBorn && !reduceMotion && (
                       <motion.span
@@ -545,48 +697,16 @@ export function RoomEntryView({
       )}
 
       <AnimatePresence initial={false}>
-        {entryTab && !browserBlocked && (
+        {showHubEntry && (
           <motion.section
-            key={`entry-${entryTab}`}
+            key={`entry-hub-${entryTab}`}
             initial={contentSwitch.initial}
             animate={contentSwitch.animate}
             exit={contentSwitch.exit}
             transition={contentSwitch.transition}
             className="panel-surface p-4 sm:p-5"
           >
-            {errorMsg && (
-              <AlertBanner tone="error" className="mb-4">
-                {errorMsg}
-              </AlertBanner>
-            )}
-
-            {showIceHint && (
-              <AlertBanner tone="warning" role="status" className="mb-4">
-                {t('errIceHint')}
-              </AlertBanner>
-            )}
-
-            <AnimatePresence mode="wait" initial={false}>
-              {entryTab === 'create' ? (
-                <CreateRoomForm
-                  key={`create-${createFormKey}`}
-                  isJoining={isJoining}
-                  onJoinRoom={onJoinRoom}
-                  douseKey={douseKey}
-                />
-              ) : (
-                <JoinRoomForm
-                  key={`join-${inviteNonce}-${initialRoomId}`}
-                  initialRoomId={initialRoomId}
-                  initialPhrase={initialPhrase}
-                  isJoining={isJoining}
-                  onJoinRoom={onJoinRoom}
-                  douseKey={douseKey}
-                />
-              )}
-            </AnimatePresence>
-
-            <TurnRelaySettings forceOpen={showIceHint} />
+            {entryForms}
           </motion.section>
         )}
       </AnimatePresence>

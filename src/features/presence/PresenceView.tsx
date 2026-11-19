@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { ChevronDown, RefreshCw, Users } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { visualFromUserId, type PeerVisual } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
@@ -78,6 +78,11 @@ export function PresenceView({
   const prevOnlineRef = useRef<Set<string>>(new Set());
   /** Skip join rituals on first paint — everyone already online isn't "new". */
   const onlineSeededRef = useRef(false);
+
+  useEffect(() => {
+    if (!trustStore) return;
+    return trustStore.onChange(() => setTrustTick((n) => n + 1));
+  }, [trustStore]);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,7 +200,8 @@ export function PresenceView({
           const hasKey = Boolean(presence[id]?.signPubKeySpkiB64);
           const details = openDetails[id];
           const justJoined = justJoinedIds.has(id);
-          const trustLevel = !isSelf && trustStore ? trustStore.get(id)?.level : undefined;
+          const trustLevel =
+            !isSelf && trustStore ? (trustStore.get(id)?.level ?? 'new') : undefined;
           const canShowTrust = !isSelf && hasKey && Boolean(selfSignPubKeyB64);
           // Match/SAS only for non-changed peers; `changed` must go through KeyChange/repin first.
           const canOpenVerify = canShowTrust && trustLevel !== 'changed';
@@ -270,7 +276,7 @@ export function PresenceView({
                     <p className="type-caption mt-0.5 leading-tight text-warn">{t('presenceNoKey')}</p>
                   )}
                 </div>
-                {canShowTrust && (
+                {canShowTrust && trustLevel && (
                   <motion.button
                     whileTap={canOpenVerify ? TAP : undefined}
                     transition={TAP_TRANSITION}
@@ -296,11 +302,7 @@ export function PresenceView({
                     title={trustActionLabel}
                     aria-label={trustActionLabel}
                   >
-                    {trustLevel ? (
-                      <TrustBadge key={`${id}-${trustTick}`} level={trustLevel} />
-                    ) : (
-                      <ShieldCheck className="h-4 w-4 text-ok" aria-hidden="true" />
-                    )}
+                    <TrustBadge key={`${id}-${trustTick}`} level={trustLevel} />
                   </motion.button>
                 )}
                 <motion.button
@@ -311,28 +313,41 @@ export function PresenceView({
                   onClick={() =>
                     setOpenDetails((prev) => ({ ...prev, [id]: !prev[id] }))
                   }
-                  className="type-caption shrink-0 rounded-[var(--radius-ctrl)] px-2 py-1.5 font-medium hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                  className="type-caption inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-ctrl)] px-2 py-1.5 font-medium hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
                 >
-                  {details ? t('presenceHideDetails') : t('presenceDetails')}
+                  {/* Stable label width — swapping to "Ocultar" used to shove the trust badge. */}
+                  {t('presenceDetails')}
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 shrink-0 transition-transform duration-[var(--dur-micro)] ${
+                      details ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
                 </motion.button>
               </div>
-              {details && (
-                <div className="mt-2 space-y-1 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2">
-                  <p className="type-label uppercase text-faint">
-                    {t('presenceDetails')}
-                  </p>
-                  {hasKey && (
-                    <p className="type-caption font-mono">
-                      {t('presenceKeyShort', {
-                        fp: shortKeyFp(presence[id].signPubKeySpkiB64),
-                      })}
+              <div
+                className={`grid transition-[grid-template-rows] duration-[var(--dur-micro)] ease-out ${
+                  details ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                }`}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div className="mt-2 space-y-1 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2">
+                    <p className="type-label uppercase text-faint">
+                      {t('presenceDetails')}
                     </p>
-                  )}
-                  <p className="type-caption break-all font-mono">
-                    {t('presencePeerId', { id })}
-                  </p>
+                    {hasKey && (
+                      <p className="type-caption font-mono">
+                        {t('presenceKeyShort', {
+                          fp: shortKeyFp(presence[id].signPubKeySpkiB64),
+                        })}
+                      </p>
+                    )}
+                    <p className="type-caption break-all font-mono">
+                      {t('presencePeerId', { id })}
+                    </p>
+                  </div>
                 </div>
-              )}
+              </div>
             </motion.li>
           );
         })}

@@ -40,6 +40,17 @@ La **frase** es la llave: Trystero deriva de ella el cifrado del handshake de de
 
 Cada pestaña/zona es un `userId` nuevo (`identity: 'none'`). **Quemar sesión** cierra todos los meshes locales de este dispositivo.
 
+### Borrar una charla (voto de la tribu)
+
+No hay “borrar mensaje” unilateral. En la Plaza, proponer borrar una charla congela el electorado (tribu online en ese momento) y exige **aye unánime** (`DELETE_PROPOSE` / `DELETE_VOTE` en [`PROTOCOL.es.md`](PROTOCOL.es.md)).
+
+- Quien propone cuenta como aye; si estás solo, se borra al instante.
+- Los peers rechazan propuestas que **encojan** el electorado respecto a quien ya veían online (anti “borrar sin el resto”).
+- Una sola propuesta por charla; al completar, se purgan `NEW_THREAD` / `REPLY` y quedan tumbas firmadas (el sync no debe resucitar el contenido).
+- **No** es lo mismo que quemar: el voto borra esa charla en los peers que aplican el quórum; quemar olvida **toda** la sesión en **este** dispositivo.
+
+Detalle de reglas: [`threadDelete.ts`](../src/core/forum/threadDelete.ts).
+
 ### Mensajes en vivo (WebRTC)
 
 Un `forumMsg` solo se acepta si `authorUserId` coincide con el `userId` Trystero del peer. DTLS **no** cuenta como autoría ([ePrint 2026/584](https://eprint.iacr.org/2026/584)).
@@ -86,6 +97,7 @@ CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_h
 - **DTLS como prueba de autoría** — no ([ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf)). DTLS ≠ E2E de Susurros.
 - **Deniability práctica** — no la reclamamos. Las firmas Ed25519 son atribuibles; burn limpia esta pestaña, no otros dispositivos ni relés.
 - **Burn ≠ secure delete** — no se pueden zeroizar `CryptoKey` no extractables; la recarga reduce superficie en RAM.
+- **Voto de borrado ≠ garantía global** — un peer que nunca recibió el ballot completo puede seguir mostrando la charla; no hay servidor que imponga el borrado a todos.
 - **MLS / Double Ratchet / Key Transparency** — necesitan identidad durable u operador de log; incompatibles con `identity: 'none'` + hosting estático puro ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
 - **Tor** — fuera de alcance.
 - **Wake Lock** — opcional; mantiene la pantalla, no evita que iOS mate WebRTC al backgroundear.

@@ -9,6 +9,10 @@
  */
 
 import { b64ToBytes } from './crypto/bytes';
+import {
+  DELETE_VOTE_AYE,
+  isValidDeleteElectorateBody,
+} from './forum/threadDelete';
 
 export const PROTOCOL_NAME = 'tazep-v2';
 export const PROTOCOL_VERSION = 2 as const;
@@ -43,7 +47,18 @@ function isValidEd25519SpkiB64(b64: string): boolean {
   }
 }
 
-export type ForumMessageType = 'NEW_THREAD' | 'REPLY';
+/**
+ * Forum wire types.
+ * - NEW_THREAD / REPLY — plaza talk
+ * - DELETE_PROPOSE — freeze online tribe as electorate (body = sorted userIds)
+ * - DELETE_VOTE — aye for a propose (parentMsgId = propose msgId, body = "aye")
+ * Unanimous aye among the frozen electorate deletes the talk on every peer.
+ */
+export type ForumMessageType =
+  | 'NEW_THREAD'
+  | 'REPLY'
+  | 'DELETE_PROPOSE'
+  | 'DELETE_VOTE';
 
 /** Payload firmado que viaja por makeAction / sync. */
 export interface ForumEvent {
@@ -209,7 +224,14 @@ export function isValidForumEvent(
   ) {
     return false;
   }
-  if (v.type !== 'NEW_THREAD' && v.type !== 'REPLY') return false;
+  if (
+    v.type !== 'NEW_THREAD' &&
+    v.type !== 'REPLY' &&
+    v.type !== 'DELETE_PROPOSE' &&
+    v.type !== 'DELETE_VOTE'
+  ) {
+    return false;
+  }
   if (
     typeof v.threadId !== 'string' ||
     !v.threadId ||
@@ -218,20 +240,15 @@ export function isValidForumEvent(
   ) {
     return false;
   }
-  if (v.type === 'NEW_THREAD' && v.parentMsgId !== null) return false;
-  if (v.type === 'REPLY') {
+  if (v.type === 'NEW_THREAD' || v.type === 'DELETE_PROPOSE') {
+    if (v.parentMsgId !== null) return false;
+  } else {
+    // REPLY | DELETE_VOTE
     if (typeof v.parentMsgId !== 'string' || !v.parentMsgId || v.parentMsgId.length > 80) {
       return false;
     }
     if (!SAFE_ID_RE.test(v.parentMsgId)) return false;
-  } else if (v.parentMsgId !== null) {
-    return false;
   }
-  if (typeof v.title !== 'string' || v.title.length > MAX_TITLE_CHARS) return false;
-  if (typeof v.body !== 'string' || v.body.length === 0 || v.body.length > MAX_BODY_CHARS) {
-    return false;
-  }
-  if (typeof v.createdAtMs !== 'number' || !Number.isFinite(v.createdAtMs)) return false;
   if (
     typeof v.authorUserId !== 'string' ||
     v.authorUserId.length < 4 ||
@@ -240,6 +257,18 @@ export function isValidForumEvent(
   ) {
     return false;
   }
+  if (typeof v.title !== 'string' || v.title.length > MAX_TITLE_CHARS) return false;
+  if (typeof v.body !== 'string' || v.body.length === 0 || v.body.length > MAX_BODY_CHARS) {
+    return false;
+  }
+  if (v.type === 'DELETE_PROPOSE') {
+    if (v.title.length !== 0) return false;
+    if (!isValidDeleteElectorateBody(v.body, v.authorUserId)) return false;
+  } else if (v.type === 'DELETE_VOTE') {
+    if (v.title.length !== 0) return false;
+    if (v.body !== DELETE_VOTE_AYE) return false;
+  }
+  if (typeof v.createdAtMs !== 'number' || !Number.isFinite(v.createdAtMs)) return false;
   if (typeof v.sig !== 'string' || v.sig.length < 16 || v.sig.length > MAX_SIG_B64_CHARS) {
     return false;
   }

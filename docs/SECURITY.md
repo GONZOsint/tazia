@@ -40,6 +40,17 @@ The **phrase** is the key: Trystero derives discovery-handshake encryption from 
 
 Each tab/zone is a new `userId` (`identity: 'none'`). **Burn session** closes all local meshes on this device.
 
+### Deleting a talk (tribe vote)
+
+There is no unilateral “delete message”. In Plaza, proposing to delete a talk freezes the electorate (online tribe at that moment) and requires a **unanimous aye** (`DELETE_PROPOSE` / `DELETE_VOTE` in [`PROTOCOL.md`](PROTOCOL.md)).
+
+- The proposer counts as aye; alone in the zone, delete completes immediately.
+- Peers reject proposes that **shrink** the electorate relative to who they already saw online (blocks “delete without the others”).
+- One propose per talk; on completion, `NEW_THREAD` / `REPLY` are purged and signed tombstones remain (sync must not resurrect content).
+- **Not** the same as burn: the vote removes that talk on peers that apply the quorum; burn forgets **every** zone on **this** device.
+
+Rule details: [`threadDelete.ts`](../src/core/forum/threadDelete.ts).
+
 ### Live messages (WebRTC)
 
 A `forumMsg` is accepted only if `authorUserId` matches the peer’s Trystero `userId`. DTLS does **not** count as authorship ([ePrint 2026/584](https://eprint.iacr.org/2026/584)).
@@ -86,6 +97,7 @@ CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_hea
 - **DTLS as authorship proof** — no ([ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf)). DTLS ≠ E2E for Whispers.
 - **Practical deniability** — we do not claim it. Ed25519 signatures are attributable; burn clears this tab, not other devices or relays.
 - **Burn ≠ secure delete** — non-extractable `CryptoKey`s cannot be zeroized; reload reduces tab RAM surface.
+- **Delete vote ≠ global guarantee** — a peer that never received the completed ballot may still show the talk; there is no server that forces erasure everywhere.
 - **MLS / Double Ratchet / Key Transparency** — need durable identity or a log operator; incompatible with `identity: 'none'` + pure static hosting ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
 - **Tor** — out of scope.
 - **Wake Lock** — optional; keeps the screen on, does not stop iOS from killing WebRTC when backgrounded.

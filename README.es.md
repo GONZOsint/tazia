@@ -2,10 +2,10 @@
 
 **Zona Anónima Temporal en Acción**
 
-Una sala que existe solo mientras estéis dentro: sin cuentas y sin un servidor nuestro que guarde mensajes. Compartís una frase, habláis en directo y, al acabar, **quemáis la sesión**.
+Una sala que existe solo mientras estéis dentro: sin cuentas y sin chat guardado en nuestra nube. Compartís una frase y habláis en directo entre navegadores **conectados a la vez**. Si nadie más está online, la sala se apaga. Al **quemar la sesión**, **este** dispositivo olvida la zona.
 
-En el móvil podéis **Instalar / Añadir a la pantalla de inicio**.  
-Sitio en vivo: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
+📱 En el móvil podéis **Instalar / Añadir a la pantalla de inicio**.  
+🔗 Sitio en vivo: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
 
 [English](README.md)
 
@@ -13,15 +13,14 @@ Sitio en vivo: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
 
 ## En pocas palabras
 
-TAZIA no guarda conversaciones en la nube. El chat vive entre los navegadores que están **conectados a la vez**. Si nadie más está online, la sala se apaga. Cuando quemas, **este** dispositivo olvida la zona.
-
 | Quieres… | Ve a… |
 | --- | --- |
-| Abrir o unirte | **Zonas** |
-| Hablar en grupo | **Plaza** |
-| Ver quién está / verificar a alguien | **Tribu** |
-| Escribir en privado | **Susurros** |
-| Borrar todo en este dispositivo | **Quemar sesión** |
+| 🚪 Abrir o unirte | **Zonas** |
+| 💬 Hablar en grupo | **Plaza** |
+| 🗳️ Borrar **una** charla (voto unánime) | **Plaza** → llama → toda la tribu **online** vota a favor |
+| 👥 Ver quién está / verificar a alguien | **Tribu** |
+| 🤫 Escribir en privado | **Susurros** |
+| 🔥 Olvidar **todas** las zonas en este dispositivo | **Quemar sesión** |
 
 ---
 
@@ -100,11 +99,13 @@ Get-FileHash .\release\tazia-single.html -Algorithm SHA256
 
 ## Consejos
 
-**Conexión.** La misma Wi‑Fi suele ir mejor. Si no os conectáis, en **Zonas → Arreglar** hay pasos concretos. A veces hace falta un servidor TURN propio ([guía](docs/TURN.es.md)): un retransmisor que ayuda cuando el P2P directo no atraviesa el router o el CGNAT.
+**📶 Conexión.** La misma Wi‑Fi suele ir mejor. Si no os conectáis, en **Zonas → Arreglar** hay pasos concretos. A veces hace falta un servidor TURN propio ([guía](docs/TURN.es.md)): un retransmisor que ayuda cuando el P2P directo no atraviesa el router o el CGNAT.
 
-**Frase.** Es la llave de la sala: no la publiques en un chat abierto. Verificar en **Tribu** (secuencia de emojis) confirma que hablas con quien crees.
+**🔑 Frase.** Es la llave de la sala: no la publiques en un chat abierto. Verificar en **Tribu** (secuencia de emojis) confirma que hablas con quien crees.
 
-**Expectativas.** Va mejor en grupos pequeños. No reemplaza una app de mensajería diaria: es una zona **temporal**. Quemar limpia este dispositivo; el otro lado sigue hasta que también queme.
+**🗳️ Borrar charla ≠ quemar.** En la Plaza, la llama propone borrar **esa** charla: hace falta el sí de todos los que estaban online al proponer. **Quemar sesión** solo limpia **este** navegador (todas las zonas); el resto de la tribu sigue hasta que también queme.
+
+**⏳ Expectativas.** Va mejor en grupos pequeños. No reemplaza una app de mensajería diaria: es una zona **temporal**.
 
 ---
 
@@ -118,9 +119,10 @@ Chrome, Brave, Firefox y Safari. En internet hace falta **HTTPS**. En local, `lo
 
 | Tema | Documento |
 | --- | --- |
-| Riesgos y límites | [Seguridad](docs/SECURITY.es.md) |
-| Si no os conectáis (TURN / Wi‑Fi) | [Conexión](docs/TURN.es.md) |
-| Índice técnico | [docs/](docs/README.es.md) |
+| 🛡️ Riesgos y límites (burn vs borrado de charla) | [Seguridad](docs/SECURITY.es.md) |
+| 📜 Formato de mensajes y voto de borrado | [Protocolo](docs/PROTOCOL.es.md) |
+| 📶 Si no os conectáis (TURN / Wi‑Fi) | [Conexión](docs/TURN.es.md) |
+| 📚 Índice técnico | [docs/](docs/README.es.md) |
 
 ---
 
