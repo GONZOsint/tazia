@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Dices, KeyRound, Link2, Loader2, Radio, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
-  DUR,
   EASE,
   IGNITE,
   TAP,
   TAP_TRANSITION,
   contentSwitch,
   disclosure,
+  panelEnter,
 } from '../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import { generateRandomHex } from '../../core/crypto/identity';
@@ -63,10 +63,10 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
   return (
     <motion.form
       key="create"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: DUR.tab }}
+      initial={panelEnter.initial}
+      animate={panelEnter.animate}
+      exit={panelEnter.exit}
+      transition={panelEnter.transition}
       className="mt-1"
       onSubmit={(e) => {
         e.preventDefault();

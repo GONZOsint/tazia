@@ -15,8 +15,17 @@ import { RoomEntryView } from '../features/rooms/RoomEntryView';
 import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useT } from '../i18n';
-import { IGNITE, TAP, TAP_TRANSITION, bannerEnter, contentSwitch, enterPlaza } from '../motion/tokens';
-import { haptic, HAPTIC_RITUAL } from '../motion/haptic';
+import {
+  DUR,
+  EASE,
+  IGNITE,
+  TAP,
+  TAP_TRANSITION,
+  bannerEnter,
+  contentSwitch,
+  enterPlaza,
+} from '../motion/tokens';
+import { haptic, HAPTIC_RITUAL, HAPTIC_TAP } from '../motion/haptic';
 import { cachedPeerVisual } from '../core/crypto/identity';
 import {
   parseInviteInput,
@@ -34,9 +43,14 @@ const ALL_TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const satisfies
 
 function TabSkeleton() {
   return (
-    <div className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: DUR.micro, ease: EASE.outExpo }}
+      className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16"
+    >
       <Loader2 className="h-6 w-6 animate-spin text-faint" />
-    </div>
+    </motion.div>
   );
 }
 
@@ -152,7 +166,9 @@ export default function App() {
       return;
     }
     setZoneSwitchPulse(true);
-    const t = window.setTimeout(() => setZoneSwitchPulse(false), IGNITE.glowMs);
+    haptic(HAPTIC_TAP);
+    // Same IGNITE settle window as forge / zone-join card pulse.
+    const t = window.setTimeout(() => setZoneSwitchPulse(false), IGNITE.finishMs);
     return () => window.clearTimeout(t);
   }, [activeRoomId]);
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, ShieldCheck, Users } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { visualFromUserId, type PeerVisual } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import {
@@ -16,11 +16,14 @@ import { TrustBadge } from '../../components/session/TrustBadge';
 import { EmojiVerifyModal } from '../../components/session/EmojiVerifyModal';
 import { EmptyZoneCta } from '../../components/ui/AccentButton';
 import {
+  DUR,
+  EASE,
   listRowEnter,
   peerMaterialize,
   peerRowExit,
   TAP,
   TAP_TRANSITION,
+  zoneBootReduced,
 } from '../../motion/tokens';
 
 function shortKeyFp(spkiB64: string): string {
@@ -61,6 +64,7 @@ export function PresenceView({
   onGoToRooms,
 }: PresenceViewProps) {
   const t = useT();
+  const reduceMotion = useReducedMotion();
   const [visuals, setVisuals] = useState<Record<string, PeerVisual>>({});
   const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({});
   const [verifyPeer, setVerifyPeer] = useState<{ userId: string; alias: string; keyB64: string } | null>(null);
@@ -198,16 +202,38 @@ export function PresenceView({
             <motion.li
               key={id}
               layout={false}
-              initial={justJoined ? listRowEnter.initial : false}
-              animate={listRowEnter.animate}
-              exit={peerRowExit}
+              initial={
+                justJoined
+                  ? reduceMotion
+                    ? zoneBootReduced.initial
+                    : listRowEnter.initial
+                  : false
+              }
+              animate={
+                reduceMotion ? zoneBootReduced.animate : listRowEnter.animate
+              }
+              exit={
+                reduceMotion
+                  ? { opacity: 0, transition: { duration: DUR.micro, ease: EASE.easeIn } }
+                  : peerRowExit
+              }
               className="list-row px-3 py-2"
             >
               <div className="flex items-center gap-2.5">
                 <div className="relative shrink-0">
                   <motion.div
-                    initial={justJoined ? peerMaterialize.initial : false}
-                    animate={peerMaterialize.animate}
+                    initial={
+                      justJoined
+                        ? reduceMotion
+                          ? zoneBootReduced.initial
+                          : peerMaterialize.initial
+                        : false
+                    }
+                    animate={
+                      reduceMotion
+                        ? zoneBootReduced.animate
+                        : peerMaterialize.animate
+                    }
                   >
                     {visual ? (
                       <Identicon

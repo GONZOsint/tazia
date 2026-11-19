@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, ShieldCheck } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { visualFromUserId, type PeerVisual } from '../../core/crypto/identity';
 import type { DirectMessage, PresenceState } from '../../core/protocol';
 import type { TrustStore } from '../../core/trust/trustStore';
@@ -7,6 +8,7 @@ import { useLocale, useT } from '../../i18n';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { EmptyZoneCta } from '../../components/ui/AccentButton';
 import { Identicon } from '../../components/content/Identicon';
+import { listRowEnter, peerRowExit } from '../../motion/tokens';
 
 interface DmListViewProps {
   selfUserId: string | null;
@@ -31,6 +33,7 @@ export function DmListView({
 }: DmListViewProps) {
   const t = useT();
   const { locale } = useLocale();
+  const reduceMotion = useReducedMotion();
   const [visuals, setVisuals] = useState<Record<string, PeerVisual>>({});
   const [trustTick, setTrustTick] = useState(0);
 
@@ -108,99 +111,107 @@ export function DmListView({
       </p>
 
       <ul className="mt-3 space-y-1.5" role="list">
-        {peerIds.map((id) => {
-          const visual = visuals[id];
-          const alias =
-            presence[id]?.alias || visual?.suggestedAlias || t('presenceNoAlias');
-          const msgs = dmMessages[id] ?? [];
-          const lastMsg = msgs[msgs.length - 1];
-          const unread = dmUnread[id] ?? 0;
-          const isOnline = onlineUserIds.includes(id);
-          const verified = trustTick >= 0 && trustStore?.getLevel(id) === 'verified';
+        <AnimatePresence mode="popLayout" initial={false}>
+          {peerIds.map((id) => {
+            const visual = visuals[id];
+            const alias =
+              presence[id]?.alias || visual?.suggestedAlias || t('presenceNoAlias');
+            const msgs = dmMessages[id] ?? [];
+            const lastMsg = msgs[msgs.length - 1];
+            const unread = dmUnread[id] ?? 0;
+            const isOnline = onlineUserIds.includes(id);
+            const verified = trustTick >= 0 && trustStore?.getLevel(id) === 'verified';
 
-          return (
-            <li key={id}>
-              <button
-                type="button"
-                onClick={() => onSelectPeer(id)}
-                aria-label={
-                  unread > 0
-                    ? `${alias} — ${t('dmsUnread', { n: unread })}`
-                    : isOnline
-                      ? `${alias} — ${t('peerOnline')}`
-                      : alias
-                }
-                className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent ${
-                  unread > 0 ? 'ring-1 ring-accent/35' : ''
-                }`}
+            return (
+              <motion.li
+                key={id}
+                layout={!reduceMotion}
+                initial={reduceMotion ? { opacity: 0 } : listRowEnter.initial}
+                animate={reduceMotion ? { opacity: 1 } : listRowEnter.animate}
+                exit={reduceMotion ? { opacity: 0 } : peerRowExit}
               >
-                <div className="relative shrink-0">
-                  {visual ? (
-                    <Identicon
-                      matrix={visual.identiconMatrix}
-                      size={36}
-                      label={alias}
-                      fg={visual.fg}
-                      bg={visual.bg}
-                    />
-                  ) : (
-                    <div className="h-9 w-9 rounded-[var(--radius-ctrl)] bg-surface" />
-                  )}
-                  {isOnline && (
-                    <span
-                      className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-ok"
-                      title={t('peerOnline')}
-                      aria-hidden="true"
-                    />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p
-                      className={`inline-flex min-w-0 max-w-full items-center gap-1 text-sm text-ink ${
-                        unread > 0 ? 'font-bold' : 'font-semibold'
-                      }`}
-                    >
-                      <span className="truncate">{alias}</span>
-                      {verified && (
-                        <ShieldCheck
-                          className="h-3.5 w-3.5 shrink-0 text-ok"
-                          aria-label={t('trustVerified')}
-                          strokeWidth={2.25}
-                        />
-                      )}
-                    </p>
-                    {lastMsg && (
-                      <time
-                        className="type-caption shrink-0 tabular-nums"
-                        dateTime={new Date(lastMsg.createdAtMs).toISOString()}
-                      >
-                        {formatClockTime(lastMsg.createdAtMs, locale)}
-                      </time>
+                <button
+                  type="button"
+                  onClick={() => onSelectPeer(id)}
+                  aria-label={
+                    unread > 0
+                      ? `${alias} — ${t('dmsUnread', { n: unread })}`
+                      : isOnline
+                        ? `${alias} — ${t('peerOnline')}`
+                        : alias
+                  }
+                  className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent ${
+                    unread > 0 ? 'ring-1 ring-accent/35' : ''
+                  }`}
+                >
+                  <div className="relative shrink-0">
+                    {visual ? (
+                      <Identicon
+                        matrix={visual.identiconMatrix}
+                        size={36}
+                        label={alias}
+                        fg={visual.fg}
+                        bg={visual.bg}
+                      />
+                    ) : (
+                      <div className="h-9 w-9 rounded-[var(--radius-ctrl)] bg-surface" />
+                    )}
+                    {isOnline && (
+                      <span
+                        className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-ok"
+                        title={t('peerOnline')}
+                        aria-hidden="true"
+                      />
                     )}
                   </div>
-                  {lastMsg ? (
-                    <p
-                      className={`type-caption mt-0.5 truncate ${
-                        unread > 0 ? 'font-medium text-ink/80' : ''
-                      }`}
-                    >
-                      {lastMsg.fromUserId === selfUserId ? `${t('you')}: ` : ''}
-                      {lastMsg.body}
-                    </p>
-                  ) : (
-                    <p className="type-caption mt-0.5 truncate">{t('dmsStartChat')}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p
+                        className={`inline-flex min-w-0 max-w-full items-center gap-1 text-sm text-ink ${
+                          unread > 0 ? 'font-bold' : 'font-semibold'
+                        }`}
+                      >
+                        <span className="truncate">{alias}</span>
+                        {verified && (
+                          <ShieldCheck
+                            className="h-3.5 w-3.5 shrink-0 text-ok"
+                            aria-label={t('trustVerified')}
+                            strokeWidth={2.25}
+                          />
+                        )}
+                      </p>
+                      {lastMsg && (
+                        <time
+                          className="type-caption shrink-0 tabular-nums"
+                          dateTime={new Date(lastMsg.createdAtMs).toISOString()}
+                        >
+                          {formatClockTime(lastMsg.createdAtMs, locale)}
+                        </time>
+                      )}
+                    </div>
+                    {lastMsg ? (
+                      <p
+                        className={`type-caption mt-0.5 truncate ${
+                          unread > 0 ? 'font-medium text-ink/80' : ''
+                        }`}
+                      >
+                        {lastMsg.fromUserId === selfUserId ? `${t('you')}: ` : ''}
+                        {lastMsg.body}
+                      </p>
+                    ) : (
+                      <p className="type-caption mt-0.5 truncate">{t('dmsStartChat')}</p>
+                    )}
+                  </div>
+                  {unread > 0 && (
+                    <span className="type-badge shrink-0 rounded-full bg-accent px-2 py-0.5 text-on-accent">
+                      {unread > 9 ? '9+' : unread}
+                    </span>
                   )}
-                </div>
-                {unread > 0 && (
-                  <span className="type-badge shrink-0 rounded-full bg-accent px-2 py-0.5 text-on-accent">
-                    {unread > 9 ? '9+' : unread}
-                  </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
+                </button>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
       </ul>
     </main>
   );

@@ -1,14 +1,26 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Radio, ShieldAlert, Users, WifiOff, Wrench } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useT } from '../../i18n';
 import { clearIpConsent } from '../../core/utils/ipConsent';
-import { TAP, TAP_TRANSITION } from '../../motion/tokens';
+import {
+  DUR,
+  EASE,
+  TAP,
+  TAP_TRANSITION,
+  listRowEnter,
+  zoneBootReduced,
+} from '../../motion/tokens';
 
 export function HowItWorksView() {
   const t = useT();
+  const reduceMotion = useReducedMotion();
   const [moreOpen, setMoreOpen] = useState(false);
   const [forgetDone, setForgetDone] = useState(false);
+  /** Stagger steps only on first visit of this tab mount. */
+  const stepsAnimatedRef = useRef(false);
+  const animateSteps = !stepsAnimatedRef.current;
+  if (!stepsAnimatedRef.current) stepsAnimatedRef.current = true;
 
   const steps = [
     t('helpSteps1'),
@@ -38,15 +50,30 @@ export function HowItWorksView() {
         </h2>
         <ol className="mt-3 space-y-2">
           {steps.map((label, i) => (
-            <li
+            <motion.li
               key={label}
+              initial={
+                !animateSteps
+                  ? false
+                  : reduceMotion
+                    ? zoneBootReduced.initial
+                    : listRowEnter.initial
+              }
+              animate={
+                reduceMotion ? zoneBootReduced.animate : listRowEnter.animate
+              }
+              transition={
+                animateSteps && !reduceMotion
+                  ? { delay: i * 0.05, duration: DUR.switch, ease: EASE.outExpo }
+                  : undefined
+              }
               className="list-row flex gap-2.5 px-3 py-3 text-sm leading-snug text-muted"
             >
               <span className="type-badge flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent">
                 {i + 1}
               </span>
               <span className="min-w-0 pt-0.5">{label}</span>
-            </li>
+            </motion.li>
           ))}
         </ol>
       </section>

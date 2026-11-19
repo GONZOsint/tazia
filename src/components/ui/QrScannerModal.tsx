@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useQrScanner } from 'cam2qr/react';
 import { useT } from '../../i18n';
 import { DUR, EASE, TAP, TAP_TRANSITION, modalScrim, modalSheet } from '../../motion/tokens';
+import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import { parseInviteInput, type ParsedInvite } from '../../core/utils/inviteLink';
 
 interface QrScannerModalProps {
@@ -40,6 +41,7 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
       if (!parsed) return;
       pendingRef.current = parsed;
       setSuccess(true);
+      haptic(HAPTIC_TAP);
       const wait = reduceMotion ? DUR.micro * 1000 : DUR.ritual * 1000 + 80;
       window.setTimeout(finishSuccess, wait);
     },

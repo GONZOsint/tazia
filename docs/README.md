@@ -2,17 +2,25 @@
 
 English · [Español](README.es.md)
 
-Project overview lives in the root [`README.md`](../README.md) / [`README.es.md`](../README.es.md).
+How to use the app (web, local, and single-file) is in [`README.md`](../README.md).  
+This folder holds the technical detail: security, protocol, and networking.
 
-Wire / crypto numbers: prefer [`src/core/protocol.ts`](../src/core/protocol.ts) if a doc disagrees.
+If a crypto or on-the-wire number disagrees with a doc, **trust the code**: [`src/core/protocol.ts`](../src/core/protocol.ts).
 
-| Document | English | Español | Contents |
-| --- | --- | --- | --- |
-| Security | [`SECURITY.md`](SECURITY.md) | [`SECURITY.es.md`](SECURITY.es.md) | Threat model, TOFU, CSP, honest limits |
-| Protocol | [`PROTOCOL.md`](PROTOCOL.md) | [`PROTOCOL.es.md`](PROTOCOL.es.md) | TAZEP `tazep-v2` wire format |
-| TURN / ICE | [`TURN.md`](TURN.md) | [`TURN.es.md`](TURN.es.md) | Self-hosted coturn + ICE failed checklist |
-| SDP/QR spike | [`sdp-qr-spike.md`](sdp-qr-spike.md) | [`sdp-qr-spike.es.md`](sdp-qr-spike.es.md) | Manual signaling spike (not shipped) |
-| Papers index | [`papers/README.md`](papers/README.md) | [`papers/README.es.md`](papers/README.es.md) | Local PDF cache + relevance |
-| ePrint abstracts | [`papers/eprint-abstracts.md`](papers/eprint-abstracts.md) | [`papers/eprint-abstracts.es.md`](papers/eprint-abstracts.es.md) | Captured abstracts (CDN 403) |
+## Guides
 
-Naming: `*.md` = English, `*.es.md` = Spanish.
+| Document | English | Español |
+| --- | --- | --- |
+| Security (what it protects and what it doesn’t) | [`SECURITY.md`](SECURITY.md) | [`SECURITY.es.md`](SECURITY.es.md) |
+| TAZEP protocol (message format) | [`PROTOCOL.md`](PROTOCOL.md) | [`PROTOCOL.es.md`](PROTOCOL.es.md) |
+| TURN / ICE connection (when you can’t find each other) | [`TURN.md`](TURN.md) | [`TURN.es.md`](TURN.es.md) |
+| SDP/QR spike (experiment, not in the app) | [`sdp-qr-spike.md`](sdp-qr-spike.md) | [`sdp-qr-spike.es.md`](sdp-qr-spike.es.md) |
+
+## Papers
+
+| Document | English | Español |
+| --- | --- | --- |
+| Index | [`papers/README.md`](papers/README.md) | [`papers/README.es.md`](papers/README.es.md) |
+| ePrint abstracts | [`papers/eprint-abstracts.md`](papers/eprint-abstracts.md) | [`papers/eprint-abstracts.es.md`](papers/eprint-abstracts.es.md) |
+
+Naming: `*.md` = English · `*.es.md` = Spanish.

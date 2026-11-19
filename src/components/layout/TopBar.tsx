@@ -81,7 +81,8 @@ export function TopBar({
             className="flex shrink-0 items-center gap-2 rounded-[var(--radius-ctrl)] py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             aria-label={t('navRooms')}
           >
-            <TaziaLogo size={36} />
+            {/* sharedMark when zone active — handoff from hero ZONE_BOOT layoutId */}
+            <TaziaLogo size={36} sharedMark={hasActiveRoom} />
             <span className="hidden min-w-0 sm:block">
               <span className="type-title text-ink">
                 {t('brand')}
@@ -237,7 +238,7 @@ export function TopBar({
                 <motion.span
                   layoutId={BURN.layoutId}
                   className="burn-flame-icon relative z-10 inline-flex h-4 w-4 shrink-0"
-                  transition={{ type: 'spring', visualDuration: 0.32, bounce: 0.12 }}
+                  transition={BURN.layoutSpring}
                 >
                   <Flame className="h-4 w-4" aria-hidden="true" />
                 </motion.span>

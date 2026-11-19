@@ -5,7 +5,7 @@ import { evaluatePassphraseStrength } from '../../core/crypto/passphraseWords';
 import { buildInviteUrl, parseInviteInput } from '../../core/utils/inviteLink';
 import type { RoomJoinParams } from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
-import { DUR, EASE, IGNITE, TAP, TAP_TRANSITION, disclosure } from '../../motion/tokens';
+import { DUR, EASE, IGNITE, TAP, TAP_TRANSITION, disclosure, panelEnter } from '../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
@@ -62,10 +62,10 @@ export function JoinRoomForm({
   return (
     <motion.form
       key="join"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: DUR.tab }}
+      initial={panelEnter.initial}
+      animate={panelEnter.animate}
+      exit={panelEnter.exit}
+      transition={panelEnter.transition}
       className="mt-1 space-y-5"
       onSubmit={(e) => {
         e.preventDefault();

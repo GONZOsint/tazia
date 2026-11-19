@@ -11,14 +11,17 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'apple-touch-icon.png', 'brand/tazia-logo-dark.jpg'],
+      injectRegister: 'script',
       manifest: {
         name: 'TAZIA',
         short_name: 'TAZIA',
         description: 'Temporary Anonymous Zone In Action — live browser chat, no accounts.',
-        theme_color: '#0c0e0a',
-        background_color: '#0c0e0a',
+        theme_color: '#0b0d09',
+        background_color: '#0b0d09',
         display: 'standalone',
         lang: 'es',
+        start_url: '/tazia/',
+        scope: '/tazia/',
         icons: [
           {
             src: 'pwa-192x192.png',

@@ -2,11 +2,13 @@
 
 Español · [English](PROTOCOL.md)
 
-**TAZEP** (*TAZ Encryption Protocol*) — wire format del foro P2P sobre Trystero 0.27 (señalización Nostr + WebRTC).
+**TAZEP** (*TAZ Encryption Protocol*) describe el **formato de los mensajes** del foro P2P: qué viaja por Trystero 0.27 (señalización Nostr + WebRTC), cómo se firma y qué se rechaza.
 
-Fuente de verdad: [`src/core/protocol.ts`](../src/core/protocol.ts) y etiquetas de dominio en [`src/core/crypto/`](../src/core/crypto/), [`src/core/p2p/`](../src/core/p2p/).
+Fuente de verdad: [`src/core/protocol.ts`](../src/core/protocol.ts) y etiquetas en [`src/core/crypto/`](../src/core/crypto/), [`src/core/p2p/`](../src/core/p2p/). Si un número de este documento no coincide con el código, **prioriza el código**.
 
-**Breaking:** peers `agora-forum-v1` / `agora-forum-v2` no interoperan. Sin dual-stack. Labels de dominio: `tazep.*` (no `tazia.*`).
+Peers con `agora-forum-v1` / `agora-forum-v2` **no** se entienden con `tazep-v2` (no hay compatibilidad dual). Etiquetas de dominio: `tazep.*` (no `tazia.*`).
+
+---
 
 ## Constantes
 
@@ -36,11 +38,12 @@ Fuente de verdad: [`src/core/protocol.ts`](../src/core/protocol.ts) y etiquetas 
 | `SYNC_CLOCK_SKEW_MS` | ±24 h (snapshot histórico) |
 | `NOSTR_EVENT_CLOCK_SKEW_SEC` | ±300 s (`created_at` de EVENT Nostr) |
 
-Versiones distintas de `2` se **rechazan**.
+Versiones distintas de `2` se **rechazan**.  
+Límite de UI (no del protocolo): hasta **3** zonas concurrentes (`MAX_ROOMS`).
 
-Límite de UI (no del wire): hasta **3** zonas concurrentes (`MAX_ROOMS` en `useRoomManager` / `roomManagerTypes`).
+`MAX_USERS=50` es tope blando de Trystero. El mesh completo degrada pasado ~4–6 peers; el sync live muestreá como máximo `MAX_SYNC_PEER_TARGETS`.
 
-**Nota de escala:** `MAX_USERS=50` es tope blando de Trystero. El mesh WebRTC completo degrada pasado ~4–6 peers; sync live muestreá como máximo `MAX_SYNC_PEER_TARGETS` peers.
+---
 
 ## Cambios vs agora-forum-v2
 
@@ -53,12 +56,14 @@ Límite de UI (no del wire): hasta **3** zonas concurrentes (`MAX_ROOMS` en `use
 | `sync-res` Nostr | primera respuesta gana | `fromUserId` + Ed25519 `tazep.sync-res.v1` + digest |
 | Verify keys | última SPKI observada | **pinned** TOFU hasta `repin` |
 
+---
+
 ## Canales Trystero
 
 | Canal | Tipo | Uso |
 | --- | --- | --- |
 | `forumMsg` | `makeAction` | Publicación en vivo (hilos / respuestas) |
-| `directMsg` | `makeAction` | Susurros (DM) a un `target` |
+| `directMsg` | `makeAction` | Susurros a un `target` |
 | `forumSync` | `makeAction(..., { kind: 'request' })` | Snapshot RPC para late joiners |
 | `presence` | `makeUserState` | Alias + pubkey de firma + X25519 |
 
@@ -69,7 +74,9 @@ joinRoom(
 )
 ```
 
-Cada zona de la UI es un `joinP2pRoom` aislado. El join **exige** SubtleCrypto X25519 (sin polyfill noble).
+Cada zona de la UI es un `joinP2pRoom` aislado. Entrar **exige** SubtleCrypto X25519 en el navegador (sin biblioteca de respaldo).
+
+---
 
 ## Presencia
 
@@ -81,22 +88,24 @@ Cada zona de la UI es un `joinP2pRoom` aislado. El join **exige** SubtleCrypto X
 }
 ```
 
-Sin `signPubKeySpkiB64` válida no se aceptan mensajes de ese autor en **sync** (ni en vivo hasta conocer/pinnear la clave).
+Sin `signPubKeySpkiB64` válida no se aceptan mensajes de ese autor en **sync** (ni en vivo hasta conocer/pinnear la clave).  
 Sin `encPubKeyRawB64` la presencia se rechaza; no hay Susurros en claro.
 
-Presence Nostr también lleva `attestSig` sobre:
+Presence Nostr lleva `attestSig` sobre:
 
 ```
 ["tazep.presence.v1", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64]
 ```
 
-La attestation liga claves a un `userId` reclamado (TOFU first-writer). **No** equivale al binding WebRTC de Trystero.
+Liga claves a un `userId` reclamado (TOFU first-writer). **No** equivale al binding WebRTC de Trystero.
 
 Goodbye Nostr (al salir con fallback activo):
 
 ```
 ["tazep.goodbye.v1", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64]
 ```
+
+---
 
 ## Evento de foro
 
@@ -123,8 +132,10 @@ Orden fijo (JSON array), **sin** `sig`. **Sin `roomId`** — el binding de sala 
 [protocolVersion, msgId, type, threadId, parentMsgId, title, body, createdAtMs, authorUserId]
 ```
 
-**WebRTC en vivo:** aceptar solo si `authorUserId ===` `userId` Trystero del peer, luego verify contra SPKI **pinned**.
+**WebRTC en vivo:** aceptar solo si `authorUserId ===` `userId` Trystero del peer; luego verify contra SPKI **pinned**.  
 **Sync / fallback Nostr:** sin binding de transporte; rate-limit por `authorUserId`; verify SPKI pinned.
+
+---
 
 ## Susurro (DM)
 
@@ -134,7 +145,7 @@ Orden fijo (JSON array), **sin** `sig`. **Sin `roomId`** — el binding de sala 
   msgId: string;
   fromUserId: string;
   toUserId: string;
-  body: "";                  // vacío en el wire
+  body: "";                  // vacío en el mensaje de red
   createdAtMs: number;
   bodyCipherB64: string;     // AES-GCM (iv||ct) base64
   seal: 2;
@@ -153,6 +164,8 @@ Canónico firmado:
 - Reloj en vivo ±5 min; `body` vacío; `seal` = `2`
 - WebRTC: `fromUserId` debe coincidir con el peer de transporte; abrir solo si `toUserId === self`
 
+---
+
 ## Fallback Nostr de datos
 
 Si falla ICE (`peer-connect-failed`), TAZIA puede llevar envelopes cifrados por los sockets Nostr abiertos de Trystero.
@@ -161,17 +174,19 @@ Material de sala: PBKDF2 210k una vez (salt `tazep.fallback.v2:{roomId}`) + HKDF
 
 | `t` | Campos (además de `v: 2`) | Auth |
 | --- | --- | --- |
-| `forum` | `event` | Ed25519 del evento; ingest sin binding de transporte |
+| `forum` | `event` | Ed25519 del evento; sin enlace al transporte WebRTC |
 | `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v1` |
 | `goodbye` | `userId`, claves, `atMs`, `attestSig` | `tazep.goodbye.v1` |
-| `dm` | `dm` | Igual que Susurro en el wire |
+| `dm` | `dm` | Igual que Susurro en el mensaje de red |
 | `sync-req` | `fromUserId`, `reqId` | — |
 | `sync-res` | `fromUserId`, `toUserId`, `reqId`, `events`, `eventsDigest`, `sig` | ver abajo |
 
 - EVENT: schnorr verify del id canónico + skew de `created_at` **antes** de decrypt.
 - `sync-res`: `eventsDigest = hex(SHA-256(JSON.stringify(events)))`; firma sobre  
   `["tazep.sync-res.v1", roomId, reqId, fromUserId, toUserId, eventsDigest]`.
-- Los relés ven metadatos y ciphertext, no el texto en claro. No es P2P puro.
+- Los relés ven metadatos y bytes cifrados, no el texto en claro. No es P2P puro.
+
+---
 
 ## Flujo
 
@@ -185,6 +200,8 @@ whisper → X25519 seal + Ed25519_sign → directMsg.send({ target })
 late joiner → forumSync.requestMany / Nostr sync-req → sync-res (firmado)
            → verify cada evento con pubkey de presencia pinned
 ```
+
+---
 
 ## Mapa de implementación
 
@@ -201,6 +218,8 @@ late joiner → forumSync.requestMany / Nostr sync-req → sync-res (firmado)
 | Fallback Nostr | [`nostrFallback.ts`](../src/core/p2p/nostrFallback.ts), [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts) |
 | Multi-zona | [`src/hooks/useRoomManager.ts`](../src/hooks/useRoomManager.ts) |
 | Papers | [`papers/`](papers/) |
+
+---
 
 ## Roadmap de sync
 

@@ -7,7 +7,8 @@
  *   - Burn button heating → CSS (.burn-heat.is-heating)
  *   - Burn climax → canvas BurnFireOverlay + optional layoutId spark
  *   - Zone ignite / leave incinerate → CSS classes + IGNITE / BURN timings
- *   - Confetti / seal / mesh birth → Motion presets (ritual tier)
+ *   - App entrance → ZONE_BOOT (ritual; no confetti / no canvas)
+ *   - Confetti / seal / mesh birth → Motion presets (ritual tier; confetti = create+verify only)
  *
  * Tiers (NN/g + Fluent hierarchy):
  *   frequent ≤150ms  |  panel ~200–220ms  |  ritual ≤400ms spring  |  climax BURN ~1s
@@ -84,6 +85,12 @@ export const BURN = {
   reducedFrontMs: 80,
   reducedCollapseMs: 140,
   layoutId: 'burn-flame',
+  /** Shared layoutId spring: TopBar flame → BurnFireOverlay. */
+  layoutSpring: {
+    type: 'spring' as const,
+    visualDuration: 0.32,
+    bounce: 0.18,
+  },
 } as const;
 
 /**
@@ -97,6 +104,33 @@ export const IGNITE = {
   reducedMs: 140,
   /** Shared spark morph: CTA submit → new zone card. */
   layoutId: 'ignite-ember',
+} as const;
+
+/**
+ * Cold-start / empty-hero entrance (“Se enciende”) — ritual mirror of IGNITE.
+ * No confetti, no canvas. CTAs stay interactive from first paint.
+ *
+ * Timeline (full):
+ *   0ms          cold glow opens
+ *   sparkMs      mark flash + settle
+ *   glowMs       ring / ember settle
+ *   chainStartMs Frase → Tribu → Quemar chain
+ *   ctaAtMs      CTA emphasis (already clickable)
+ *   finishMs     rest pose
+ */
+export const ZONE_BOOT = {
+  sparkMs: 80,
+  glowMs: 200,
+  chainStartMs: 280,
+  chainStepMs: 80,
+  ctaAtMs: 480,
+  finishMs: 640,
+  /** Revisit / post-burn mini-boot. */
+  revisitMs: 200,
+  reducedMs: 140,
+  storageKey: 'tazia.bootSeen',
+  /** Shared brand mark: hero ↔ TopBar. */
+  layoutId: 'tazia-mark',
 } as const;
 
 /** Lime/ash confetti — max 400ms; only create-zone + verify OK. */
@@ -167,6 +201,37 @@ export const contentSwitch = {
   },
   transition: { duration: DUR.tab, ease: EASE.outExpo },
 };
+
+/** Alias for create/join form panels — same motor as contentSwitch. */
+export const panelEnter = contentSwitch;
+
+/** ZONE_BOOT mark settle (full choreography). */
+export const zoneBootMark = {
+  initial: { opacity: 0, y: 10, scale: 0.88 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  transition: EASE.ritualSpring,
+} as const;
+
+/** ZONE_BOOT mark — revisit / reduced: short fade only. */
+export const zoneBootMarkShort = {
+  initial: { opacity: 0, scale: 0.96 },
+  animate: { opacity: 1, scale: 1 },
+  transition: { duration: DUR.switch, ease: EASE.outExpo },
+} as const;
+
+/** ZONE_BOOT copy / steps / CTAs — opacity + slight rise. */
+export const zoneBootCopy = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: DUR.switch, ease: EASE.outExpo },
+} as const;
+
+/** ZONE_BOOT reduced-motion: fade only. */
+export const zoneBootReduced = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  transition: { duration: DUR.micro, ease: EASE.outExpo },
+} as const;
 
 /**
  * Zone switch inside Plaza (apagón).
@@ -428,12 +493,11 @@ export const sealIcon = {
   },
 };
 
-/** Brief timestamp ember flash after seal. */
+/** Brief timestamp ember flash after seal — opacity only (no filter; Windows GPU). */
 export const sealFlash = {
-  initial: { opacity: 0.45, filter: 'brightness(1.35)' },
+  initial: { opacity: 0.45 },
   animate: {
     opacity: 1,
-    filter: 'brightness(1)',
     transition: { duration: DUR.medium, ease: EASE.outExpo },
   },
 };

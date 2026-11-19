@@ -34,7 +34,8 @@
   </head>
   <body class="bg-bg text-ink antialiased">
     <div id="root"></div>
-    <script src="./scrub-phrase.js"></script>
+    <!-- Classic (non-module) so it runs before the app and can scrub #room~phrase under CSP script-src 'self'. -->
+    <script src="./scrub-phrase.js" defer></script>
     <script type="module" src="/src/app/main.tsx"></script>
   </body>
 </html>

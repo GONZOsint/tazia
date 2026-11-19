@@ -1,102 +1,142 @@
 # TAZIA
 
-**Zona Anónima Temporal en Acción** (*Temporary Anonymous Zone In Action*)
+**Zona Anónima Temporal en Acción**
 
-Zona temporal en el navegador: sin cuentas ni servidor nuestro de mensajes. Comparte una frase, hablad mientras estéis online, **quema la sesión** al acabar. En el móvil puedes **Instalar / Añadir a inicio** (PWA) para un shell tipo app — la plaza sigue necesitando red y peers vivos.
+Una sala que existe solo mientras estéis dentro: sin cuentas y sin un servidor nuestro que guarde mensajes. Compartís una frase, habláis en directo y, al acabar, **quemáis la sesión**.
 
-Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocolo: **TAZEP** (`tazep-v2` — TAZ Encryption Protocol; eventos firmados Ed25519; Susurros solo sellados). App ID: `tazia.app`. **Breaking:** peers `agora-forum-v*` no interoperan.
+En el móvil podéis **Instalar / Añadir a la pantalla de inicio**.  
+Sitio en vivo: [gonzosint.github.io/tazia](https://gonzosint.github.io/tazia/)
 
-README principal (inglés): [`README.md`](README.md).
+[English](README.md)
 
-## Uso rápido
+---
 
-1. Abre el sitio (local o hosting estático).
-2. **Abre una zona** y genera una frase memorable.
-3. Di la frase en persona / en papel. Opcional: meterla en el enlace `#` (más cómodo, más arriesgado).
-4. Comparte el enlace o el QR (el QR se genera **en el navegador**; también puedes **escanear** un QR para unirte).
-5. La primera entrada pide **consentimiento de dirección de red**.
-6. Al acabar: **Quemar sesión**.
+## En pocas palabras
 
-Tenéis que estar **online a la vez**. No hay buzón asíncrono.
+TAZIA no guarda conversaciones en la nube. El chat vive entre los navegadores que están **conectados a la vez**. Si nadie más está online, la sala se apaga. Cuando quemas, **este** dispositivo olvida la zona.
 
-### Funciones
+| Quieres… | Ve a… |
+| --- | --- |
+| Abrir o unirte | **Zonas** |
+| Hablar en grupo | **Plaza** |
+| Ver quién está / verificar a alguien | **Tribu** |
+| Escribir en privado | **Susurros** |
+| Borrar todo en este dispositivo | **Quemar sesión** |
 
-- **Varias zonas a la vez** (máx. **3**): cada una mantiene su sesión P2P; **Zonas** las lista; cambia o sal de una; Plaza / Tribu / Susurros muestran la zona **activa**; **Quemar** borra todas en este dispositivo. Tope blando **50** users/zona (mesh óptimo ~6 peers)
-- Susurros (Ed25519 + sello X25519 obligatorio; AAD `tazep.dm.aad.v2` ligado a la zona) en la zona activa
-- Confianza TOFU + SAS de 6 emojis (~48 bits, pool único) ligados a `roomId` (Tribu)
-- TURN opcional autoalojado (rescate ICE / ocultar IP) — [`docs/TURN.es.md`](docs/TURN.es.md)
-- Fallback de datos cifrado por Nostr si falla ICE (envelopes `tazep.*`; solo ciphertext; no es P2P puro)
+---
 
-### Varias zonas
+## Cómo usarla (en la web)
 
-Entra a la zona A y luego abre o entra a la B sin tumbar A (espera a que termine el primer join). Usa **Cambiar** en la lista de Zonas. Salir quita solo esa zona; Quemar destruye todas en este navegador. Tope blando 50 users/zona; el mesh va mejor alrededor de ~6 peers.
+1. Abre [TAZIA](https://gonzosint.github.io/tazia/).
+2. Pulsa **Abrir zona** y genera (o escribe) una **frase**.
+3. Pásasela a la otra persona en persona, por teléfono o en papel.  
+   También podéis meterla en el enlace: más cómodo, menos privado.
+4. La otra persona entra con **Entrar con frase**, el enlace o el **QR**.
+5. La primera vez el navegador pide permiso de red: es para que os encontréis en la misma Wi‑Fi o LAN.
+6. Cuando terminéis: **Quemar sesión**.
 
-### ICE failed / CGNAT / misma Wi‑Fi en Pages
+Podéis tener hasta **tres zonas** abiertas y cambiar entre ellas. Salir de una no tumba las demás; quemar sí limpia todas en **este** navegador.
 
-Si Firefox muestra `WebRTC: ICE failed, add a TURN server`, STUN no puede atravesar tu NAT (habitual con CGNAT residencial). Opciones:
+---
 
-1. Misma **Wi‑Fi** (candidatos host/mDNS) — en Pages, permite **Red local** si Chrome lo pide; sin aislamiento de AP; **Forzar relay** apagado.
-2. Tu propio **coturn** y activar TURN en Zonas → **Arreglar** (ambos peers).
+## Cómo correrla en tu máquina
 
-Helpers en JS: `iceCandidatePoolSize`, `turnConfig`, priming LNA, y **fallback de datos cifrado por Nostr** si falla ICE para que el chat siga en Pages sin TURN (no es P2P puro; los relés ven ciphertext). TURN propio sigue siendo el camino para mesh real. Detalle: [`docs/TURN.es.md`](docs/TURN.es.md).
-
-## Desarrollo
+Necesitas [Node.js](https://nodejs.org/) (recomendado LTS) y el código del repo.
 
 ```bash
 npm install
+```
+
+### Desarrollo (recarga en vivo)
+
+```bash
 npm run dev
 ```
 
-| Script | Qué hace |
+Abre **http://localhost:5173/tazia/** (la barra final importa: la app vive bajo `/tazia/`).
+
+Útil para tocar código. Dos pestañas o dos dispositivos en la misma red pueden entrar a la misma zona con la misma frase.
+
+### Probar el build (como en producción)
+
+```bash
+npm run build
+npm run preview
+```
+
+Vite sirve la carpeta `dist/` (PWA incluida). La URL sigue siendo bajo `/tazia/`.
+
+### Un solo archivo HTML (offline / verificable)
+
+```bash
+npm run build:single
+```
+
+Genera:
+
+| Archivo | Para qué |
 | --- | --- |
-| `npm run build` | Build estático → `dist/` |
-| `npm run build:single` | HTML único + SHA-256 en `release/` |
-| `npm run preview` | Sirve el build |
-| `npm run lint` | `tsc --noEmit` |
+| `release/tazia-single.html` | Toda la app en un HTML (CSS/JS y el worker del QR van dentro) |
+| `release/tazia-single.html.sha256` | Huella SHA-256 para comprobar que no se alteró |
+| `release/MANIFEST.txt` | Resumen del build |
 
-Para probar en la red local, Vite escucha en todas las interfaces (`host: true`). En Windows, permite `node.exe` o el puerto `5173` en el firewall si la red es **Pública**. URL de desarrollo: `http://localhost:5173/tazia/`.
+**Cómo abrirlo**
 
-## Documentación
+1. Abre `tazia-single.html` en el navegador (doble clic / `file://`), **o** sírvelo con cualquier servidor estático local.
+2. Para comprobar integridad (ejemplo en PowerShell):
 
-Índice: [`docs/README.es.md`](docs/README.es.md) · [`docs/README.md`](docs/README.md). Cada documento tiene inglés (`*.md`) y español (`*.es.md`).
+```powershell
+Get-FileHash .\release\tazia-single.html -Algorithm SHA256
+# Compara con el hash de tazia-single.html.sha256
+```
 
-| Doc | English | Español | Contenido |
-| --- | --- | --- | --- |
-| Seguridad | [`docs/SECURITY.md`](docs/SECURITY.md) | [`docs/SECURITY.es.md`](docs/SECURITY.es.md) | Modelo de amenaza, TOFU, CSP, límites honestos |
-| Protocolo | [`docs/PROTOCOL.md`](docs/PROTOCOL.md) | [`docs/PROTOCOL.es.md`](docs/PROTOCOL.es.md) | Formato wire TAZEP `tazep-v2` |
-| TURN / ICE | [`docs/TURN.md`](docs/TURN.md) | [`docs/TURN.es.md`](docs/TURN.es.md) | Coturn autoalojado + checklist ICE failed |
-| Spike SDP/QR | [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) | [`docs/sdp-qr-spike.es.md`](docs/sdp-qr-spike.es.md) | Spike de señalización manual (no empaquetado) |
-| Papers | [`docs/papers/`](docs/papers/) | [`docs/papers/README.es.md`](docs/papers/README.es.md) | Caché local de PDF + abstracts |
+**Qué no es el single-file**
 
-## Lecturas
+- No incluye service worker de PWA (no “instalar app” como en Pages).
+- No sustituye el despliegue multi-archivo de GitHub Pages.
+- Sirve para llevar la app en un USB, auditar un build concreto o usarla sin servir `dist/`.
 
-| Fuente | Relevancia |
+---
+
+## Consejos
+
+**Conexión.** La misma Wi‑Fi suele ir mejor. Si no os conectáis, en **Zonas → Arreglar** hay pasos concretos. A veces hace falta un servidor TURN propio ([guía](docs/TURN.es.md)): un retransmisor que ayuda cuando el P2P directo no atraviesa el router o el CGNAT.
+
+**Frase.** Es la llave de la sala: no la publiques en un chat abierto. Verificar en **Tribu** (secuencia de emojis) confirma que hablas con quien crees.
+
+**Expectativas.** Va mejor en grupos pequeños. No reemplaza una app de mensajería diaria: es una zona **temporal**. Quemar limpia este dispositivo; el otro lado sigue hasta que también queme.
+
+---
+
+## Navegadores
+
+Chrome, Brave, Firefox y Safari. En internet hace falta **HTTPS**. En local, `localhost` cuenta como contexto seguro.
+
+---
+
+## Más documentación
+
+| Tema | Documento |
 | --- | --- |
-| [Cwtch](https://cwtch.im/cwtch.pdf) / [docs](https://docs.cwtch.im/) | Infra no confiable + detección de fallos |
-| [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Ocultación de metadata (no implementado) |
-| [WebRTC IP leakage 2025](https://arxiv.org/abs/2510.16168) + [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html) | UX de consentimiento IP |
-| [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | No tratar DTLS solo como autoría |
-| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Valida verify por emojis; usamos 6 de un pool único de 256 + binding `roomId` |
-| [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | Seguridad WebRTC; TOFU débil sin OOB |
-| [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN sigue siendo fallback |
-| [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Por qué falla ICE residencial sin TURN |
-| [SnoW serverless n-party WebRTC](https://arxiv.org/pdf/2206.12762) | Mesh degrada >~4–6 peers — tope 50, aviso desde 6 |
-| [WebRTC scales (mesh/SFU)](https://www.freecodecamp.org/news/how-webrtc-scales-signaling-nat-traversal-and-the-mesh-sfu-mcu-tradeoff) | Coste cuadrático del mesh; DTLS≠E2E de app |
-| [ePrint 2025/554](https://eprint.iacr.org/2025/554.pdf) | Ligar grupo/nonce a signcryption (Susurro + AAD de sala) |
-| [CRDT P2P WebRTC VR](https://arxiv.org/html/2503.17826v1) | Sync tipado eventual por data channels (futuro; hoy merge firmado) |
-| [Delta Chat realtime P2P](https://delta.chat/en/2024-11-20-webxdc-realtime) | Canales efímeros — varias zonas independientes encajan |
-| [Chrome LNA](https://developer.chrome.com/blog/local-network-access) | Permiso red local (misma Wi‑Fi en Pages) |
-| [WebTransport](https://developer.chrome.com/docs/capabilities/web-apis/webtransport) | Solo cliente–servidor — no sustituye mesh P2P |
-| OpenMLS / WASM ([IETF 126](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-extensions-targeted-messages-virtual-clients-two-party-profile-slimmls-00.pdf)) | Roadmap de grupos |
+| Riesgos y límites | [Seguridad](docs/SECURITY.es.md) |
+| Si no os conectáis (TURN / Wi‑Fi) | [Conexión](docs/TURN.es.md) |
+| Índice técnico | [docs/](docs/README.es.md) |
 
-**Navegadores:** Chrome, Brave, Firefox y Safari (HTTPS). Ed25519 usa Web Crypto nativo si existe; si no, `@noble/ed25519`. La política WebRTC de Brave y los host ICE ocultos de Safari pueden empeorar el mesh en la misma Wi‑Fi — TURN o el fallback Nostr cifrado lo cubren. Seguimos con **Trystero**; sin fork de Nostr/Trystero para Pages.
+---
 
-## GitHub Pages
+## Desarrollo
 
-Sitio público: `https://gonzosint.github.io/tazia/` (`base: '/tazia/'` en Vite). El workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) construye `dist/` y lo publica en la rama `gh-pages` en cada push a `master`.
+Stack: React + Vite + [Trystero](https://trystero.dev/). Protocolo **TAZEP** (`tazep-v2`). App ID: `tazia.app`.
 
-No sirve el `index.html` fuente: hace falta el build.
+```bash
+npm install
+npm run dev          # http://localhost:5173/tazia/
+npm run build        # → dist/ (PWA)
+npm run build:single # → release/tazia-single.html + SHA-256
+npm run preview      # sirve dist/
+npm run lint         # TypeScript sin emitir
+```
 
-## Cabeceras de despliegue
-
-Ver [`public/_headers`](public/_headers) (estilo Netlify). Preferir CSP por HTTP frente a meta; las fuentes van self-hosted. `frame-ancestors` solo aplica por cabecera HTTP (GitHub Pages no aplica `_headers`).
+Despliegue en GitHub Pages: [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) (`base: '/tazia/'`).  
+Cabeceras de ejemplo: [`public/_headers`](public/_headers).  
+Detalle técnico y papers: [docs/README.es.md](docs/README.es.md).

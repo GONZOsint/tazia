@@ -23,13 +23,33 @@ import {
   IGNITE,
   TAP,
   TAP_TRANSITION,
+  ZONE_BOOT,
   contentSwitch,
   forgeEnter,
   listRowEnter,
-  staggerChild,
+  zoneBootCopy,
+  zoneBootMark,
+  zoneBootMarkShort,
+  zoneBootReduced,
   zoneCardExit,
 } from '../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
+
+function readBootSeen(): boolean {
+  try {
+    return sessionStorage.getItem(ZONE_BOOT.storageKey) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markBootSeen(): void {
+  try {
+    sessionStorage.setItem(ZONE_BOOT.storageKey, '1');
+  } catch {
+    /* ignore */
+  }
+}
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { TurnRelaySettings } from './TurnRelaySettings';
@@ -84,13 +104,61 @@ export function RoomEntryView({
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
   const reduceMotion = useReducedMotion();
-  const enterY = reduceMotion ? 0 : 14;
-  const enterScale = reduceMotion ? 1 : 0.96;
-  const stagger = reduceMotion ? 0 : 0.06;
+  /**
+   * Sticky per hero mount: full = cold start; revisit = session reopen / post-burn;
+   * short = invite or reduced-motion. Recomputed when hero remounts (zones cleared).
+   */
+  const bootModeRef = useRef<'full' | 'revisit' | 'short' | null>(null);
+  if (!hasZones && bootModeRef.current === null) {
+    bootModeRef.current =
+      reduceMotion || hasInvite ? 'short' : readBootSeen() ? 'revisit' : 'full';
+  }
+  if (hasZones) bootModeRef.current = null;
+  const bootMode = bootModeRef.current ?? 'short';
+  const [bootRing, setBootRing] = useState(false);
+  const [bootChain, setBootChain] = useState(false);
+  const bootHapticRef = useRef(false);
 
   useEffect(() => {
     if (initialRoomId) setEntryTab('join');
   }, [initialRoomId, initialPhrase, inviteNonce]);
+
+  // ZONE_BOOT timeline — CTAs stay interactive; ornament is non-blocking.
+  useEffect(() => {
+    if (hasZones) return;
+    bootHapticRef.current = false;
+    setBootRing(false);
+    setBootChain(false);
+
+    if (bootMode === 'short' || bootMode === 'revisit') {
+      markBootSeen();
+      if (!reduceMotion) {
+        setBootRing(true);
+        const clear = window.setTimeout(() => setBootRing(false), ZONE_BOOT.revisitMs);
+        return () => window.clearTimeout(clear);
+      }
+      return;
+    }
+
+    const ringAt = window.setTimeout(() => setBootRing(true), ZONE_BOOT.sparkMs);
+    const chainAt = window.setTimeout(() => setBootChain(true), ZONE_BOOT.chainStartMs);
+    const hapticAt = window.setTimeout(() => {
+      if (bootHapticRef.current) return;
+      bootHapticRef.current = true;
+      haptic(HAPTIC_TAP);
+    }, ZONE_BOOT.glowMs);
+    const doneAt = window.setTimeout(() => {
+      setBootRing(false);
+      markBootSeen();
+    }, ZONE_BOOT.finishMs);
+
+    return () => {
+      window.clearTimeout(ringAt);
+      window.clearTimeout(chainAt);
+      window.clearTimeout(hapticAt);
+      window.clearTimeout(doneAt);
+    };
+  }, [hasZones, bootMode, reduceMotion, inviteNonce]);
 
   useEffect(() => {
     if (showIceHint && hasZones) setEntryTab((cur) => cur ?? 'join');
@@ -156,70 +224,111 @@ export function RoomEntryView({
 
       {!hasZones && (
         <section className="hero-landing px-5 py-14 sm:px-10 sm:py-20">
-          <div className="hero-glow" aria-hidden="true" />
+          <div
+            className={`hero-glow${bootMode === 'full' && !reduceMotion ? ' zone-boot-glow' : ''}`}
+            aria-hidden="true"
+          />
           <div className="relative mx-auto flex max-w-md flex-col items-center text-center">
             <motion.div
-              initial={{ opacity: 0, y: enterY, scale: enterScale }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              initial={
+                reduceMotion
+                  ? zoneBootReduced.initial
+                  : bootMode === 'full'
+                    ? zoneBootMark.initial
+                    : zoneBootMarkShort.initial
+              }
+              animate={
+                reduceMotion
+                  ? zoneBootReduced.animate
+                  : bootMode === 'full'
+                    ? zoneBootMark.animate
+                    : zoneBootMarkShort.animate
+              }
               transition={
                 reduceMotion
-                  ? { duration: DUR.micro }
-                  : { ...EASE.ritualSpring, delay: 0 }
+                  ? zoneBootReduced.transition
+                  : bootMode === 'full'
+                    ? zoneBootMark.transition
+                    : zoneBootMarkShort.transition
               }
               whileHover={reduceMotion || browserBlocked ? undefined : { scale: 1.04 }}
-              className="hero-landing-mark-wrap"
+              className={`hero-landing-mark-wrap${bootRing ? ' zone-boot-mark-ring' : ''}`}
             >
-              <TaziaLogo size={88} className="hero-landing-mark relative z-[1]" />
+              <TaziaLogo
+                size={88}
+                sharedMark
+                className="hero-landing-mark relative z-[1]"
+              />
             </motion.div>
             <motion.h1
-              initial={{ opacity: 0, y: enterY }}
-              animate={{ opacity: 1, y: 0 }}
-              {...staggerChild(1, stagger)}
+              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
+              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+              transition={{
+                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.sparkMs / 1000,
+              }}
               className="type-display mt-6 text-ink"
             >
               {t('brand')}
             </motion.h1>
             <motion.p
-              initial={{ opacity: 0, y: enterY }}
-              animate={{ opacity: 1, y: 0 }}
-              {...staggerChild(2, stagger)}
+              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
+              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+              transition={{
+                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.glowMs / 1000,
+              }}
               className="type-subtitle mt-2.5 text-ink"
             >
               {t('roomsHeroTitle')}
             </motion.p>
             <motion.p
-              initial={{ opacity: 0, y: enterY }}
-              animate={{ opacity: 1, y: 0 }}
-              {...staggerChild(3, stagger)}
+              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
+              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+              transition={{
+                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                delay:
+                  reduceMotion || bootMode !== 'full'
+                    ? 0
+                    : (ZONE_BOOT.glowMs + 60) / 1000,
+              }}
               className="type-lede mt-3 max-w-sm text-balance"
             >
               {t('roomsHeroBody')}
             </motion.p>
 
             <motion.ul
-              initial={{ opacity: 0, y: enterY }}
-              animate={{ opacity: 1, y: 0 }}
-              {...staggerChild(4, stagger)}
+              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
+              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+              transition={{
+                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.chainStartMs / 1000,
+              }}
               className="mt-6 flex flex-wrap items-center justify-center gap-2"
               aria-label={t('roomsHowTitle')}
             >
               {(
                 [
-                  ['roomsHeroStepPhrase', 0] as const,
-                  ['roomsHeroStepTalk', 1] as const,
-                  ['roomsHeroStepBurn', 2] as const,
+                  ['roomsHeroStepPhrase', 'phrase', 0] as const,
+                  ['roomsHeroStepTalk', 'tribe', 1] as const,
+                  ['roomsHeroStepBurn', 'burn', 2] as const,
                 ]
-              ).map(([key, i]) => (
+              ).map(([key, kind, i]) => (
                 <motion.li
                   key={key}
-                  initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
+                  initial={reduceMotion || bootMode !== 'full' ? false : { opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{
-                    delay: reduceMotion ? 0 : 0.28 + i * 0.08,
+                    delay:
+                      reduceMotion || bootMode !== 'full'
+                        ? 0
+                        : (ZONE_BOOT.chainStartMs + i * ZONE_BOOT.chainStepMs) / 1000,
                     duration: DUR.switch,
                     ease: EASE.outExpo,
                   }}
-                  className="hero-step"
+                  className={`hero-step${
+                    bootChain && bootMode === 'full' ? ` hero-step--${kind}` : ''
+                  }`}
                 >
                   <span className="hero-step__dot" aria-hidden="true" />
                   {t(key)}
@@ -228,9 +337,12 @@ export function RoomEntryView({
             </motion.ul>
 
             <motion.div
-              initial={{ opacity: 0, y: enterY }}
-              animate={{ opacity: 1, y: 0 }}
-              {...staggerChild(5, stagger)}
+              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
+              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+              transition={{
+                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.ctaAtMs / 1000,
+              }}
               className="mt-9 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
             >
               <motion.button

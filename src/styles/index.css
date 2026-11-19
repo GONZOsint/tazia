@@ -70,9 +70,18 @@
   --dur-burn: 480ms;
   --dur-burn-ignition: 480ms;
   --dur-ignite: 280ms;
+  --dur-ignite-ring: 320ms;
   --dur-birth: 280ms;
   --dur-ritual: 220ms;
   --dur-confetti: 400ms;
+  /* ZONE_BOOT — mirror src/motion/tokens.ts ZONE_BOOT */
+  --dur-boot-spark: 80ms;
+  --dur-boot-glow: 200ms;
+  --dur-boot-chain: 280ms;
+  --dur-boot-finish: 640ms;
+  --dur-boot-revisit: 200ms;
+  --dur-burn-shimmer: 480ms;
+  --dur-burn-front-pulse: 320ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -773,6 +782,21 @@ html.dark {
         color-mix(in oklab, var(--color-accent) 8%, transparent),
         transparent 40%
       );
+    opacity: 1;
+  }
+  /* ZONE_BOOT: one-shot cold → lit glow (no infinite loop; WCAG 2.2.2). */
+  .hero-glow.zone-boot-glow {
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-glow.zone-boot-glow {
+      animation: zone-boot-glow var(--dur-boot-glow) var(--ease-out-expo) 1 forwards;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-glow.zone-boot-glow {
+      opacity: 1;
+    }
   }
   .hero-landing {
     position: relative;
@@ -812,12 +836,20 @@ html.dark {
     pointer-events: none;
     z-index: 0;
   }
+  /* One-shot ring on boot mark (mirrors ignite-ring-expand). */
+  .hero-landing-mark-wrap.zone-boot-mark-ring::after {
+    content: '';
+    position: absolute;
+    inset: -10%;
+    border-radius: 50%;
+    border: 1.5px solid color-mix(in oklab, var(--color-accent) 50%, transparent);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+  }
   @media (prefers-reduced-motion: no-preference) {
-    .hero-landing-mark-wrap::before {
-      animation: hero-ember-pulse 3.2s var(--ease-out-expo) infinite;
-    }
-    .hero-landing-mark {
-      animation: hero-mark-breathe 4.5s var(--ease-in-out-quart) infinite;
+    .hero-landing-mark-wrap.zone-boot-mark-ring::after {
+      animation: ignite-ring-expand var(--dur-ignite-ring) var(--ease-out-expo) 1;
     }
   }
   .hero-step {
@@ -839,6 +871,19 @@ html.dark {
     border-radius: 999px;
     background: var(--color-accent);
     box-shadow: 0 0 8px color-mix(in oklab, var(--color-accent) 55%, transparent);
+  }
+  /* ZONE_BOOT chain: Frase → Tribu → Quemar one-shots */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-step--phrase .hero-step__dot {
+      animation: phrase-ignite var(--dur-ritual) var(--ease-out-expo) 1;
+    }
+    .hero-step--tribe .hero-step__dot {
+      animation: mesh-birth-wave var(--dur-pulse) var(--ease-out-expo) 1;
+      transform-origin: center;
+    }
+    .hero-step--burn .hero-step__dot {
+      animation: hero-step-burn-ash var(--dur-ritual) var(--ease-exit) 1;
+    }
   }
   .hero-cta-primary {
     min-height: 3.25rem;
@@ -1085,11 +1130,11 @@ html.dark {
   }
   .burn-heat.is-heating .burn-embers__p {
     animation-play-state: running;
-    animation-duration: 0.48s;
+    animation-duration: var(--dur-burn);
   }
   .burn-heat.is-heating .burn-ignition-bar {
     opacity: 0.72;
-    animation: burn-ignition-shimmer 0.55s linear infinite;
+    animation: burn-ignition-shimmer var(--dur-burn-shimmer) linear infinite;
   }
   .burn-heat.is-heating .burn-flame-icon {
     color: var(--fire-core);
@@ -1112,7 +1157,7 @@ html.dark {
       inset 0 0 26px color-mix(in oklab, var(--fire-edge) 26%, transparent);
     border-color: var(--fire-mid) !important;
     filter: saturate(1.15) brightness(1.04);
-    animation: burn-front-pulse 0.32s ease-in-out infinite alternate;
+    animation: burn-front-pulse var(--dur-burn-front-pulse) ease-in-out infinite alternate;
   }
   .session-burn-target.incinerated-collapse {
     opacity: 0;
@@ -1338,7 +1383,7 @@ html.dark {
 }
 @media (prefers-reduced-motion: no-preference) {
   .session-ignite-target.igniting-front::after {
-    animation: ignite-ring-expand 0.32s var(--ease-out-expo) 1;
+    animation: ignite-ring-expand var(--dur-ignite-ring) var(--ease-out-expo) 1;
   }
 }
 @keyframes ignite-ring-expand {
@@ -1380,7 +1425,7 @@ html.dark {
 
 .copy-ember-check {
   @media (prefers-reduced-motion: no-preference) {
-    animation: copy-ember 0.26s var(--ease-out-expo) 1 forwards;
+    animation: copy-ember var(--dur-plane) var(--ease-out-expo) 1 forwards;
   }
   color: var(--color-ok);
 }
@@ -1433,7 +1478,7 @@ html.dark {
 
 .strength-accept-tremor {
   @media (prefers-reduced-motion: no-preference) {
-    animation: strength-accept-tremor 0.28s var(--ease-out-expo) 1;
+    animation: strength-accept-tremor var(--dur-flash) var(--ease-out-expo) 1;
   }
 }
 
@@ -1452,24 +1497,15 @@ html.dark {
   100% { opacity: 0.7; letter-spacing: 0.02em; }
 }
 
-@keyframes hero-ember-pulse {
-  0%, 100% { opacity: 0.4; transform: scale(0.92); }
-  50% { opacity: 0.7; transform: scale(1.06); }
+/* ZONE_BOOT one-shots (finite; no infinite hero loops). */
+@keyframes zone-boot-glow {
+  0% { opacity: 0; transform: scale(0.94); }
+  100% { opacity: 1; transform: scale(1); }
 }
-@keyframes hero-mark-breathe {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-@keyframes tab-panel-show {
-  from {
-    opacity: 0.88;
-    transform: translateX(calc(var(--tab-enter-from, 0px)));
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+@keyframes hero-step-burn-ash {
+  0% { opacity: 1; transform: scaleY(1); }
+  45% { opacity: 0.35; transform: scaleY(0.45); }
+  100% { opacity: 1; transform: scaleY(1); }
 }
 
 .tab-panel {
@@ -1489,17 +1525,12 @@ html.dark {
   overflow: hidden;
 }
 
+/*
+ * Tab enter is Motion-only (contentSwitch / enterPlaza) — no CSS tab-panel-show.
+ * Swipe drag still applies translate while gesturing (no permanent containing block).
+ */
 @media (prefers-reduced-motion: no-preference) {
-  .tab-panel[data-active='true'] {
-    animation: tab-panel-show var(--dur-tab) var(--ease-out-expo);
-  }
-
-  /*
-   * Only apply transform while swiping — a permanent translateX(0)
-   * creates a containing block that traps position:fixed modals under the header.
-   */
   [data-swiping='true'] .tab-panel[data-active='true'] {
-    animation: none;
     transition: none;
     transform: translateX(var(--tab-drag, 0px));
     will-change: transform;
@@ -1508,13 +1539,13 @@ html.dark {
 
 .phrase-ignite {
   @media (prefers-reduced-motion: no-preference) {
-    animation: phrase-ignite 0.22s var(--ease-out-expo) 1;
+    animation: phrase-ignite var(--dur-ritual) var(--ease-out-expo) 1;
   }
 }
 
 .phrase-douse {
   @media (prefers-reduced-motion: no-preference) {
-    animation: phrase-douse 0.22s var(--ease-exit) 1;
+    animation: phrase-douse var(--dur-ritual) var(--ease-exit) 1;
   }
 }
 
@@ -1526,7 +1557,7 @@ html.dark {
 
 .peer-join-dot {
   @media (prefers-reduced-motion: no-preference) {
-    animation: peer-join-dot 0.4s var(--ease-out-expo) 1;
+    animation: peer-join-dot var(--dur-pulse) var(--ease-out-expo) 1;
   }
   background-color: var(--color-accent) !important;
   opacity: 1;
@@ -1795,8 +1826,11 @@ html.dark {
   .zone-join-pulse,
   .passphrase-douse,
   .qr-success-ring,
-  .hero-landing-mark-wrap::before,
-  .hero-landing-mark {
+  .hero-glow.zone-boot-glow,
+  .hero-landing-mark-wrap.zone-boot-mark-ring::after,
+  .hero-step--phrase .hero-step__dot,
+  .hero-step--tribe .hero-step__dot,
+  .hero-step--burn .hero-step__dot {
     animation: none !important;
   }
   .cta-ignite-spark,
@@ -1835,9 +1869,6 @@ html.dark {
     opacity: 1 !important;
   }
 
-  .tab-panel[data-active='true'] {
-    animation: none;
-  }
   .tazia-toast-progress {
     display: none;
   }
