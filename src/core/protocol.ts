@@ -100,12 +100,20 @@ export const MAX_TITLE_CHARS = 200;
 export const MAX_ALIAS_CHARS = 40;
 export const MAX_USER_ID_CHARS = 64;
 export const MAX_SIG_B64_CHARS = 128;
+/**
+ * Worst-case UTF-8 JSON size for one `forumMsg` (title/body may expand to
+ * `\uXXXX` escapes; ids/sig/framing covered by the fixed overhead).
+ */
+export const MAX_FORUM_WIRE_BYTES =
+  4_096 + MAX_TITLE_CHARS * 6 + MAX_BODY_CHARS * 6 + MAX_SIG_B64_CHARS;
 export const MAX_SYNC_MESSAGES = 500;
 export const MAX_PUBLISH_PER_MINUTE = 30;
 /** Soft cap for Susurro sends per peer (WebRTC + Nostr fallback). */
 export const MAX_DM_PER_MINUTE = 30;
 /** Respuestas sync por peer y minuto (anti-abuso blando). */
 export const MAX_SYNC_ANSWERS_PER_MINUTE = 12;
+/** Soft cap for Nostr fallback presence/goodbye per EVENT pubkey. */
+export const MAX_PRESENCE_PER_MINUTE = 20;
 /** Ventana de reloj para mensajes en vivo (±5 min). */
 export const LIVE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 /** Ventana de reloj para mensajes de sync histórico (±24 h). */
@@ -210,6 +218,17 @@ export function canonicalForumPayload(event: Omit<ForumEvent, 'sig'>): string {
     event.createdAtMs,
     event.authorUserId,
   ]);
+}
+
+const forumWireTe = new TextEncoder();
+
+/** UTF-8 byte length of the JSON object Trystero sends on `forumMsg`. */
+export function forumEventWireBytes(event: ForumEvent): number {
+  return forumWireTe.encode(JSON.stringify(event)).length;
+}
+
+export function isForumEventWithinWireBudget(event: ForumEvent): boolean {
+  return forumEventWireBytes(event) <= MAX_FORUM_WIRE_BYTES;
 }
 
 export function isValidForumEvent(

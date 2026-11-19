@@ -18,6 +18,8 @@ export function mapRoomError(code: P2pRoomErrorCode): MessageKey {
       return 'errRelay';
     case 'publish-rate':
       return 'errPublishRate';
+    case 'wire-too-large':
+      return 'errWireTooLarge';
     default:
       return 'errGeneric';
   }

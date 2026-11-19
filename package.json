@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "icons": "node scripts/render-brand-icons.mjs",
     "build:single": "node scripts/release-singlefile.mjs"
   },
@@ -37,6 +39,7 @@
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite-plugin-pwa": "^2.0.0"
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^3.2.7"
   }
 }

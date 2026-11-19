@@ -140,17 +140,8 @@ export function DmListView({
                 animate={reduceMotion ? { opacity: 1 } : listRowEnter.animate}
                 exit={reduceMotion ? { opacity: 0 } : peerRowExit}
               >
-                <button
-                  type="button"
-                  onClick={() => onSelectPeer(id)}
-                  aria-label={
-                    unread > 0
-                      ? `${alias} — ${t('dmsUnread', { n: unread })}`
-                      : isOnline
-                        ? `${alias} — ${t('peerOnline')}`
-                        : alias
-                  }
-                  className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-3.5 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-accent ${
+                <div
+                  className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-3.5 py-2.5 text-left ${
                     unread > 0 ? 'ring-1 ring-accent/40' : ''
                   }`}
                 >
@@ -171,52 +162,65 @@ export function DmListView({
                       />
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p
-                        className={`inline-flex min-w-0 max-w-full items-center gap-1 text-sm text-ink ${
-                          unread > 0 ? 'font-bold' : 'font-semibold'
-                        }`}
-                      >
-                        <span className="truncate">{alias}</span>
-                        {verified && (
-                          <ShieldCheck
-                            className="h-3.5 w-3.5 shrink-0 text-ok"
-                            aria-label={t('trustVerified')}
-                            strokeWidth={2.25}
-                          />
-                        )}
-                      </p>
-                      {lastMsg && (
-                        <time
-                          className={`type-caption shrink-0 tabular-nums ${
-                            unread > 0 ? 'font-semibold text-accent' : ''
+                  <button
+                    type="button"
+                    onClick={() => onSelectPeer(id)}
+                    aria-label={
+                      unread > 0
+                        ? `${alias} — ${t('dmsUnread', { n: unread })}`
+                        : isOnline
+                          ? `${alias} — ${t('peerOnline')}`
+                          : alias
+                    }
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p
+                          className={`inline-flex min-w-0 max-w-full items-center gap-1 text-sm text-ink ${
+                            unread > 0 ? 'font-bold' : 'font-semibold'
                           }`}
-                          dateTime={new Date(lastMsg.createdAtMs).toISOString()}
                         >
-                          {formatClockTime(lastMsg.createdAtMs, locale)}
-                        </time>
+                          <span className="truncate">{alias}</span>
+                          {verified && (
+                            <ShieldCheck
+                              className="h-3.5 w-3.5 shrink-0 text-ok"
+                              aria-label={t('trustVerified')}
+                              strokeWidth={2.25}
+                            />
+                          )}
+                        </p>
+                        {lastMsg && (
+                          <time
+                            className={`type-caption shrink-0 tabular-nums ${
+                              unread > 0 ? 'font-semibold text-accent' : ''
+                            }`}
+                            dateTime={new Date(lastMsg.createdAtMs).toISOString()}
+                          >
+                            {formatClockTime(lastMsg.createdAtMs, locale)}
+                          </time>
+                        )}
+                      </div>
+                      {lastMsg ? (
+                        <p
+                          className={`type-caption mt-0.5 truncate ${
+                            unread > 0 ? 'font-medium text-ink/85' : ''
+                          }`}
+                        >
+                          {lastMsg.fromUserId === selfUserId ? `${t('you')}: ` : ''}
+                          {lastMsg.body}
+                        </p>
+                      ) : (
+                        <p className="type-caption mt-0.5 truncate">{t('dmsStartChat')}</p>
                       )}
                     </div>
-                    {lastMsg ? (
-                      <p
-                        className={`type-caption mt-0.5 truncate ${
-                          unread > 0 ? 'font-medium text-ink/85' : ''
-                        }`}
-                      >
-                        {lastMsg.fromUserId === selfUserId ? `${t('you')}: ` : ''}
-                        {lastMsg.body}
-                      </p>
-                    ) : (
-                      <p className="type-caption mt-0.5 truncate">{t('dmsStartChat')}</p>
+                    {unread > 0 && (
+                      <span className="type-badge shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-on-accent">
+                        {unread > 9 ? '9+' : unread}
+                      </span>
                     )}
-                  </div>
-                  {unread > 0 && (
-                    <span className="type-badge shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-on-accent">
-                      {unread > 9 ? '9+' : unread}
-                    </span>
-                  )}
-                </button>
+                  </button>
+                </div>
               </motion.li>
             );
           })}

@@ -4,6 +4,7 @@ import {
 } from '../crypto/presenceAttest';
 import {
   MAX_DM_PER_MINUTE,
+  MAX_PRESENCE_PER_MINUTE,
   MAX_PUBLISH_PER_MINUTE,
   isValidPresenceState,
 } from '../protocol';
@@ -19,7 +20,6 @@ import type { JoinP2pRoomOptions } from './p2pTypes';
 
 const MAX_GLOBAL_DM_PER_MINUTE = MAX_DM_PER_MINUTE * 3;
 const MAX_GLOBAL_FALLBACK_FORUM_PER_MINUTE = MAX_PUBLISH_PER_MINUTE * 3;
-const MAX_PRESENCE_PER_MINUTE = 20;
 const MAX_GLOBAL_PRESENCE_PER_MINUTE = MAX_PRESENCE_PER_MINUTE * 3;
 
 export interface FallbackIngressDeps {

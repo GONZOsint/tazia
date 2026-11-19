@@ -274,10 +274,11 @@ export function PresenceView({
                     <PeerAvatar
                       avatarSeed={presence[id]?.avatarSeed || peerAvatarSeed(id)}
                       matrix={visual?.identiconMatrix}
-                      size={28}
+                      size={isSelf ? 36 : 28}
                       label={alias}
                       fg={visual?.fg}
                       bg={visual?.bg}
+                      previewable={!isSelf}
                     />
                   </motion.div>
                   {justJoined && (

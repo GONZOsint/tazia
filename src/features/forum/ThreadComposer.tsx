@@ -59,6 +59,7 @@ export function ThreadComposer({
               fg={identity.fg}
               bg={identity.bg}
               animated={false}
+              previewable={false}
             />
             {t('composerAs', { alias: identity.alias })}
           </p>

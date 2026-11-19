@@ -99,6 +99,7 @@ export function JoinedZonesSection({
         <RegionAshOverlay
           play={Boolean(ashRoom) && !reduceMotion}
           mode="burn"
+          collapseDom={false}
           canvasId="zone-ash-fire-canvas"
           selectors={
             ashRoom
@@ -121,8 +122,8 @@ export function JoinedZonesSection({
             return (
               <motion.li
                 key={room.roomId}
-                layout="position"
-                layoutDependency={leavingId ?? ashRoom?.roomId ?? listRooms.length}
+                layout={ashRoom || reduceMotion ? false : 'position'}
+                layoutDependency={leavingId ?? listRooms.length}
                 initial={enter.initial}
                 animate={enter.animate}
                 exit={
@@ -233,7 +234,7 @@ export function JoinedZonesSection({
                       strokeWidth={1.75}
                     />
                   </button>
-                  <div className="flex shrink-0 items-center gap-0.5 border-l border-border/70 pl-1 pr-1.5">
+                  <div className="flex shrink-0 items-center gap-0.5 border-l border-border/70 pl-1.5 pr-2">
                     <button
                       type="button"
                       onClick={() => {

@@ -3,7 +3,6 @@ import {
   mountFlameAvatar,
   type FlameAvatarHandle,
 } from '../../core/avatar/flameEngine';
-import { readTheme, subscribeFlameTheme } from '../../core/avatar/themeWatch';
 
 interface FlameAvatarProps {
   seed: string;
@@ -16,7 +15,7 @@ interface FlameAvatarProps {
   animated?: boolean;
 }
 
-/** Animated flame avatar mounted from a compact presence seed. */
+/** Flame avatar on a fixed light plate (independent of app dark/light chrome). */
 export function FlameAvatar({
   seed,
   size = 28,
@@ -35,21 +34,15 @@ export function FlameAvatar({
     handleRef.current?.destroy();
     handleRef.current = mountFlameAvatar(host, seed, {
       label: label ? `Avatar de ${label}` : 'Avatar llamita',
-      theme: readTheme(),
+      theme: 'light',
       size,
       animated: shouldAnimate,
     });
 
-    const unsubTheme = subscribeFlameTheme((mode) => {
-      handleRef.current?.setTheme(mode);
-    });
-
     return () => {
-      unsubTheme();
       handleRef.current?.destroy();
       handleRef.current = null;
     };
-    // Remount only when seed / animation mode / size band changes — not on alias renames.
   }, [seed, size, shouldAnimate]);
 
   useEffect(() => {

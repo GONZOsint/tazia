@@ -2,6 +2,7 @@ import type { Room, Unsubscribe } from 'trystero';
 import {
   MAX_DM_CIPHER_B64_CHARS,
   MAX_DM_PER_MINUTE,
+  MAX_FORUM_WIRE_BYTES,
   MAX_PRESENCE_STATE_BYTES,
   MAX_RECEIVE_BYTES,
   isValidPresenceState,
@@ -75,10 +76,9 @@ export function wireTrysteroIngress(
   const forumSync = room.makeAction<{ want: string }, ForumSyncResponse>('forumSync', {
     kind: 'request',
   });
-  const maxForumWire = 24_000;
   const maxDmWire = MAX_DM_CIPHER_B64_CHARS + 2_048;
   unsubs.push(
-    forumMsg.onReceive(({ byteLength }) => byteLength <= maxForumWire),
+    forumMsg.onReceive(({ byteLength }) => byteLength <= MAX_FORUM_WIRE_BYTES),
     directMsg.onReceive(({ byteLength }) => byteLength <= maxDmWire),
     forumSync.onReceive(({ byteLength }) => byteLength <= MAX_RECEIVE_BYTES)
   );

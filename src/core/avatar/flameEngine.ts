@@ -1267,19 +1267,14 @@ export interface FlameAvatarHandle {
   destroy: () => void;
 }
 
-function themeFromDom(): FlameThemeMode {
-  if (typeof document === 'undefined') return 'light';
-  const t = document.documentElement.getAttribute('data-theme');
-  return t === 'dark' ? 'dark' : 'light';
-}
-
 function makeAvatarFromParts(
   parts: AvatarSeedParts,
   label?: string,
   mountOpts?: { theme?: FlameThemeMode; size?: number; animated?: boolean }
 ): any {
   setRngSeed(parts.entropy);
-  const resolvedTheme = mountOpts?.theme ?? themeFromDom();
+  // Avatars always render on the light cream plate (app chrome may be dark).
+  const resolvedTheme: FlameThemeMode = mountOpts?.theme ?? 'light';
   themeMode = resolvedTheme;
   const palette = PALETTES[parts.paletteIndex % PALETTES.length];
   const flameStyle = FLAME_STYLES[parts.flameIndex % FLAME_STYLES.length];
@@ -1335,13 +1330,15 @@ export function mountFlameAvatar(
   const handle: FlameAvatarHandle = {
     svg: ctrl.svg,
     seed,
-    setTheme(mode) {
+    setTheme(_mode) {
+      // Keep the light plate even if a caller requests dark.
+      const mode: FlameThemeMode = 'light';
       ctrl.themeMode = mode;
       const bg = THEME_BGS[mode];
       if (ctrl.bgStop1) ctrl.bgStop1.setAttribute('stop-color', bg.bg1);
       if (ctrl.bgStop2) ctrl.bgStop2.setAttribute('stop-color', bg.bg2);
       if (ctrl.bgGlowStop1) {
-        ctrl.bgGlowStop1.setAttribute('stop-opacity', mode === 'dark' ? '0.32' : '0.24');
+        ctrl.bgGlowStop1.setAttribute('stop-opacity', '0.24');
       }
     },
     destroy() {

@@ -1088,8 +1088,15 @@ html.dark {
     border-radius: 0;
     border-top: 1px solid color-mix(in oklab, var(--color-accent) 18%, var(--color-border));
     background: transparent;
-    padding: 0.55rem 0 0;
+    /* Match zone row px-3 so Invitar / copy / phrase aren't flush to the card edge */
+    padding: 0.55rem 0.75rem 0.85rem;
     box-shadow: none;
+  }
+  @media (min-width: 640px) {
+    .invite-panel--embedded {
+      padding-left: 0.875rem;
+      padding-right: 0.875rem;
+    }
   }
   .invite-panel--embedded.invite-panel--fire {
     border-top-color: color-mix(in oklab, var(--fire-mid) 36%, var(--color-border));
@@ -3476,8 +3483,34 @@ html.dark {
 }
 
 /* —— Flame avatars (ported from llamita mock) —— */
+/* Fixed cream plate — independent of app light/dark chrome */
+:root {
+  --flame-plate: #f1eee8;
+  --flame-plate-rim: color-mix(in oklab, #a8a195 55%, transparent);
+}
+
 .flame-avatar-host {
-  background: var(--color-surface);
+  background: var(--flame-plate);
+  line-height: 0;
+  box-shadow: inset 0 0 0 1px var(--flame-plate-rim);
+}
+
+.flame-avatar-hit {
+  display: inline-flex;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+  line-height: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flame-avatar-plate {
+  border-radius: var(--radius-ctrl);
+  box-shadow:
+    0 0 0 1px var(--flame-plate-rim),
+    0 12px 28px color-mix(in oklab, #000 12%, transparent);
   line-height: 0;
 }
 

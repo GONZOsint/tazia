@@ -67,6 +67,7 @@ export function PostCard({
           fg={visual?.fg}
           bg={visual?.bg}
           animated={false}
+          previewable={!isSelf}
         />
         <p className="type-ui min-w-0 flex-1 truncate font-semibold text-ink">
           {alias}

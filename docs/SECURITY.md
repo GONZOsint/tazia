@@ -45,7 +45,8 @@ Each tab/zone is a new `userId` (`identity: 'none'`). **Extinguishing the flame*
 There is no unilateral “delete message”. In Forum, proposing to extinguish a bonfire (thread) freezes the electorate (online tribe at that moment) and requires a **unanimous aye** (`DELETE_PROPOSE` / `DELETE_VOTE` in [`PROTOCOL.md`](PROTOCOL.md)).
 
 - The proposer counts as aye; alone in the zone, extinguish completes immediately.
-- Peers reject proposes that **shrink** the electorate relative to who they already saw online (blocks “extinguish without the others”).
+- On **live / Nostr fallback**, peers reject proposes that **shrink** the electorate relative to who they already saw online (blocks “extinguish without the others”).
+- Historical **sync** skips that electorate-cover check so late joiners can apply already-agreed signed tombstones; they do not re-validate who was online at propose time.
 - One propose per bonfire; on completion, `NEW_THREAD` / `REPLY` are purged and signed tombstones remain (sync must not resurrect content).
 - **Not** the same as extinguishing the flame: the vote puts out that bonfire on peers that apply the quorum; extinguishing the flame forgets **every** zone on **this** device.
 
@@ -63,19 +64,19 @@ If ICE fails, chat can continue over **encrypted** Nostr relays (PBKDF2 210k + H
 
 Binding there is application-level, not transport: forum messages are accepted with Ed25519 and the **pinned** key registry (no fake `liveUserId`). Presence requires a signed attestation over `["tazep.presence.v4", …, atMs, alias, avatarSeed]` (±5 min clock, strictly increasing `atMs`) before TOFU pin. Goodbye is attested; `sync-res` is signed (WebRTC sync too) and merged until timeout; EVENT clock skew is checked; `schnorr.verify` runs **before** decrypt. Fallback rate limits (forum, DM, sync, presence/goodbye) use the Nostr EVENT pubkey, not only the claimed `userId`.
 
-Attestation binds sign+enc keys to a claimed `userId` (first writer wins the TOFU pin). A `changed` sign key does **not** redirect Susurro enc. WebRTC presence is preferred over Nostr for the same `userId`. It does **not** equal Trystero WebRTC binding. Relays see metadata and encrypted bytes — not true P2P.
+Attestation binds sign+enc keys to a claimed `userId` (first writer wins the TOFU pin). A premature Nostr pin for someone else’s `userId` can make their later signed traffic fail verify until an explicit `repin` (identity DoS / UX hostage) — compare SAS before trusting Nostr-only peers. A `changed` sign key does **not** redirect Susurro enc. WebRTC presence is preferred over Nostr for the same `userId`. It does **not** equal Trystero WebRTC binding. Relays see metadata and encrypted bytes — not true P2P.
 
 ### Sync and signatures
 
 Every event carries an **Ed25519** signature over the canonical payload. Verify uses the **pinned** SPKI until an explicit `repin`. Snapshots without a valid signature or known key are **dropped**.
 
 Clock skew: live forum + Whispers ±5 min; historical sync ±24 h; Nostr EVENT ±300 s.  
-Soft rate limits: 30 publishes/min/peer, 30 Whispers/min, 12 sync answers/min; WebRTC sync sampled to 8 peers. Sync answers > 2 MB are rejected (`maxReceiveBytes` ≈ 2.5 MB).
+Soft rate limits (client-only, in-memory): 30 publishes/min/peer, 30 Whispers/min, 12 sync answers/min, 20 presence/goodbye/min on Nostr fallback; global fallback buckets are `×3` those caps. WebRTC sync sampled to 8 peers. Sync answers > 2 MB are rejected (`maxReceiveBytes` ≈ 2.5 MB). Rotating Nostr EVENT pubkeys can multiply throughput up to the globals — these are abuse hedges, not a hard security boundary.
 
 ### Trust between people
 
-**WebRTC:** the first key seen is pinned (TOFU: *trust on first use*) after validated Trystero presence (transport-bound ingest).  
-**Nostr:** pin only after attested presence.  
+**WebRTC:** the first signing (+ enc) key seen for a Trystero `userId` is pinned (TOFU). Presence on the wire is shape-validated only — it is **not** Ed25519-attested; authorship binding is on forum/DM (`authorUserId` / `fromUserId` must match the transport peer).  
+**Nostr:** pin only after attested presence (`tazep.presence.v4`).  
 Safety code (SAS): **6** emojis from a **256**-symbol pool (~48 bits) + `roomId` binding, from pinned SPKI **and** X25519 keys ([ePrint 2025/1598](https://eprint.iacr.org/2025/1598)). Key rotation → `changed`; verify stays on the pinned key until an explicit `repin` (no silent auto-heal). A `changed` sign key does **not** redirect Susurro enc keys.
 
 ### Network, consent, and burn
@@ -98,6 +99,9 @@ CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_hea
 - **Practical deniability** — we do not claim it. Ed25519 signatures are attributable; burn clears this tab, not other devices or relays.
 - **Burn ≠ secure delete** — non-extractable `CryptoKey`s cannot be zeroized; reload reduces tab RAM surface.
 - **Extinguish vote ≠ global guarantee** — a peer that never received the completed ballot may still show the bonfire; there is no server that forces erasure everywhere.
+- **Sync delete cover skipped** — late joiners apply signed `DELETE_*` tombstones without re-checking electorate cover against their local online set (by design for agreed history).
+- **Nostr TOFU race** — first attested presence for a `userId` wins the pin; a wrong first pin needs SAS + `repin`.
+- **Client-only rate limits** — soft hedges; not enforced by relays or a referee.
 - **MLS / Double Ratchet / Key Transparency** — need durable identity or a log operator; incompatible with `identity: 'none'` + pure static hosting ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
 - **Tor** — out of scope.
 - **Wake Lock** — optional; keeps the screen on, does not stop iOS from killing WebRTC when backgrounded.

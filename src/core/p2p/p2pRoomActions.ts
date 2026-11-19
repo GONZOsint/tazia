@@ -15,6 +15,7 @@ import {
   MAX_DM_PER_MINUTE,
   MAX_PUBLISH_PER_MINUTE,
   PROTOCOL_VERSION,
+  isForumEventWithinWireBudget,
   isValidForumEvent,
   isValidPresenceState,
   type DirectMessage,
@@ -145,6 +146,9 @@ export function buildJoinedP2pRoomActions(
       const signed = await signForumEvent(unsigned, ctx.signing);
       if (!isValidForumEvent(signed)) {
         throw new P2pActionError('unknown', 'Signed event failed local validation');
+      }
+      if (!isForumEventWithinWireBudget(signed)) {
+        throw new P2pActionError('wire-too-large', 'Forum event exceeds wire size budget');
       }
 
       const accepted = await ctx.forumIngest.ingest(signed, {

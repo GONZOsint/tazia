@@ -2,7 +2,7 @@ import type { DirectMessage, ForumEvent, PresenceState } from '../protocol';
 import type { TrustStore, TrustLevel } from '../trust/trustStore';
 import type { RoomErrorCode } from 'trystero';
 
-export type P2pRoomErrorCode = RoomErrorCode | 'publish-rate' | 'unknown';
+export type P2pRoomErrorCode = RoomErrorCode | 'publish-rate' | 'wire-too-large' | 'unknown';
 
 export class P2pActionError extends Error {
   readonly code: P2pRoomErrorCode;

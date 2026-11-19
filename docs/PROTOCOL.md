@@ -32,8 +32,11 @@ Peers on `agora-forum-v1` / `agora-forum-v2` do **not** talk to `tazep-v2` (no d
 | `MAX_SYNC_TOTAL_BYTES` | 2 MB |
 | `MAX_RECEIVE_BYTES` | ≈ 2.5 MB (`MAX_SYNC_TOTAL_BYTES + 512 KiB`) |
 | `MAX_PRESENCE_STATE_BYTES` | 4096 |
+| `MAX_FORUM_WIRE_BYTES` | `4096 + MAX_TITLE_CHARS×6 + MAX_BODY_CHARS×6 + MAX_SIG_B64_CHARS` (= 53 424) |
 | `MAX_PUBLISH_PER_MINUTE` | 30 |
 | `MAX_SYNC_ANSWERS_PER_MINUTE` | 12 |
+| `MAX_PRESENCE_PER_MINUTE` | 20 (Nostr fallback presence/goodbye per EVENT pubkey) |
+| Fallback global rate caps | `×3` the per-peer limits (anti-amplification soft hedge) |
 | `LIVE_CLOCK_SKEW_MS` | ±5 min (live forum + DMs) |
 | `SYNC_CLOCK_SKEW_MS` | ±24 h (historical snapshot) |
 | `NOSTR_EVENT_CLOCK_SKEW_SEC` | ±300 s (Nostr EVENT `created_at`) |
@@ -43,6 +46,8 @@ UI only (not on the wire): up to **3** concurrent zones (`MAX_ROOMS`).
 
 `MAX_USERS=50` is Trystero’s soft cap. Full WebRTC mesh degrades past ~4–6 peers; live sync samples at most `MAX_SYNC_PEER_TARGETS` peers.
 
+Rate limits are **client-only** soft hedges (in-memory). Nostr fallback keys them by EVENT pubkey; rotating pubkeys can multiply throughput up to the global `×3` buckets.
+
 ---
 
 ## Changes vs agora-forum-v2
@@ -51,12 +56,11 @@ UI only (not on the wire): up to **3** concurrent zones (`MAX_ROOMS`).
 | --- | --- | --- |
 | Name / domain tags | `agora-forum-v2`, `tazia.*` | `tazep-v2`, `tazep.*` |
 | Whispers | sealed-only `seal: 2` | same |
-| Presence attestation | `tazia.presence.v1` | `tazep.presence.v1` |
-| Goodbye (Nostr) | unauthenticated | attested `tazep.goodbye.v1` |
-| Nostr `sync-res` | first encrypted reply wins | `fromUserId` + Ed25519 over `tazep.sync-res.v1` + events digest |
-| Verify keys | latest observed SPKI | **pinned** TOFU (sign+enc) until `repin` |
-| Presence attest | `tazep.presence.v1` (no time) | `tazep.presence.v4` + `atMs` + `alias` + `avatarSeed` |
+| Presence attestation | `tazia.presence.v1` | `tazep.presence.v4` + `atMs` + `alias` + `avatarSeed` |
+| Goodbye (Nostr) | unauthenticated | attested `tazep.goodbye.v3` + `atMs` |
 | WebRTC sync | raw `ForumEvent[]` | signed digest (`tazep.sync-res.v1`, reqId `webrtc-sync`) |
+| Nostr `sync-res` | first encrypted reply wins | `fromUserId` + Ed25519 over `tazep.sync-res.v1` + events digest; **merge** valid replies until timeout |
+| Verify keys | latest observed SPKI | **pinned** TOFU (sign+enc) until `repin` |
 | Talk delete | none (append-only) | unanimous `DELETE_PROPOSE` / `DELETE_VOTE` + tombstones |
 
 ---
@@ -222,6 +226,7 @@ Room material: PBKDF2 210k once (salt `tazep.fallback.v2:{roomId}`) + dual HKDF 
 - EVENT: schnorr verify of canonical id + `created_at` skew **before** decrypt.
 - `sync-res`: `eventsDigest = hex(SHA-256(JSON.stringify(events)))`; sig over  
   `["tazep.sync-res.v1", roomId, reqId, fromUserId, toUserId, eventsDigest]`.
+  Valid replies are **merged** until the request timeout (not first-wins).
 - Relays see metadata and ciphertext, not plaintext. Not true P2P.
 
 ---

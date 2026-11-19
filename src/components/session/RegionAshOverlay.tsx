@@ -44,6 +44,12 @@ export interface RegionAshOverlayProps {
   canvasId?: string;
   /** burn = zone quema; extinguish = hoguera se apaga. */
   mode?: BurnFrontMode;
+  /**
+   * When false, keep the ghost box full-height until the parent unmounts
+   * (zone leave). Avoids mid-burn height collapse fighting sibling layout.
+   * Default true (hoguera / talk ash still collapses the slot).
+   */
+  collapseDom?: boolean;
 }
 
 type AshTarget = BurnWorkTarget & { el: HTMLElement };
@@ -75,6 +81,7 @@ export function RegionAshOverlay({
   maxEdgePx,
   canvasId = 'region-ash-fire-canvas',
   mode = 'burn',
+  collapseDom = true,
 }: RegionAshOverlayProps) {
   const life = useBurnOverlayLifecycle(onComplete);
   const reduceMotion = useReducedMotion();
@@ -103,7 +110,9 @@ export function RegionAshOverlay({
           frontMs: Math.max(40, Math.floor(timing.reducedMs / 2)),
           collapseMs: timing.reducedMs,
           onFront: () => setRegionAshPhase(els, 'ghost'),
-          onCollapse: () => setRegionAshPhase(els, 'collapse'),
+          onCollapse: () => {
+            if (collapseDom) setRegionAshPhase(els, 'collapse');
+          },
           onFinish: finish,
         });
       } else {
@@ -240,7 +249,7 @@ export function RegionAshOverlay({
           },
         });
 
-        if (!collapsed && elapsedMs >= timing.collapseAtMs) {
+        if (collapseDom && !collapsed && elapsedMs >= timing.collapseAtMs) {
           collapsed = true;
           setRegionAshPhase(
             targets.map((t) => t.el),
@@ -313,6 +322,7 @@ export function RegionAshOverlay({
     selectorsKey,
     edgeKey,
     mode,
+    collapseDom,
     timing.finishMs,
     timing.reducedMs,
     timing.collapseAtMs,

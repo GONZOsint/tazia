@@ -32,8 +32,11 @@ Peers con `agora-forum-v1` / `agora-forum-v2` **no** se entienden con `tazep-v2`
 | `MAX_SYNC_TOTAL_BYTES` | 2 MB |
 | `MAX_RECEIVE_BYTES` | ≈ 2.5 MB (`MAX_SYNC_TOTAL_BYTES + 512 KiB`) |
 | `MAX_PRESENCE_STATE_BYTES` | 4096 |
+| `MAX_FORUM_WIRE_BYTES` | `4096 + MAX_TITLE_CHARS×6 + MAX_BODY_CHARS×6 + MAX_SIG_B64_CHARS` (= 53 424) |
 | `MAX_PUBLISH_PER_MINUTE` | 30 |
 | `MAX_SYNC_ANSWERS_PER_MINUTE` | 12 |
+| `MAX_PRESENCE_PER_MINUTE` | 20 (presence/goodbye Nostr por pubkey del EVENT) |
+| Tope global fallback | `×3` los límites por peer (anti-amplificación blanda) |
 | `LIVE_CLOCK_SKEW_MS` | ±5 min (foro en vivo + Susurros) |
 | `SYNC_CLOCK_SKEW_MS` | ±24 h (snapshot histórico) |
 | `NOSTR_EVENT_CLOCK_SKEW_SEC` | ±300 s (`created_at` de EVENT Nostr) |
@@ -42,6 +45,8 @@ Versiones distintas de `2` se **rechazan**.
 Límite de UI (no del protocolo): hasta **3** zonas concurrentes (`MAX_ROOMS`).
 
 `MAX_USERS=50` es tope blando de Trystero. El mesh completo degrada pasado ~4–6 peers; el sync live muestreá como máximo `MAX_SYNC_PEER_TARGETS`.
+
+Los rate limits son hedges **solo en el cliente** (en memoria). En fallback Nostr se clavean por pubkey del EVENT; rotar pubkeys puede multiplicar el throughput hasta los buckets globales `×3`.
 
 ---
 
@@ -54,7 +59,7 @@ Límite de UI (no del protocolo): hasta **3** zonas concurrentes (`MAX_ROOMS`).
 | Attestation presence | `tazia.presence.v1` | `tazep.presence.v4` + `atMs` + `alias` + `avatarSeed` |
 | Goodbye (Nostr) | sin auth | atestiguado `tazep.goodbye.v3` + `atMs` |
 | Sync WebRTC | `ForumEvent[]` crudo | digest firmado (`tazep.sync-res.v1`) |
-| `sync-res` Nostr | primera respuesta gana | `fromUserId` + Ed25519 `tazep.sync-res.v1` + digest |
+| `sync-res` Nostr | primera respuesta gana | `fromUserId` + Ed25519 `tazep.sync-res.v1` + digest; **merge** de respuestas válidas hasta timeout |
 | Verify keys | última SPKI observada | **pinned** TOFU hasta `repin` |
 | Apagar hoguera | ninguno (solo append) | `DELETE_PROPOSE` / `DELETE_VOTE` unánime + tumbas |
 
@@ -221,6 +226,7 @@ Material de sala: PBKDF2 210k una vez (salt `tazep.fallback.v2:{roomId}`) + HKDF
 - EVENT: schnorr verify del id canónico + skew de `created_at` **antes** de decrypt.
 - `sync-res`: `eventsDigest = hex(SHA-256(JSON.stringify(events)))`; firma sobre  
   `["tazep.sync-res.v1", roomId, reqId, fromUserId, toUserId, eventsDigest]`.
+  Las respuestas válidas se **fusionan** hasta el timeout de la petición (no gana la primera).
 - Los relés ven metadatos y bytes cifrados, no el texto en claro. No es P2P puro.
 
 ---
