@@ -221,7 +221,7 @@ export function TopBar({
                 className="burn-ignition-bar"
                 style={
                   burnHeating
-                    ? { transform: 'scaleX(1)', transition: 'transform var(--dur-burn-ignition) linear' }
+                    ? { transform: 'scaleX(1)', transition: 'transform var(--dur-burn-ignition) var(--ease-out-expo)' }
                     : undefined
                 }
                 aria-hidden="true"

@@ -84,7 +84,7 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
             animate={modalSheet.animate}
             exit={modalSheet.exit}
             transition={modalSheet.transition}
-            className="panel-surface shadow-sheet w-full max-w-md p-5 outline-none sm:p-6"
+            className="panel-surface panel-pad--modal shadow-sheet w-full max-w-md outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="ip-consent-title" className="type-title text-ink">
@@ -98,7 +98,7 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
                 transition={TAP_TRANSITION}
                 type="button"
                 onClick={onCancel}
-                className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-4 py-2 text-sm font-medium text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] border border-border bg-bg px-4 py-2 type-ui font-medium text-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
               >
                 {t('consentCancel')}
               </motion.button>
@@ -107,7 +107,7 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
                 transition={TAP_TRANSITION}
                 type="button"
                 onClick={onAccept}
-                className="btn-accent-sheen min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
+                className="btn-accent-sheen inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent px-4 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
               >
                 {t('consentAccept')}
               </motion.button>

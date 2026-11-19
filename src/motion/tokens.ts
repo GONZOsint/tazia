@@ -6,7 +6,7 @@
  *   - Send plane → Motion useAnimate only (no CSS .plane-launching)
  *   - Burn button heating → CSS (.burn-heat.is-heating / flame-flicker-hover)
  *   - Burn climax → canvas BurnFireOverlay (density field + blur) + layoutId spark
- *   - Zone ignite → CSS + IGNITE; zone leave → Motion zoneCardExit (not incinerated-collapse)
+ *   - Zone ignite → CSS + IGNITE; zone leave → Motion zoneCardExit + zoneListLayout (not incinerated-collapse)
  *   - Talk delete ash → CSS `.plaza-talk-incinerate` + TALK_ASH / --dur-talk-ash
  *   - Hero burn phrase → CSS goo plume (#tazia-fire-plume) behind sharp type
  *   - Hero idle presence → CSS breath/sheen + JS nudge/parallax (HERO_IDLE; paused when hidden / reduced)
@@ -14,7 +14,7 @@
  *   - Confetti / seal / mesh birth → Motion presets (ritual tier; confetti = create+verify only)
  *
  * Tiers (NN/g + Fluent hierarchy):
- *   frequent ≤150ms  |  panel ~200–220ms  |  ritual ≤400ms spring  |  climax BURN ~1.3s
+ *   frequent ≤150ms  |  panel ~200–220ms  |  ritual ≤400ms spring  |  climax BURN ~1.5s
  */
 
 export const MOTION_TIER = {
@@ -38,7 +38,7 @@ export const DUR = {
   /** Rare ornament (zone-join / QR ring) — keep ≤ 0.4s. */
   pulse: 0.36,
   ring: 0.36,
-  burn: 0.48,
+  burn: 0.68,
   /** Peer materialize / mesh birth settle. */
   birth: 0.28,
   /** QR success / passphrase douse. */
@@ -81,18 +81,19 @@ export const EASE = {
  *   finish  teardown + session wipe
  */
 export const BURN = {
-  ignitionMs: 480,
-  peakAtMs: 300,
-  collapseAtMs: 560,
-  finishMs: 1280,
-  reducedFrontMs: 80,
-  reducedCollapseMs: 140,
+  ignitionMs: 720,
+  peakAtMs: 520,
+  collapseAtMs: 1100,
+  /** Pixel fire front + particle linger (~reference 2.3s). */
+  finishMs: 2200,
+  reducedFrontMs: 100,
+  reducedCollapseMs: 180,
   layoutId: 'burn-flame',
   /** Shared layoutId spring: TopBar flame → BurnFireOverlay. */
   layoutSpring: {
     type: 'spring' as const,
-    visualDuration: 0.36,
-    bounce: 0.1,
+    visualDuration: 0.52,
+    bounce: 0.03,
   },
 } as const;
 
@@ -280,15 +281,22 @@ export const NAV_TAP = { scale: 0.9 } as const;
  * (that class is for session burn via BurnFireOverlay; its opacity/filter/transform
  * fight Motion inline styles, and max-height:80rem→0 barely collapses in time).
  * No filter/blur — flickers on Windows GPUs (same rule as enterPlaza).
+ *
+ * Choreography: optimistic unmount → AnimatePresence popLayout runs `exit` while
+ * siblings spring into place via `zoneListLayout` (overlap, not wait-then-jump).
  */
 export const zoneCardExit = {
   initial: { opacity: 1, scale: 1, y: 0 },
-  /** Pre-unmount incinerate — duration must match DUR.burn / --dur-burn. */
+  /** @deprecated Prefer `exit` — kept for any leftover incinerate callers. */
   incinerate: {
     opacity: 0,
-    scale: 0.96,
-    y: 8,
-    transition: { duration: DUR.burn, ease: EASE.easeIn },
+    scale: 0.94,
+    y: 12,
+    transition: {
+      opacity: { duration: DUR.medium, ease: EASE.easeIn },
+      scale: { duration: DUR.switch, ease: EASE.easeIn },
+      y: { duration: DUR.switch, ease: EASE.easeIn },
+    },
   },
   incinerateReduced: {
     opacity: 0,
@@ -296,14 +304,29 @@ export const zoneCardExit = {
     y: 0,
     transition: { duration: BURN.reducedCollapseMs / 1000, ease: EASE.easeIn },
   },
-  /** After incinerate the card is already gone — keep exit near-instant. */
+  /** Popped-out leave — plays while remaining cards layout-spring upward. */
   exit: {
     opacity: 0,
-    scale: 0.96,
-    y: 8,
-    transition: { duration: 0.01 },
+    scale: 0.94,
+    y: 12,
+    transition: {
+      opacity: { duration: DUR.medium, ease: EASE.easeIn },
+      scale: { duration: DUR.switch, ease: EASE.easeIn },
+      y: { duration: DUR.switch, ease: EASE.easeIn },
+    },
+  },
+  exitReduced: {
+    opacity: 0,
+    transition: { duration: BURN.reducedCollapseMs / 1000, ease: EASE.easeIn },
   },
 };
+
+/** Sibling zone cards settling into vacated slot (pair with layout + popLayout). */
+export const zoneListLayout = {
+  type: 'spring' as const,
+  visualDuration: 0.34,
+  bounce: 0.1,
+} as const;
 
 /** Soft panel enter — keep opacity high to avoid blank-frame flicker. */
 export const contentSwitch = {
@@ -437,7 +460,7 @@ export const TOAST = {
 } as const;
 
 /** QR secret outer-line ritual — mirror `--dur-secret-frame` / InviteQr. */
-export const SECRET_FRAME_MS = 720;
+export const SECRET_FRAME_MS = 820;
 
 /** Toast stack card. */
 export const toastEnter = {

@@ -155,7 +155,7 @@ function PostCard({
         ) : (
           <div className="h-[22px] w-[22px] rounded-[var(--radius-ctrl)] bg-surface" />
         )}
-        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+        <p className="type-ui min-w-0 flex-1 truncate font-semibold text-ink">
           {alias}
           {isSelf ? youSuffix : ''}
           <span className="type-caption ml-1.5 font-normal">
@@ -511,7 +511,7 @@ export function ThreadReader({
                     type="button"
                     onClick={() => void handleVoteDelete()}
                     disabled={isBusy || deleteBusy}
-                    className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-ctrl)] bg-danger px-3 py-2 text-sm font-semibold text-on-danger hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger sm:w-auto"
+                    className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-ctrl)] bg-danger px-3 py-2 type-ui font-semibold text-on-danger hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger sm:w-auto"
                   >
                     {t('readerDeleteVoteAye')}
                   </motion.button>
@@ -612,7 +612,7 @@ export function ThreadReader({
               transition={TAP_TRANSITION}
               type="submit"
               disabled={!replyBody.trim() || isBusy || submitting}
-              className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <PlaneSendIcon
                 planeKey={planeKey}

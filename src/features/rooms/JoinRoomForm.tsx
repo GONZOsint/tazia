@@ -19,6 +19,8 @@ interface JoinRoomFormProps {
   isJoining: boolean;
   onJoinRoom: (params: RoomJoinParams) => Promise<void>;
   douseKey?: number;
+  /** Force a single column (hub side panel). */
+  stacked?: boolean;
 }
 
 export function JoinRoomForm({
@@ -27,6 +29,7 @@ export function JoinRoomForm({
   isJoining,
   onJoinRoom,
   douseKey = 0,
+  stacked = false,
 }: JoinRoomFormProps) {
   const t = useT();
   const reduceMotion = useReducedMotion();
@@ -116,7 +119,13 @@ export function JoinRoomForm({
         });
       }}
     >
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start md:gap-6">
+      <div
+        className={
+          stacked
+            ? 'grid grid-cols-1 gap-5'
+            : 'grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start md:gap-6'
+        }
+      >
         <div className="flex min-w-0 flex-col gap-4">
           <motion.button
             whileTap={TAP}
@@ -125,11 +134,18 @@ export function JoinRoomForm({
             onClick={() => setScannerOpen(true)}
             className={
               canJoin
-                ? 'inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-3 text-sm font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-[7.5rem] md:flex-col md:gap-3'
-                : 'btn-accent-sheen inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-[7.5rem] md:flex-col md:gap-3'
+                ? `inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-3 type-ui font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent${
+                    stacked ? '' : ' md:min-h-[7.5rem] md:flex-col md:gap-3'
+                  }`
+                : `btn-accent-sheen inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-3 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent${
+                    stacked ? '' : ' md:min-h-[7.5rem] md:flex-col md:gap-3'
+                  }`
             }
           >
-            <QrCode className="h-5 w-5 md:h-8 md:w-8" aria-hidden="true" />
+            <QrCode
+              className={`h-5 w-5${stacked ? '' : ' md:h-8 md:w-8'}`}
+              aria-hidden="true"
+            />
             {t('qrScanTitle')}
           </motion.button>
 
@@ -142,7 +158,7 @@ export function JoinRoomForm({
                 if (mdUp) return;
                 setPasteOpen((v) => !v);
               }}
-              className="flex min-h-[44px] w-full items-center gap-1.5 text-left text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-default md:text-ink"
+              className="flex min-h-[44px] w-full items-center gap-1.5 text-left type-label text-muted focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-default md:text-ink"
             >
               {!mdUp && (
                 <ChevronDown
@@ -186,7 +202,7 @@ export function JoinRoomForm({
                 className="flex flex-col gap-4"
               >
                 <div>
-                  <label htmlFor="join-phrase" className="text-xs font-semibold text-ink">
+                  <label htmlFor="join-phrase" className="type-label text-ink">
                     {t('roomsPhraseLabel')}
                   </label>
                   <div className="mt-2">
@@ -217,7 +233,7 @@ export function JoinRoomForm({
                       transition={disclosure.transition}
                       className="overflow-hidden"
                     >
-                      <label htmlFor="join-alias" className="text-xs font-semibold text-ink">
+                      <label htmlFor="join-alias" className="type-label text-ink">
                         {t('roomsAliasLabel')}
                       </label>
                       <input
@@ -251,8 +267,8 @@ export function JoinRoomForm({
             disabled={!canJoin || isJoining}
             className={`${
               canJoin
-                ? 'btn-accent-sheen relative inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
-                : 'relative inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 text-sm font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+                ? 'btn-accent-sheen relative inline-flex min-h-[48px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 type-ui font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+                : 'relative inline-flex min-h-[48px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 type-ui font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
             } ${spark ? 'cta-ignite-spark' : ''} ${!showCredentials && !mdUp ? 'mt-0' : ''}`}
           >
             {spark && !reduceMotion && (

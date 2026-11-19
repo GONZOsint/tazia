@@ -205,7 +205,7 @@ export function ForumWorkspace({
           transition={TAP_TRANSITION}
           type="button"
           onClick={() => setTopicsOpen(true)}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2 type-ui font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
         >
           <List className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           {t('sidebarTopics')}
@@ -215,7 +215,7 @@ export function ForumWorkspace({
           transition={TAP_TRANSITION}
           type="button"
           onClick={() => setIsComposingThread(true)}
-          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
+          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
         >
           <MessageSquarePlus className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           {t('sidebarNewThread')}
@@ -334,7 +334,7 @@ export function ForumWorkspace({
                     onVoteDeleteThread={onVoteDeleteThread}
                   />
                 ) : (
-                  <div className="panel-surface p-8 text-center sm:p-10">
+                  <div className="panel-surface px-6 py-10 text-center sm:px-8 sm:py-12">
                     <MessageSquare className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
                     <h2 className="type-title mt-4 text-ink">
                       {hasAnyThreads && searchQuery.trim() ? t('forumNoResults') : t('forumEmptyThreads')}
@@ -354,7 +354,7 @@ export function ForumWorkspace({
                         transition={TAP_TRANSITION}
                         type="button"
                         onClick={() => setIsComposingThread(true)}
-                        className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
                         <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
                         {t('forumStartFirst')}

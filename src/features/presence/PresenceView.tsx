@@ -176,9 +176,9 @@ export function PresenceView({
             type="button"
             onClick={() => void onSyncNow()}
             disabled={isSyncing}
-            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 text-xs font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+            className="ml-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 type-ui font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
             {t('presenceRefresh')}
           </motion.button>
         </div>
@@ -270,7 +270,7 @@ export function PresenceView({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold leading-tight text-ink">
+                  <p className="type-ui truncate font-semibold leading-tight text-ink">
                     {alias}
                     {isSelf ? t('presenceYou') : ''}
                   </p>

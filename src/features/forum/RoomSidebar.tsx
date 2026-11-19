@@ -91,7 +91,7 @@ export function RoomSidebar({
         </div>
       )}
 
-      <div className="panel-surface p-3.5 sm:p-4">
+      <div className="panel-surface panel-pad--dense">
         <div className="flex items-start gap-3">
           <Identicon
             matrix={profile.identiconMatrix}
@@ -102,7 +102,7 @@ export function RoomSidebar({
           />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-sm font-semibold text-ink">{profile.alias}</p>
+              <p className="type-ui truncate font-semibold text-ink">{profile.alias}</p>
               <MeshStatusBadge
                 status={meshStatus}
                 onlineCount={onlineCount}
@@ -160,7 +160,7 @@ export function RoomSidebar({
         </AnimatePresence>
       </div>
 
-      <div className="panel-surface p-3.5 sm:p-4">
+      <div className="panel-surface panel-pad--dense">
         <div className="relative">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-faint"
@@ -187,14 +187,14 @@ export function RoomSidebar({
           type="button"
           onClick={onStartCompose}
           disabled={isBusy}
-          className="btn-accent-sheen pressable mt-2.5 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="btn-accent-sheen pressable mt-2.5 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden="true" />
+          <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
           {t('sidebarNewThread')}
         </button>
         <ul className="mt-2.5 max-h-[50vh] space-y-1 overflow-y-auto lg:max-h-[420px]">
           {!hasAnyThreads && (
-            <li className="px-2 py-6 text-center text-xs text-muted">{t('sidebarNoThreads')}</li>
+            <li className="type-caption px-2 py-6 text-center">{t('sidebarNoThreads')}</li>
           )}
           {threads.map((thread) => {
             const active = !isComposingThread && thread.threadId === activeThreadId;
@@ -204,7 +204,7 @@ export function RoomSidebar({
                 <button
                   type="button"
                   onClick={() => onSelectThread(thread.threadId)}
-                  className={`pressable flex w-full min-h-[40px] items-start gap-2 rounded-[var(--radius-ctrl)] px-2.5 py-2 text-left text-sm ${
+                  className={`pressable type-ui flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] px-2.5 py-2 text-left ${
                     active
                       ? 'border border-accent/40 bg-accent-soft font-semibold text-ink'
                       : 'border border-transparent text-ink hover:bg-bg'

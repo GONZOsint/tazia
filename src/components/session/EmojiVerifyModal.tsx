@@ -279,7 +279,7 @@ export function EmojiVerifyModal({
           >
             <ConfettiBurst play={confetti} onDone={() => setConfetti(false)} origin={{ x: 50, y: 42 }} />
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <div className="type-ui flex items-center gap-2 font-semibold text-ink">
                 <ShieldCheck className="h-4 w-4 text-ok" aria-hidden="true" />
                 {t('trustVerifyTitle')}
               </div>
@@ -365,7 +365,7 @@ export function EmojiVerifyModal({
                   type="button"
                   onClick={onClose}
                   disabled={verifying}
-                  className="flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] border border-border px-3 py-2 text-xs font-semibold text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+                  className="flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] border border-border px-3 py-2 type-ui font-semibold text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                 >
                   {t('trustNoMatch')}
                 </motion.button>
@@ -375,7 +375,7 @@ export function EmojiVerifyModal({
                   type="button"
                   onClick={() => void handleMatch()}
                   disabled={verifying || !code}
-                  className="btn-accent-sheen flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+                  className="btn-accent-sheen flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                 >
                   {t('trustMatch')}
                 </motion.button>

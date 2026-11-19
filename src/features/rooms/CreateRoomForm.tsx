@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Dices, KeyRound, Link2, Loader2, Radio, ShieldAlert } from 'lucide-react';
+import { ChevronDown, Dices, KeyRound, Loader2, Radio, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   EASE,
@@ -7,7 +7,6 @@ import {
   SECRET_FRAME_MS,
   TAP,
   TAP_TRANSITION,
-  contentSwitch,
   disclosure,
   panelEnter,
 } from '../../motion/tokens';
@@ -27,14 +26,22 @@ import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { useToast } from '../../components/ui/ToastHost';
+import { InviteShareControls } from './InviteShareControls';
 
 interface CreateRoomFormProps {
   isJoining: boolean;
   onJoinRoom: (params: RoomJoinParams) => Promise<void>;
   douseKey?: number;
+  /** Force a single column (hub side panel). */
+  stacked?: boolean;
 }
 
-export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRoomFormProps) {
+export function CreateRoomForm({
+  isJoining,
+  onJoinRoom,
+  douseKey = 0,
+  stacked = false,
+}: CreateRoomFormProps) {
   const t = useT();
   const toast = useToast();
   const reduceMotion = useReducedMotion();
@@ -65,55 +72,19 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
   }, [createPhrase, includePhraseInLink]);
 
   const inviteBody = (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4 md:flex-col md:gap-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="type-caption">{t('roomsCopyLink')}</p>
-          <CopyButton
-            text={inviteUrl}
-            label={t('roomsCopyLink')}
-            copiedLabel={t('copiedDefault')}
-            icon={Link2}
-            iconOnly
-            className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
-          />
-        </div>
-
-        <motion.label
-          initial={contentSwitch.initial}
-          animate={contentSwitch.animate}
-          transition={contentSwitch.transition}
-          className="invite-opt flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
-        >
-          <span className="relative inline-flex">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={includePhraseInLink}
-              disabled={!createPhrase.trim()}
-              onChange={(e) => {
-                if (e.target.checked) setConfirmOpen(true);
-                else setIncludePhraseInLink(false);
-              }}
-            />
-            <span
-              className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-disabled:opacity-40"
-              data-checked={includePhraseInLink}
-              aria-hidden="true"
-            >
-              <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
-                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-          </span>
-          <span className="flex-1">{t('roomsIncludePhrase')}</span>
-          {includePhraseInLink && (
-            <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
-          )}
-        </motion.label>
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:gap-4 md:flex-col md:gap-3">
+      <div className="min-w-0 w-full flex-1">
+        <InviteShareControls
+          inviteUrl={inviteUrl}
+          includePhrase={includePhraseInLink}
+          phraseAvailable
+          phraseDisabled={!createPhrase.trim()}
+          onRequestIncludePhrase={() => setConfirmOpen(true)}
+          onExcludePhrase={() => setIncludePhraseInLink(false)}
+        />
       </div>
 
-      <div className="flex shrink-0 items-start justify-center self-center sm:self-start md:self-center">
+      <div className="invite-qr-slot flex w-full min-w-0 shrink-0 items-start justify-center self-center sm:w-auto sm:self-start md:w-full md:self-center">
         <InviteQr
           inviteUrl={inviteUrl}
           size={mdUp ? 160 : 136}
@@ -145,10 +116,16 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
         });
       }}
     >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start md:gap-6">
+      <div
+        className={
+          stacked
+            ? 'grid grid-cols-1 gap-4'
+            : 'grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start md:gap-6'
+        }
+      >
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
+            <label htmlFor="create-phrase" className="type-label text-ink">
               {t('roomsPhraseLabel')}
             </label>
             <SecretPhraseInput
@@ -182,7 +159,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
                   setShowCreatePhrase(true);
                   setDiceSpinKey((k) => k + 1);
                 }}
-                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2 text-xs font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2 type-ui font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <span key={diceSpinKey} className="dice-rolling">
                   <Dices className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
@@ -193,7 +170,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
           </div>
 
           <div>
-            <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
+            <label htmlFor="create-alias" className="type-label text-ink">
               {t('roomsAliasLabel')}
             </label>
             <input
@@ -210,7 +187,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
             transition={TAP_TRANSITION}
             type="submit"
             disabled={!createStrength.isAcceptable || isJoining}
-            className={`btn-accent-sheen btn-ring-hover relative inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${spark ? 'cta-ignite-spark' : ''}`}
+            className={`btn-accent-sheen btn-ring-hover relative inline-flex min-h-[48px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 type-ui font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${spark ? 'cta-ignite-spark' : ''}`}
           >
             {spark && !reduceMotion && (
               <motion.span
@@ -237,7 +214,11 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
         </div>
 
         {/* Mobile: collapsible under CTA. Desktop: always-open side column. */}
-        <div className="invite-panel overflow-hidden md:min-h-0">
+        <div
+          className={`invite-panel invite-panel--collapse md:min-h-0 ${
+            phraseForLink ? 'invite-panel--fire' : ''
+          }`}
+        >
           <button
             type="button"
             aria-expanded={inviteExpanded}
@@ -250,7 +231,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
             className="flex w-full min-h-[44px] items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
           >
             <span className="min-w-0">
-              <span className="block text-xs font-semibold text-ink">{t('roomsInviteTitle')}</span>
+              <span className="type-label block text-ink">{t('roomsInviteTitle')}</span>
               <span className="type-caption mt-0.5 block">{t('roomsInviteHint')}</span>
             </span>
             {!mdUp && (
@@ -269,9 +250,9 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
                 animate={disclosure.animate}
                 exit={mdUp ? undefined : disclosure.exit}
                 transition={mdUp ? { duration: 0 } : disclosure.transition}
-                className="overflow-hidden"
+                className="min-w-0 overflow-x-visible overflow-y-clip"
               >
-                <div className="border-t border-border pt-3">{inviteBody}</div>
+                <div className="min-w-0 border-t border-border pt-3">{inviteBody}</div>
               </motion.div>
             )}
           </AnimatePresence>

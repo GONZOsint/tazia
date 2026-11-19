@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Link2, ShieldAlert } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { buildInviteUrl } from '../../core/utils/inviteLink';
 import { useT } from '../../i18n';
-import { contentSwitch, disclosure, SECRET_FRAME_MS } from '../../motion/tokens';
+import { disclosure, SECRET_FRAME_MS } from '../../motion/tokens';
 import { InviteQr } from '../../components/session/InviteQr';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
-import { CopyButton } from '../../components/ui/CopyButton';
 import { useToast } from '../../components/ui/ToastHost';
+import { InviteShareControls } from './InviteShareControls';
 
 interface ZoneInvitePanelProps {
   roomId: string;
@@ -27,6 +27,7 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
     () => buildInviteUrl(roomId, includePhrase && phrase ? phrase : undefined),
     [roomId, phrase, includePhrase]
   );
+  const hasSecret = includePhrase && Boolean(phrase);
 
   return (
     <motion.div
@@ -34,60 +35,31 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
       animate={disclosure.animate}
       exit={disclosure.exit}
       transition={disclosure.transition}
-      className="overflow-hidden"
+      className="min-w-0 overflow-x-visible overflow-y-clip"
     >
-      <div className="invite-panel invite-panel--embedded">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-ink">{t('roomsInviteTitle')}</p>
-          <CopyButton
-            text={inviteUrl}
-            label={t('roomsCopyLink')}
-            copiedLabel={t('copiedDefault')}
-            icon={Link2}
-            iconOnly
-            className="icon-action focus-visible:outline-2 focus-visible:outline-accent"
+      <div
+        className={`invite-panel invite-panel--embedded min-w-0 ${hasSecret ? 'invite-panel--fire' : ''}`}
+      >
+        <p className="type-label text-ink">{t('roomsInviteTitle')}</p>
+
+        <div className="mt-2.5">
+          <InviteShareControls
+            inviteUrl={inviteUrl}
+            includePhrase={includePhrase}
+            phraseAvailable={Boolean(phrase)}
+            onRequestIncludePhrase={() => setConfirmOpen(true)}
+            onExcludePhrase={() => setIncludePhrase(false)}
+            compact
           />
         </div>
 
-        <div className="mt-2 flex justify-center">
+        <div className="invite-qr-slot mt-3 flex w-full min-w-0 justify-center">
           <InviteQr
             inviteUrl={inviteUrl}
             size={compact ? 152 : 172}
-            includesSecret={includePhrase && Boolean(phrase)}
+            includesSecret={hasSecret}
           />
         </div>
-
-        {phrase && (
-          <motion.label
-            initial={contentSwitch.initial}
-            animate={contentSwitch.animate}
-            transition={{ ...contentSwitch.transition, delay: 0.12 }}
-            className="invite-opt mt-2.5 flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
-          >
-            <span className="relative inline-flex">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                checked={includePhrase}
-                onChange={(e) => {
-                  if (e.target.checked) setConfirmOpen(true);
-                  else setIncludePhrase(false);
-                }}
-              />
-              <span
-                className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
-                data-checked={includePhrase}
-                aria-hidden="true"
-              >
-                <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
-                  <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </span>
-            <span className="flex-1">{t('roomsIncludePhrase')}</span>
-            {includePhrase && <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />}
-          </motion.label>
-        )}
       </div>
 
       <ConfirmModal
@@ -99,7 +71,7 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
         onConfirm={() => {
           setIncludePhrase(true);
           setConfirmOpen(false);
-          // Let the QR outer-line ritual land before the toast competes for attention.
+          // Let the QR fire ritual land before the toast competes for attention.
           window.setTimeout(() => {
             toast.push({
               message: t('phraseInLinkToast'),

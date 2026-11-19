@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
 import { TAP, TAP_TRANSITION, modalScrim, modalSheet } from '../../motion/tokens';
+import { AccentButton, SecondaryButton } from './AccentButton';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -66,7 +67,7 @@ export function ConfirmModal({
             animate={modalSheet.animate}
             exit={modalSheet.exit}
             transition={modalSheet.transition}
-            className={`shadow-sheet w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised p-5 outline-none sm:p-6 ${
+            className={`shadow-sheet panel-pad--modal w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised outline-none ${
               danger ? 'border-danger-border' : 'border-border'
             }`}
             onClick={(e) => e.stopPropagation()}
@@ -84,28 +85,24 @@ export function ConfirmModal({
               </div>
             </div>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <motion.button
-                whileTap={TAP}
-                transition={TAP_TRANSITION}
-                type="button"
-                onClick={onCancel}
-                className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-4 py-2 text-sm font-medium text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
-              >
+              <SecondaryButton size="sm" onClick={onCancel} className="font-medium text-muted">
                 {cancelLabel ?? t('consentCancel')}
-              </motion.button>
-              <motion.button
-                whileTap={TAP}
-                transition={TAP_TRANSITION}
-                type="button"
-                onClick={onConfirm}
-                className={`min-h-[44px] rounded-[var(--radius-ctrl)] px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent ${
-                  danger
-                    ? 'border border-danger-border bg-danger-bg text-danger-ink hover:border-danger hover:bg-danger/15'
-                    : 'bg-accent text-on-accent hover:bg-accent-hover'
-                }`}
-              >
-                {confirmLabel ?? t('consentAccept')}
-              </motion.button>
+              </SecondaryButton>
+              {danger ? (
+                <motion.button
+                  whileTap={TAP}
+                  transition={TAP_TRANSITION}
+                  type="button"
+                  onClick={onConfirm}
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-4 py-2 type-ui font-semibold text-danger-ink hover:border-danger hover:bg-danger/15 focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  {confirmLabel ?? t('consentAccept')}
+                </motion.button>
+              ) : (
+                <AccentButton size="sm" onClick={onConfirm}>
+                  {confirmLabel ?? t('consentAccept')}
+                </AccentButton>
+              )}
             </div>
           </motion.div>
         </motion.div>

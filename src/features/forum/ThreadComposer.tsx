@@ -49,14 +49,14 @@ export function ThreadComposer({
             <FileText className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('composerTitle')}
           </h2>
-          <p className="mt-1 text-xs text-muted">{t('composerAs', { alias: identity.alias })}</p>
+          <p className="type-caption mt-1">{t('composerAs', { alias: identity.alias })}</p>
         </div>
         <motion.button
           whileTap={TAP}
           transition={TAP_TRANSITION}
           type="button"
           onClick={onCancel}
-          className="inline-flex min-h-[44px] items-center gap-1 rounded-[var(--radius-ctrl)] border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+          className="inline-flex min-h-[44px] items-center gap-1 rounded-[var(--radius-ctrl)] border border-border px-3 py-1.5 type-ui font-medium text-muted hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
           {t('composerCancel')}
@@ -65,7 +65,7 @@ export function ThreadComposer({
 
       <form className="mt-5 space-y-4" onSubmit={(e) => void handleSubmit(e)}>
         <div>
-          <label htmlFor="thread-title" className="text-xs font-semibold text-ink">
+          <label htmlFor="thread-title" className="type-label text-ink">
             {t('composerTitleLabel')}
           </label>
           <input
@@ -79,7 +79,7 @@ export function ThreadComposer({
           />
         </div>
         <div>
-          <label htmlFor="thread-body" className="text-xs font-semibold text-ink">
+          <label htmlFor="thread-body" className="type-label text-ink">
             {t('composerBodyLabel')}
           </label>
           <textarea
@@ -98,7 +98,7 @@ export function ThreadComposer({
           transition={TAP_TRANSITION}
           type="submit"
           disabled={overLimit || isBusy}
-          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="btn-accent-sheen inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 type-ui font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <PlaneSendIcon
             planeKey={planeKey}

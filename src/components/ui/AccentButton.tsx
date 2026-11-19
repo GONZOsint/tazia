@@ -2,19 +2,31 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
+/**
+ * Button scale (aligned with --tap-min / AccentButton):
+ *   sm  44 — default controls, modals, toolbars
+ *   md  48 — primary CTA in panels / empty states
+ *   lg  52 — hero / full-bleed entry only
+ */
+type ButtonSize = 'sm' | 'md' | 'lg';
+
 type AccentButtonProps = {
   children: ReactNode;
   className?: string;
-  size?: 'md' | 'lg';
+  size?: ButtonSize;
   disabled?: boolean;
   type?: 'button' | 'submit' | 'reset';
   onClick?: ButtonHTMLAttributes<HTMLButtonElement>['onClick'];
 };
 
-const SIZE = {
-  md: 'min-h-[48px] px-5 py-2.5 text-sm',
-  lg: 'min-h-[52px] px-6 py-3 text-sm',
-} as const;
+const SIZE: Record<ButtonSize, string> = {
+  sm: 'min-h-[44px] px-4 py-2',
+  md: 'min-h-[48px] px-5 py-2.5',
+  lg: 'min-h-[52px] px-6 py-3',
+};
+
+const BTN_BASE =
+  'inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] type-ui font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
 
 export function AccentButton({
   children,
@@ -31,31 +43,41 @@ export function AccentButton({
       transition={TAP_TRANSITION}
       disabled={disabled}
       onClick={onClick}
-      className={`btn-accent-sheen inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${SIZE[size]} ${className}`}
+      className={`btn-accent-sheen ${BTN_BASE} bg-accent text-on-accent hover:bg-accent-hover ${SIZE[size]} ${className}`}
     >
       {children}
     </motion.button>
   );
 }
 
-type SecondaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type SecondaryButtonProps = {
   children: ReactNode;
+  className?: string;
+  size?: ButtonSize;
+  disabled?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  onClick?: ButtonHTMLAttributes<HTMLButtonElement>['onClick'];
 };
 
 export function SecondaryButton({
   children,
   className = '',
+  size = 'sm',
   type = 'button',
-  ...rest
+  disabled,
+  onClick,
 }: SecondaryButtonProps) {
   return (
-    <button
+    <motion.button
       type={type}
-      className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-      {...rest}
+      whileTap={!disabled ? TAP : undefined}
+      transition={TAP_TRANSITION}
+      disabled={disabled}
+      onClick={onClick}
+      className={`${BTN_BASE} border border-border bg-bg text-ink hover:bg-surface ${SIZE[size]} ${className}`}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
