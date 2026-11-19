@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRound, Link2, MessageSquarePlus, QrCode, RefreshCw, Search, X } from 'lucide-react';
+import { Flame, KeyRound, Link2, MessageSquarePlus, QrCode, RefreshCw, Search, X } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
@@ -37,6 +37,11 @@ interface RoomSidebarProps {
   isSyncing: boolean;
   isBusy: boolean;
   onSyncNow: () => void;
+  /** Thread ids with an open unanimous-delete ballot. */
+  pendingDeleteIds?: Set<string>;
+  /** Ghost row while talk ash plays after quorum. */
+  ashThread?: ThreadGroup | null;
+  reduceMotion?: boolean;
   /** Mobile sheet mode */
   mobileSheet?: boolean;
   onCloseSheet?: () => void;
@@ -66,12 +71,17 @@ export function RoomSidebar({
   isSyncing,
   isBusy,
   onSyncNow,
+  pendingDeleteIds,
+  ashThread = null,
+  reduceMotion = false,
   mobileSheet = false,
   onCloseSheet,
 }: RoomSidebarProps) {
   const t = useT();
   const invite = buildInviteUrl(roomId);
   const [showQr, setShowQr] = useState(false);
+  const showAshGhost =
+    Boolean(ashThread) && !threads.some((th) => th.threadId === ashThread!.threadId);
 
   return (
     <aside className="space-y-3">
@@ -199,19 +209,37 @@ export function RoomSidebar({
           {threads.map((thread) => {
             const active = !isComposingThread && thread.threadId === activeThreadId;
             const replyCount = thread.replies.length;
+            const pendingDelete = pendingDeleteIds?.has(thread.threadId) ?? false;
+            const ashing = ashThread?.threadId === thread.threadId;
             return (
               <li key={thread.threadId}>
                 <button
                   type="button"
                   onClick={() => onSelectThread(thread.threadId)}
+                  disabled={ashing || isBusy}
                   className={`pressable type-ui flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] px-2.5 py-2 text-left ${
-                    active
-                      ? 'border border-accent/40 bg-accent-soft font-semibold text-ink'
-                      : 'border border-transparent text-ink hover:bg-bg'
+                    ashing
+                      ? `plaza-topic-ash-target border border-transparent text-ink ${
+                          reduceMotion
+                            ? 'plaza-topic-incinerate plaza-topic-incinerate--reduced'
+                            : 'plaza-topic-incinerate'
+                        }`
+                      : pendingDelete
+                        ? 'plaza-topic-pending border font-semibold text-ink'
+                        : active
+                          ? 'border border-accent/40 bg-accent-soft font-semibold text-ink'
+                          : 'border border-transparent text-ink hover:bg-bg'
                   }`}
                 >
                   <span className="min-w-0 flex-1 line-clamp-2">{thread.title}</span>
-                  {replyCount > 0 && (
+                  {pendingDelete && !ashing && (
+                    <Flame
+                      className="plaza-topic-pending__ember mt-0.5 h-3.5 w-3.5 shrink-0"
+                      aria-hidden="true"
+                      strokeWidth={2}
+                    />
+                  )}
+                  {replyCount > 0 && !pendingDelete && (
                     <span
                       className={`type-badge mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 ${
                         active ? 'bg-accent text-on-accent' : 'bg-surface text-muted'
@@ -229,6 +257,25 @@ export function RoomSidebar({
               </li>
             );
           })}
+          {showAshGhost && ashThread && (
+            <li key={`ash-${ashThread.threadId}`}>
+              <div
+                className={`plaza-topic-ash-target type-ui flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] border border-transparent px-2.5 py-2 text-left font-semibold text-ink ${
+                  reduceMotion
+                    ? 'plaza-topic-incinerate plaza-topic-incinerate--reduced'
+                    : 'plaza-topic-incinerate'
+                }`}
+                aria-hidden="true"
+              >
+                <span className="min-w-0 flex-1 line-clamp-2">{ashThread.title}</span>
+                <Flame
+                  className="plaza-topic-pending__ember mt-0.5 h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                  strokeWidth={2}
+                />
+              </div>
+            </li>
+          )}
         </ul>
       </div>
     </aside>

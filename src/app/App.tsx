@@ -24,7 +24,6 @@ import {
   TAP_TRANSITION,
   bannerEnter,
   contentSwitch,
-  enterPlaza,
 } from '../motion/tokens';
 import { haptic, HAPTIC_RITUAL, HAPTIC_TAP } from '../motion/haptic';
 import { cachedPeerVisual } from '../core/crypto/identity';
@@ -301,6 +300,28 @@ export default function App() {
     });
   }, [activeTab]);
 
+  // Warm lazy tab chunks after first paint — avoids Suspense TabSkeleton flash on first visit.
+  useEffect(() => {
+    const warm = () => {
+      void import('../features/forum/ForumWorkspace');
+      void import('../features/presence/PresenceView');
+      void import('../features/dms/DmListView');
+      void import('../features/dms/DmConversationView');
+      void import('../features/how/HowItWorksView');
+    };
+    const w = window as Window &
+      typeof globalThis & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        cancelIdleCallback?: (id: number) => void;
+      };
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(warm, { timeout: 2500 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(warm, 400);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const splashShort = Boolean(initialInvite?.roomId);
 
   return (
@@ -445,85 +466,77 @@ export default function App() {
             >
               <Suspense fallback={<TabSkeleton />}>
                 {isInRoom && roomId && profile && selfUserId ? (
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.div
-                      key={roomId}
-                      initial={enterPlaza.initial}
-                      animate={enterPlaza.animate}
-                      exit={enterPlaza.exit}
-                      className="flex h-full min-h-0 flex-1 flex-col"
-                    >
-                      <ForumWorkspace
-                        roomId={roomId}
-                        phrase={phrase}
-                        profile={profile}
-                        selfUserId={selfUserId}
-                        messages={messages}
-                        presenceAliases={presenceAliases}
-                        onlineUserIds={onlineUserIds}
-                        onlineCount={peerOnlineCount}
-                        meshStatus={meshStatus}
-                        relayActive={Boolean(activeRoom?.relayFallbackActive)}
-                        isPublishing={isPublishing}
-                        isSyncing={isSyncing}
-                        roomError={roomErrorMsg}
-                        roomErrorTone="error"
-                        onDismissRoomError={dismissRoomError}
-                        onSyncNow={async () => {
-                          await syncNow();
-                        }}
-                        onCreateThread={async (title, body) => {
-                          const ok = await publish({
-                            type: 'NEW_THREAD',
-                            threadId: crypto.randomUUID(),
-                            parentMsgId: null,
-                            title,
-                            body,
-                          });
-                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                          return ok;
-                        }}
-                        onReplyThread={async (threadId, parentMsgId, body) => {
-                          const ok = await publish({
-                            type: 'REPLY',
-                            threadId,
-                            parentMsgId,
-                            title: '',
-                            body,
-                          });
-                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                          return ok;
-                        }}
-                        onProposeDeleteThread={async (threadId, electorate) => {
-                          const body = encodeElectorate(electorate);
-                          if (!body) {
-                            toast.push(t('toastPublishFailed'), 'error');
-                            return false;
-                          }
-                          const ok = await publish({
-                            type: 'DELETE_PROPOSE',
-                            threadId,
-                            parentMsgId: null,
-                            title: '',
-                            body,
-                          });
-                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                          return ok;
-                        }}
-                        onVoteDeleteThread={async (threadId, proposalMsgId) => {
-                          const ok = await publish({
-                            type: 'DELETE_VOTE',
-                            threadId,
-                            parentMsgId: proposalMsgId,
-                            title: '',
-                            body: DELETE_VOTE_AYE,
-                          });
-                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                          return ok;
-                        }}
-                      />
-                    </motion.div>
-                  </AnimatePresence>
+                  <div className="flex h-full min-h-0 flex-1 flex-col">
+                    <ForumWorkspace
+                      roomId={roomId}
+                      phrase={phrase}
+                      profile={profile}
+                      selfUserId={selfUserId}
+                      messages={messages}
+                      presenceAliases={presenceAliases}
+                      onlineUserIds={onlineUserIds}
+                      onlineCount={peerOnlineCount}
+                      meshStatus={meshStatus}
+                      relayActive={Boolean(activeRoom?.relayFallbackActive)}
+                      isPublishing={isPublishing}
+                      isSyncing={isSyncing}
+                      roomError={roomErrorMsg}
+                      roomErrorTone="error"
+                      onDismissRoomError={dismissRoomError}
+                      onSyncNow={async () => {
+                        await syncNow();
+                      }}
+                      onCreateThread={async (title, body) => {
+                        const ok = await publish({
+                          type: 'NEW_THREAD',
+                          threadId: crypto.randomUUID(),
+                          parentMsgId: null,
+                          title,
+                          body,
+                        });
+                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                        return ok;
+                      }}
+                      onReplyThread={async (threadId, parentMsgId, body) => {
+                        const ok = await publish({
+                          type: 'REPLY',
+                          threadId,
+                          parentMsgId,
+                          title: '',
+                          body,
+                        });
+                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                        return ok;
+                      }}
+                      onProposeDeleteThread={async (threadId, electorate) => {
+                        const body = encodeElectorate(electorate);
+                        if (!body) {
+                          toast.push(t('toastPublishFailed'), 'error');
+                          return false;
+                        }
+                        const ok = await publish({
+                          type: 'DELETE_PROPOSE',
+                          threadId,
+                          parentMsgId: null,
+                          title: '',
+                          body,
+                        });
+                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                        return ok;
+                      }}
+                      onVoteDeleteThread={async (threadId, proposalMsgId) => {
+                        const ok = await publish({
+                          type: 'DELETE_VOTE',
+                          threadId,
+                          parentMsgId: proposalMsgId,
+                          title: '',
+                          body: DELETE_VOTE_AYE,
+                        });
+                        if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                        return ok;
+                      }}
+                    />
+                  </div>
                 ) : (
                   <EmptyZoneCta
                     icon={<Radio className="h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />}
@@ -546,7 +559,6 @@ export default function App() {
             >
               <Suspense fallback={<TabSkeleton />}>
                 <PresenceView
-                  key={roomId ?? 'no-zone'}
                   selfUserId={selfUserId}
                   selfSignPubKeyB64={selfSignPubKeyB64}
                   trustStore={trustStore}
@@ -574,7 +586,7 @@ export default function App() {
               inert={activeTab !== 'dms' ? true : undefined}
             >
               <Suspense fallback={<TabSkeleton />}>
-                <AnimatePresence mode="wait" initial={false}>
+                <AnimatePresence initial={false}>
                   {dmPeerId && selfUserId ? (
                     <motion.div
                       key={`dm-${dmPeerId}`}

@@ -157,7 +157,6 @@ export function RoomEntryView({
     markRef,
     paused: heroIdlePaused,
     nudging: heroCtaNudging,
-    parallax: heroParallax,
     noteInteraction: noteHeroInteraction,
   } = useHeroIdlePresence(heroIdleEnabled);
 
@@ -389,17 +388,7 @@ export function RoomEntryView({
               />
               <div className="hero-landing__grid" aria-hidden="true" />
               <div className="relative z-[1] mx-auto flex max-w-md flex-col items-center text-center">
-                <div
-                  ref={markRef}
-                  className="hero-landing-mark-parallax"
-                  style={
-                    heroIdleEnabled
-                      ? {
-                          transform: `translate3d(${heroParallax.x}px, ${heroParallax.y}px, 0)`,
-                        }
-                      : undefined
-                  }
-                >
+                <div ref={markRef} className="hero-landing-mark-parallax">
                   <motion.div
                     initial={
                       skipHeroBootMotion

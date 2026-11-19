@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useT } from '../../i18n';
-import { APP_SPLASH, EASE, ZONE_BOOT } from '../../motion/tokens';
+import { APP_SPLASH, DUR, EASE, ZONE_BOOT } from '../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import { TaziaMark } from './TaziaMark';
 
@@ -103,7 +103,7 @@ export function AppSplash({ short = false }: AppSplashProps) {
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.04 }}
             transition={
               reduceMotion
-                ? { duration: 0.16, ease: EASE.outExpo }
+                ? { duration: DUR.tab, ease: EASE.outExpo }
                 : {
                     opacity: { duration: stageOpacityDur, ease: EASE.outExpo },
                     scale: stageSpring,
@@ -164,7 +164,7 @@ export function AppSplash({ short = false }: AppSplashProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
               transition={{
-                duration: reduceMotion ? 0.14 : wordmarkDur,
+                duration: reduceMotion ? DUR.micro : wordmarkDur,
                 ease: EASE.outExpo,
                 delay: skipParts ? 0.06 : delay.wordmark,
               }}

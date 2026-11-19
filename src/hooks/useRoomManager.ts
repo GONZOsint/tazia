@@ -34,6 +34,19 @@ export type { SessionError } from './sessionErrors';
 export type { RoomJoinParams, RoomState } from './roomManagerTypes';
 export { MAX_ROOMS, countOtherPeers } from './roomManagerTypes';
 
+/** Order-independent equality for peer presence id lists. */
+function sameOnlineIdSet(a: string[], b: string[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  if (a.length === 0) return true;
+  const set = new Set(a);
+  if (set.size !== b.length) return false;
+  for (const id of b) {
+    if (!set.has(id)) return false;
+  }
+  return true;
+}
+
 export function useRoomManager(
   onNavigateTab: (tab: 'forum' | 'rooms' | 'presence') => void,
   options?: {
@@ -282,7 +295,11 @@ export function useRoomManager(
           },
           onPeerPresence: (ids) => {
             if (!roomsRef.current.has(roomIdTrim)) return;
-            updateRoom(roomIdTrim, (r) => ({ ...r, onlineUserIds: ids }));
+            updateRoom(roomIdTrim, (r) => {
+              // Bail out on identical sets — presence ticks must not cascade re-renders.
+              if (sameOnlineIdSet(r.onlineUserIds, ids)) return r;
+              return { ...r, onlineUserIds: ids };
+            });
           },
           onUserJoined: () => {
             void runSync(roomIdTrim);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
 import { useT } from '../../i18n';
 import type { MeshStatus } from '../../core/protocol';
@@ -14,7 +14,7 @@ interface MeshStatusBadgeProps {
   relayActive?: boolean;
 }
 
-export function MeshStatusBadge({
+export const MeshStatusBadge = memo(function MeshStatusBadge({
   status,
   onlineCount,
   compact = false,
@@ -185,4 +185,4 @@ export function MeshStatusBadge({
       <span>{label}</span>
     </p>
   );
-}
+});

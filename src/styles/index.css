@@ -71,7 +71,12 @@
   --dur-secret-frame: 820ms;
   /* QR laser sweep — keep in sync with InviteQr SCAN_SWEEP_MS. */
   --dur-qr-scan: 1350ms;
-  /* Mirror BURN.finishMs / ignitionMs / collapse window in motion/tokens.ts */
+  /*
+   * Session-burn CSS card collapse (`.incinerated-collapse`).
+   * Not BURN.finishMs (2200 canvas teardown) — this is the opacity/height
+   * window after collapseAtMs while residual embers still play on canvas.
+   * Ignition bar mirrors BURN.ignitionMs.
+   */
   --dur-burn: 900ms;
   --dur-burn-ignition: 720ms;
   --dur-ignite: 280ms;
@@ -96,8 +101,8 @@
   --dur-burn-front-pulse: 720ms;
   --dur-burn-heat-glow: 720ms;
   /* Mirror TALK_ASH.durationMs / reducedMs in motion/tokens.ts */
-  --dur-talk-ash: 720ms;
-  --dur-talk-ash-reduced: 160ms;
+  --dur-talk-ash: 1100ms;
+  --dur-talk-ash-reduced: 180ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -711,26 +716,76 @@ html.dark {
     box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
   }
 
-  /* Unanimous delete ballot — sits under title with clear separation */
+  /* Unanimous delete ballot — fire chrome shared with talk ash ritual */
   .plaza-delete-ballot {
     margin-top: 0.75rem;
-    border: 1px solid var(--color-danger-border);
+    border: 1px solid color-mix(in oklab, var(--fire-mid) 42%, var(--color-danger-border));
     border-radius: var(--radius-panel);
-    background: var(--color-danger-bg);
+    background: color-mix(in oklab, var(--color-danger-bg) 72%, var(--fire-edge));
     padding: 0.85rem 1rem 0.9rem;
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-danger) 12%, transparent);
+    box-shadow:
+      0 0 18px color-mix(in oklab, var(--fire-edge) 12%, transparent),
+      inset 0 1px 0 color-mix(in oklab, var(--fire-core) 12%, transparent);
+  }
+  .plaza-delete-ballot__icon {
+    color: color-mix(in oklab, var(--fire-mid) 70%, var(--color-danger-ink));
+    filter: drop-shadow(0 0 4px color-mix(in oklab, var(--fire-mid) 28%, transparent));
+  }
+  .plaza-delete-ballot__title {
+    color: color-mix(in oklab, var(--color-danger-ink) 55%, var(--fire-core));
+  }
+  .plaza-delete-ballot__meta {
+    color: color-mix(in oklab, var(--color-danger-ink) 58%, var(--fire-mid));
+    opacity: 0.85;
+  }
+  .plaza-delete-ballot__aye {
+    margin-top: 0.75rem;
+    display: inline-flex;
+    min-height: 44px;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-radius: var(--radius-ctrl);
+    border: 1px solid color-mix(in oklab, var(--fire-mid) 55%, var(--color-danger-border));
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--color-danger) 70%, var(--fire-edge)),
+      color-mix(in oklab, var(--fire-mid) 55%, var(--color-danger))
+    );
+    padding: 0.5rem 0.85rem;
+    font: inherit;
+    font-weight: 600;
+    color: var(--color-on-danger);
+    box-shadow: 0 0 14px color-mix(in oklab, var(--fire-mid) 22%, transparent);
+  }
+  .plaza-delete-ballot__aye:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+  .plaza-delete-ballot__aye:disabled {
+    opacity: 0.5;
+  }
+  .plaza-delete-ballot__aye:focus-visible {
+    outline: 2px solid var(--fire-core);
+    outline-offset: 2px;
+  }
+  @media (min-width: 640px) {
+    .plaza-delete-ballot__aye {
+      width: auto;
+    }
   }
   .plaza-delete-ballot__track {
     margin-top: 0.65rem;
     height: 3px;
     overflow: hidden;
     border-radius: 999px;
-    background: color-mix(in oklab, var(--color-danger) 16%, var(--color-border));
+    background: color-mix(in oklab, var(--fire-edge) 22%, var(--color-border));
   }
   .plaza-delete-ballot__fill {
     height: 100%;
     border-radius: inherit;
-    background: var(--color-danger);
+    background: linear-gradient(90deg, var(--fire-edge), var(--fire-mid), var(--fire-core));
+    box-shadow: 0 0 8px color-mix(in oklab, var(--fire-mid) 40%, transparent);
     transition: width var(--dur-switch) var(--ease-out-expo);
   }
 
@@ -743,31 +798,67 @@ html.dark {
   .plaza-talk-incinerate--reduced {
     animation: plaza-talk-ash-reduced var(--dur-talk-ash-reduced) var(--ease-exit) forwards;
   }
+  .plaza-topic-incinerate {
+    transform-origin: 12% 50%;
+    pointer-events: none;
+    animation: plaza-topic-ash var(--dur-talk-ash) var(--ease-exit) forwards;
+  }
+  .plaza-topic-incinerate--reduced {
+    animation: plaza-talk-ash-reduced var(--dur-talk-ash-reduced) var(--ease-exit) forwards;
+  }
+  .plaza-topic-pending {
+    border-color: color-mix(in oklab, var(--fire-mid) 36%, transparent) !important;
+    background: color-mix(in oklab, var(--fire-edge) 10%, var(--color-surface-raised));
+  }
+  .plaza-topic-pending__ember {
+    color: color-mix(in oklab, var(--fire-mid) 75%, var(--color-warn));
+    filter: drop-shadow(0 0 3px color-mix(in oklab, var(--fire-mid) 35%, transparent));
+  }
+  /* Opacity + transform only — animated filter/blur paints every frame (esp. Windows). */
   @keyframes plaza-talk-ash {
     0% {
       opacity: 1;
       transform: scale(1) translateY(0);
-      filter: brightness(1) saturate(1);
       box-shadow: none;
     }
-    22% {
+    18% {
       opacity: 1;
-      transform: scale(1.015) translateY(0);
-      filter: brightness(1.06) saturate(1.12);
+      transform: scale(1.02) translateY(0);
       box-shadow:
-        0 0 22px color-mix(in oklab, var(--fire-mid) 36%, transparent),
-        0 0 40px color-mix(in oklab, var(--fire-edge) 18%, transparent);
+        0 0 28px color-mix(in oklab, var(--fire-mid) 42%, transparent),
+        0 0 52px color-mix(in oklab, var(--fire-edge) 22%, transparent);
     }
-    55% {
+    48% {
       opacity: 0.55;
-      transform: scale(0.98) translateY(6px);
-      filter: brightness(0.85) saturate(0.7) blur(0.4px);
-      box-shadow: 0 0 12px color-mix(in oklab, var(--fire-edge) 14%, transparent);
+      transform: scale(0.985) translateY(5px);
+      box-shadow: 0 0 16px color-mix(in oklab, var(--fire-edge) 18%, transparent);
     }
     100% {
       opacity: 0;
-      transform: scale(0.94) translateY(14px);
-      filter: brightness(0.45) saturate(0.4) blur(2px);
+      transform: scale(0.93) translateY(16px);
+      box-shadow: 0 0 0 transparent;
+    }
+  }
+  @keyframes plaza-topic-ash {
+    0% {
+      opacity: 1;
+      transform: scale(1) translateX(0);
+      box-shadow: none;
+    }
+    20% {
+      opacity: 1;
+      transform: scale(1.02) translateX(0);
+      box-shadow:
+        0 0 16px color-mix(in oklab, var(--fire-mid) 34%, transparent),
+        inset 0 0 10px color-mix(in oklab, var(--fire-edge) 10%, transparent);
+    }
+    55% {
+      opacity: 0.45;
+      transform: scale(0.97) translateX(-4px);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.92) translateX(-8px);
       box-shadow: 0 0 0 transparent;
     }
   }
@@ -1980,8 +2071,8 @@ html.dark {
     color: color-mix(in oklab, var(--fire-mid) 40%, var(--color-ink));
     text-shadow: 0 0 0.5px color-mix(in oklab, var(--fire-edge) 28%, transparent);
     transition:
-      color 380ms var(--ease-out-expo),
-      text-shadow 380ms var(--ease-out-expo);
+      color var(--dur-pulse) var(--ease-out-expo),
+      text-shadow var(--dur-pulse) var(--ease-out-expo);
   }
   /* Subtle heat on hover — no underline, just a warmer ember. */
   @media (hover: hover) {
@@ -2016,7 +2107,7 @@ html.dark {
     overflow: visible;
     /* Quieter when mark breath + CTA sheen also run. */
     opacity: 0.38;
-    transition: opacity 380ms var(--ease-out-expo);
+    transition: opacity var(--dur-pulse) var(--ease-out-expo);
   }
   .hero-burn-phrase__p {
     position: absolute;
@@ -2752,14 +2843,12 @@ html.dark {
 }
 
 /*
- * Tab enter is Motion-only (contentSwitch / enterPlaza) — no CSS tab-panel-show.
- * Swipe drag still applies translate while gesturing (no permanent containing block).
+ * Tab enter is Motion-only (contentSwitch) — no CSS tab-panel-show.
+ * Swipe drag writes transform on the active panel via JS (not an inherited --tab-drag).
  */
 @media (prefers-reduced-motion: no-preference) {
   [data-swiping='true'] .tab-panel[data-active='true'] {
     transition: none;
-    transform: translateX(var(--tab-drag, 0px));
-    will-change: transform;
   }
 }
 
@@ -3106,6 +3195,15 @@ html.dark {
   z-index: 9500;
 }
 
+#talk-ash-fire-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 55;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none !important; }
   .animate-spin { animation: none !important; }
@@ -3161,7 +3259,7 @@ html.dark {
   }
   .session-ignite-target.igniting-front {
     box-shadow: none;
-    transition: border-color 120ms ease;
+    transition: border-color var(--dur-micro) var(--ease-exit);
   }
   .session-ignite-target.igniting-front::after {
     display: none !important;
@@ -3190,9 +3288,13 @@ html.dark {
     filter: none;
     transition: opacity 160ms ease, max-height 160ms ease;
   }
-  .plaza-talk-incinerate {
+  .plaza-talk-incinerate,
+  .plaza-topic-incinerate {
     filter: none !important;
     box-shadow: none !important;
+  }
+  #talk-ash-fire-canvas {
+    display: none !important;
   }
   .qr-surface-3d {
     transition: none;

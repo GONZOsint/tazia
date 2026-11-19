@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ZONE_BOOT } from '../../motion/tokens';
+import { EASE, ZONE_BOOT } from '../../motion/tokens';
 import { TaziaMark } from './TaziaMark';
 
 interface TaziaLogoProps {
@@ -22,7 +22,7 @@ export function TaziaLogo({ className = '', size = 40, sharedMark = false }: Taz
         layoutId={ZONE_BOOT.layoutId}
         className={classes}
         style={{ width: size, height: size }}
-        transition={{ type: 'spring', visualDuration: 0.28, bounce: 0.12 }}
+        transition={EASE.ritualSpring}
         role="img"
         aria-label="TAZIA"
       >

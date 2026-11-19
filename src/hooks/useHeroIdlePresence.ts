@@ -3,9 +3,19 @@ import { HERO_IDLE } from '../motion/tokens';
 
 type Parallax = { x: number; y: number };
 
+function applyParallaxTransform(el: HTMLElement | null, x: number, y: number) {
+  if (!el) return;
+  if (x === 0 && y === 0) {
+    el.style.removeProperty('transform');
+    return;
+  }
+  el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+}
+
 /**
  * Subtle hero presence: tab-visibility pause, idle CTA nudge, mark parallax.
  * CSS owns breath/sheen loops; this only gates them + drives JS ornaments.
+ * Parallax writes transform on the mark ref (no setState per rAF).
  */
 export function useHeroIdlePresence(enabled: boolean) {
   const heroRef = useRef<HTMLElement | null>(null);
@@ -14,7 +24,6 @@ export function useHeroIdlePresence(enabled: boolean) {
     typeof document !== 'undefined' ? document.hidden : false
   );
   const [nudging, setNudging] = useState(false);
-  const [parallax, setParallax] = useState<Parallax>({ x: 0, y: 0 });
 
   const nudgeTimerRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
@@ -60,9 +69,9 @@ export function useHeroIdlePresence(enabled: boolean) {
     if (!enabled) {
       clearNudgeTimer();
       setNudging(false);
-      setParallax({ x: 0, y: 0 });
       targetRef.current = { x: 0, y: 0 };
       currentRef.current = { x: 0, y: 0 };
+      applyParallaxTransform(markRef.current, 0, 0);
       return;
     }
 
@@ -89,9 +98,9 @@ export function useHeroIdlePresence(enabled: boolean) {
 
   useLayoutEffect(() => {
     if (!enabled) {
-      setParallax({ x: 0, y: 0 });
       targetRef.current = { x: 0, y: 0 };
       currentRef.current = { x: 0, y: 0 };
+      applyParallaxTransform(markRef.current, 0, 0);
       return;
     }
 
@@ -112,10 +121,10 @@ export function useHeroIdlePresence(enabled: boolean) {
       };
       currentRef.current = next;
       if (Math.abs(next.x - tgt.x) > 0.02 || Math.abs(next.y - tgt.y) > 0.02) {
-        setParallax(next);
+        applyParallaxTransform(markRef.current, next.x, next.y);
         rafRef.current = window.requestAnimationFrame(tick);
       } else if (cur.x !== tgt.x || cur.y !== tgt.y) {
-        setParallax(tgt);
+        applyParallaxTransform(markRef.current, tgt.x, tgt.y);
         currentRef.current = tgt;
         rafRef.current = null;
       } else {
@@ -156,6 +165,7 @@ export function useHeroIdlePresence(enabled: boolean) {
       hero.removeEventListener('pointerleave', onLeave);
       if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      applyParallaxTransform(markRef.current, 0, 0);
     };
   }, [enabled]);
 
@@ -164,7 +174,6 @@ export function useHeroIdlePresence(enabled: boolean) {
     markRef,
     paused,
     nudging,
-    parallax,
     noteInteraction,
   };
 }

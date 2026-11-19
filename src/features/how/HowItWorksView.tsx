@@ -16,11 +16,10 @@ import { useT } from '../../i18n';
 import type { MessageKey } from '../../i18n';
 import { clearIpConsent } from '../../core/utils/ipConsent';
 import {
-  DUR,
-  EASE,
   TAP,
   TAP_TRANSITION,
   listRowEnter,
+  staggerChild,
   zoneBootReduced,
 } from '../../motion/tokens';
 
@@ -75,9 +74,7 @@ function HelpQuickSteps({ steps }: { steps: readonly string[] }) {
                 }
                 animate={reduceMotion ? zoneBootReduced.animate : listRowEnter.animate}
                 transition={
-                  animateSteps && !reduceMotion
-                    ? { delay: i * 0.05, duration: DUR.switch, ease: EASE.outExpo }
-                    : undefined
+                  animateSteps && !reduceMotion ? staggerChild(i, 0.05).transition : undefined
                 }
               >
                 <button

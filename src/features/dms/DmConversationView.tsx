@@ -121,9 +121,11 @@ export function DmConversationView({
 
   useEffect(() => {
     if (!forceScrollRef.current && !stickToBottomRef.current) return;
+    const force = forceScrollRef.current;
     forceScrollRef.current = false;
+    // Smooth only on own send; stick-to-bottom on receive uses auto to avoid thrash with blur chrome.
     bottomRef.current?.scrollIntoView({
-      behavior: reduceMotion ? 'auto' : 'smooth',
+      behavior: reduceMotion || !force ? 'auto' : 'smooth',
     });
   }, [messages.length, reduceMotion]);
 

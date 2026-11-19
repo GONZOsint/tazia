@@ -149,6 +149,7 @@ export const en = {
   readerDeleteVoteProgress: 'Delete vote: {have}/{need}',
   readerDeleteVoteWaiting: 'Waiting for: {names}',
   readerDeleteVoteYouVoted: 'You already voted.',
+  readerDeleteVoteObserver: 'Only the online tribe frozen in this vote can cast an aye.',
   readerDeleteIncinerating: 'Talk burning away…',
 
   presenceEmptyTitle: 'Empty tribe',

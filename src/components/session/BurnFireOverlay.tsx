@@ -30,13 +30,6 @@ interface BurnFireOverlayProps {
   onComplete: () => void;
 }
 
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-}
-
 function cssColor(name: string, fallback: string): string {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || fallback;
@@ -148,7 +141,7 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       onComplete();
     };
 
-    if (prefersReducedMotion()) {
+    if (reduceMotion) {
       markTargets('front');
       timeouts.push(
         window.setTimeout(() => {
@@ -375,7 +368,7 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       ghostBurnButton(false);
       if (!doneRef.current) markTargets('clear');
     };
-  }, [play, onComplete]);
+  }, [play, onComplete, reduceMotion]);
 
   if (!play) return null;
 

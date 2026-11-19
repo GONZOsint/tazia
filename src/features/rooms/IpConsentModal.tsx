@@ -63,7 +63,7 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
   }, [open]);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {open && (
         <motion.div
           initial={modalScrim.initial}

@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { List, MessageSquare, MessageSquarePlus } from 'lucide-react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
+import { TalkAshOverlay } from '../../components/session/TalkAshOverlay';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import {
+  collectDeleteBallots,
   deletedThreadIds,
   isContentForumType,
   openBallotForThread,
@@ -15,8 +17,8 @@ import {
   TAP,
   TAP_TRANSITION,
   TALK_ASH,
-  contentSwitch,
   drawerPanel,
+  enterPlaza,
   modalScrim,
 } from '../../motion/tokens';
 import { RoomSidebar, type ThreadGroup } from './RoomSidebar';
@@ -75,12 +77,20 @@ export function ForumWorkspace({
   const [searchQuery, setSearchQuery] = useState('');
   const [authorVisuals, setAuthorVisuals] = useState<AuthorVisualCache>({});
   const [topicsOpen, setTopicsOpen] = useState(false);
-  /** Snapshot while the talk ash exit plays after unanimous delete. */
+  /** Snapshot while the talk ash exit plays after unanimous delete (all peers). */
   const [ashThread, setAshThread] = useState<ThreadGroup | null>(null);
-  const lastLiveThreadRef = useRef<ThreadGroup | null>(null);
+  const threadSnapshotsRef = useRef<Map<string, ThreadGroup>>(new Map());
   const ashPlayedRef = useRef<Set<string>>(new Set());
 
   const deletedIds = useMemo(() => deletedThreadIds(messages), [messages]);
+
+  const pendingDeleteIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const b of collectDeleteBallots(messages)) {
+      if (!b.complete) ids.add(b.threadId);
+    }
+    return ids;
+  }, [messages]);
 
   const threads = useMemo<ThreadGroup[]>(() => {
     const map = new Map<string, ForumMessage[]>();
@@ -138,32 +148,43 @@ export function ForumWorkspace({
   }, [messages, activeThread]);
 
   useEffect(() => {
-    if (activeThread && !deletedIds.has(activeThread.threadId)) {
-      lastLiveThreadRef.current = activeThread;
+    for (const th of threads) {
+      threadSnapshotsRef.current.set(th.threadId, th);
     }
-  }, [activeThread, deletedIds]);
+  }, [threads]);
 
   useEffect(() => {
-    if (selectedThreadId && deletedIds.has(selectedThreadId)) {
+    if (selectedThreadId && deletedIds.has(selectedThreadId) && !ashThread) {
       setSelectedThreadId(null);
     }
-  }, [deletedIds, selectedThreadId]);
+  }, [deletedIds, selectedThreadId, ashThread]);
 
   useEffect(() => {
-    const last = lastLiveThreadRef.current;
-    if (!last || !deletedIds.has(last.threadId)) return;
-    if (ashPlayedRef.current.has(last.threadId)) return;
-    ashPlayedRef.current.add(last.threadId);
-    setAshThread(last);
-    haptic(HAPTIC_RITUAL);
-  }, [deletedIds]);
+    if (ashThread) return;
+    for (const id of deletedIds) {
+      if (ashPlayedRef.current.has(id)) continue;
+      const snap = threadSnapshotsRef.current.get(id);
+      ashPlayedRef.current.add(id);
+      if (!snap) continue;
+      setAshThread(snap);
+      setIsComposingThread(false);
+      setSelectedThreadId(id);
+      haptic(HAPTIC_RITUAL);
+      break;
+    }
+  }, [deletedIds, ashThread]);
+
+  const clearAsh = useCallback(() => {
+    setAshThread(null);
+    setSelectedThreadId(null);
+  }, []);
 
   useEffect(() => {
     if (!ashThread) return;
-    const ms = reduceMotion ? TALK_ASH.reducedMs : TALK_ASH.durationMs;
-    const timer = window.setTimeout(() => setAshThread(null), ms);
+    const ms = (reduceMotion ? TALK_ASH.reducedMs : TALK_ASH.durationMs) + 320;
+    const timer = window.setTimeout(clearAsh, ms);
     return () => window.clearTimeout(timer);
-  }, [ashThread, reduceMotion]);
+  }, [ashThread, reduceMotion, clearAsh]);
 
   const isBusy = isPublishing;
   const displayThread = ashThread ?? activeThread;
@@ -193,12 +214,16 @@ export function ForumWorkspace({
     meshStatus,
     relayActive,
     isSyncing,
-    isBusy,
+    isBusy: isBusy || Boolean(ashThread),
     onSyncNow: () => void onSyncNow(),
+    pendingDeleteIds,
+    ashThread,
+    reduceMotion: Boolean(reduceMotion),
   };
 
   return (
     <main className="card-container mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col overflow-hidden px-4 pt-2 sm:px-8 sm:pt-4 lg:py-5">
+      <TalkAshOverlay play={Boolean(ashThread)} onComplete={clearAsh} />
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3 lg:hidden">
         <motion.button
           whileTap={TAP}
@@ -279,15 +304,16 @@ export function ForumWorkspace({
             </AlertBanner>
           )}
 
-          <AnimatePresence mode="wait" initial={false}>
+          <div className="relative min-h-0 flex-1">
+          <AnimatePresence initial={false}>
             {isComposingThread ? (
               <motion.div
                 key="composer"
-                initial={contentSwitch.initial}
-                animate={contentSwitch.animate}
-                exit={contentSwitch.exit}
-                transition={contentSwitch.transition}
-                className="min-h-0 flex-1 overflow-y-auto"
+                initial={enterPlaza.initial}
+                animate={enterPlaza.animate}
+                exit={enterPlaza.exit}
+                transition={enterPlaza.transition}
+                className="absolute inset-0 overflow-y-auto"
               >
                 <ThreadComposer
                   identity={profile}
@@ -298,16 +324,18 @@ export function ForumWorkspace({
               </motion.div>
             ) : (
               <motion.div
-                key={ashThread ? `ash-${ashThread.threadId}` : displayThread?.threadId ?? 'idle'}
-                initial={ashThread ? false : contentSwitch.initial}
-                animate={contentSwitch.animate}
-                exit={contentSwitch.exit}
-                transition={contentSwitch.transition}
-                className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+                key={displayThread?.threadId ?? ashThread?.threadId ?? 'idle'}
+                initial={ashThread ? false : enterPlaza.initial}
+                animate={enterPlaza.animate}
+                exit={enterPlaza.exit}
+                transition={enterPlaza.transition}
+                className={`absolute inset-0 flex flex-col overflow-hidden ${
                   ashThread
-                    ? reduceMotion
-                      ? 'plaza-talk-incinerate plaza-talk-incinerate--reduced'
-                      : 'plaza-talk-incinerate'
+                    ? `plaza-talk-ash-target ${
+                        reduceMotion
+                          ? 'plaza-talk-incinerate plaza-talk-incinerate--reduced'
+                          : 'plaza-talk-incinerate'
+                      }`
                     : ''
                 }`}
                 aria-busy={ashThread ? true : undefined}
@@ -365,6 +393,7 @@ export function ForumWorkspace({
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
         </section>
       </div>
     </main>

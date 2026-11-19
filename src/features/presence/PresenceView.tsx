@@ -74,11 +74,22 @@ export function PresenceView({
     keyB64: string;
     encB64: string;
   } | null>(null);
-  const [trustTick, setTrustTick] = useState(0);
+  /** Bump-only: force re-read of trustStore without remounting badges. */
+  const [, setTrustTick] = useState(0);
   const [justJoinedIds, setJustJoinedIds] = useState<Set<string>>(() => new Set());
   const prevOnlineRef = useRef<Set<string>>(new Set());
   /** Skip join rituals on first paint — everyone already online isn't "new". */
   const onlineSeededRef = useRef(false);
+
+  /** Zone switch without remount — clear local UI state for the new room. */
+  useEffect(() => {
+    setOpenDetails({});
+    setVerifyPeer(null);
+    setJustJoinedIds(new Set());
+    setVisuals({});
+    prevOnlineRef.current = new Set();
+    onlineSeededRef.current = false;
+  }, [roomId]);
 
   useEffect(() => {
     if (!trustStore) return;
@@ -304,7 +315,7 @@ export function PresenceView({
                     title={trustActionLabel}
                     aria-label={trustActionLabel}
                   >
-                    <TrustBadge key={`${id}-${trustTick}`} level={trustLevel} />
+                    <TrustBadge level={trustLevel} />
                   </motion.button>
                 )}
                 <motion.button
@@ -328,7 +339,7 @@ export function PresenceView({
                 </motion.button>
               </div>
               <div
-                className={`grid transition-[grid-template-rows] duration-[var(--dur-micro)] ease-out ${
+                className={`grid transition-[grid-template-rows] duration-[var(--dur-micro)] ease-[var(--ease-out-expo)] ${
                   details ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                 }`}
               >

@@ -325,6 +325,9 @@ export function ThreadReader({
     setHighlightId(msg.msgId);
   };
 
+  const selfIsElector = Boolean(
+    deleteBallot && deleteBallot.electorate.includes(selfUserId)
+  );
   const selfHasVoted = Boolean(
     deleteBallot && deleteBallot.votes.includes(selfUserId)
   );
@@ -359,7 +362,7 @@ export function ThreadReader({
   };
 
   const handleVoteDelete = async () => {
-    if (!deleteBallot || isBusy || deleteBusy || selfHasVoted) return;
+    if (!deleteBallot || isBusy || deleteBusy || selfHasVoted || !selfIsElector) return;
     setDeleteBusy(true);
     try {
       const ok = await onVoteDeleteThread(thread.threadId, deleteBallot.proposalMsgId);
@@ -484,24 +487,28 @@ export function ThreadReader({
           >
             <div className="flex items-start gap-2.5">
               <Flame
-                className="mt-0.5 h-4 w-4 shrink-0 text-danger-ink"
+                className="plaza-delete-ballot__icon mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden="true"
                 strokeWidth={2}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-danger-ink">
+                <p className="plaza-delete-ballot__title text-sm font-semibold">
                   {t('readerDeleteVoteProgress', {
                     have: deleteBallot.votes.length,
                     need: deleteBallot.electorate.length,
                   })}
                 </p>
                 {waitingNames ? (
-                  <p className="type-caption mt-1 text-danger-ink/75">
+                  <p className="plaza-delete-ballot__meta type-caption mt-1">
                     {t('readerDeleteVoteWaiting', { names: waitingNames })}
                   </p>
                 ) : null}
-                {selfHasVoted ? (
-                  <p className="type-caption mt-1.5 text-danger-ink/60">
+                {!selfIsElector ? (
+                  <p className="plaza-delete-ballot__meta type-caption mt-1.5">
+                    {t('readerDeleteVoteObserver')}
+                  </p>
+                ) : selfHasVoted ? (
+                  <p className="plaza-delete-ballot__meta type-caption mt-1.5">
                     {t('readerDeleteVoteYouVoted')}
                   </p>
                 ) : (
@@ -511,8 +518,9 @@ export function ThreadReader({
                     type="button"
                     onClick={() => void handleVoteDelete()}
                     disabled={isBusy || deleteBusy}
-                    className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-ctrl)] bg-danger px-3 py-2 type-ui font-semibold text-on-danger hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger sm:w-auto"
+                    className="plaza-delete-ballot__aye type-ui pressable disabled:opacity-50"
                   >
+                    <Flame className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
                     {t('readerDeleteVoteAye')}
                   </motion.button>
                 )}

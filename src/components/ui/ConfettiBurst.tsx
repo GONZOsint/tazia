@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { CONFETTI } from '../../motion/tokens';
+import { CONFETTI, DUR, EASE } from '../../motion/tokens';
 
 interface ConfettiBurstProps {
   play: boolean;
@@ -104,7 +104,7 @@ export function ConfettiBurst({
           aria-hidden="true"
           initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.12 } }}
+          exit={{ opacity: 0, transition: { duration: DUR.micro } }}
         >
           {/* Origin flash — reads as the spark that launches the burst */}
           <motion.span
@@ -127,7 +127,7 @@ export function ConfettiBurst({
                 ? { opacity: [0.9, 0], scale: [0.6, 1.2] }
                 : { opacity: [0.95, 0.55, 0], scale: [0.35, 1.65, 2.4] }
             }
-            transition={{ duration: dur * 0.55, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: dur * 0.55, ease: EASE.outExpo }}
           />
 
           {pieces.map((p) => (

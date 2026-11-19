@@ -12,7 +12,7 @@ interface UseSwipeTabsOptions<T extends string> {
 
 /**
  * Horizontal swipe on the given element.
- * Follows the finger via `--tab-drag`, then snaps / commits the tab change.
+ * Writes transform on the active `.tab-panel` (not an inherited CSS var).
  */
 export function useSwipeTabs<T extends string>(
   ref: React.RefObject<HTMLElement | null>,
@@ -29,10 +29,19 @@ export function useSwipeTabs<T extends string>(
     let startY = 0;
     let tracking = false;
     let axis: 'undecided' | 'h' | 'v' = 'undecided';
+    let activePanel: HTMLElement | null = null;
+
+    const findActivePanel = (): HTMLElement | null => {
+      const panel = el.querySelector('.tab-panel[data-active="true"]');
+      return panel instanceof HTMLElement ? panel : null;
+    };
 
     const clearDrag = () => {
       delete el.dataset.swiping;
-      el.style.removeProperty('--tab-drag');
+      if (activePanel) {
+        activePanel.style.removeProperty('transform');
+        activePanel = null;
+      }
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -52,8 +61,9 @@ export function useSwipeTabs<T extends string>(
       startY = touch.clientY;
       tracking = true;
       axis = 'undecided';
+      activePanel = findActivePanel();
       el.dataset.swiping = 'true';
-      el.style.setProperty('--tab-drag', '0px');
+      if (activePanel) activePanel.style.transform = 'translateX(0px)';
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -90,7 +100,7 @@ export function useSwipeTabs<T extends string>(
       } else {
         damped = dx * 0.55;
       }
-      el.style.setProperty('--tab-drag', `${damped}px`);
+      if (activePanel) activePanel.style.transform = `translateX(${damped}px)`;
     };
 
     const onTouchEnd = (e: TouchEvent) => {

@@ -38,6 +38,10 @@ export const DUR = {
   /** Rare ornament (zone-join / QR ring) — keep ≤ 0.4s. */
   pulse: 0.36,
   ring: 0.36,
+  /**
+   * Climax-short Motion tier (~0.68s) — conceptual band between ritual and
+   * full BURN canvas. CSS card collapse uses `--dur-burn` (900ms), not this.
+   */
   burn: 0.68,
   /** Peer materialize / mesh birth settle. */
   birth: 0.28,
@@ -98,12 +102,12 @@ export const BURN = {
 } as const;
 
 /**
- * Plaza talk ash — unanimous delete exit (CSS `.plaza-talk-incinerate`).
- * Shorter than session burn; no canvas overlay.
+ * Plaza talk ash — unanimous delete exit for every peer.
+ * CSS `.plaza-talk-incinerate` / `.plaza-topic-incinerate` + TalkAshOverlay canvas fire.
  */
 export const TALK_ASH = {
-  durationMs: 720,
-  reducedMs: 160,
+  durationMs: 1100,
+  reducedMs: 180,
 } as const;
 
 /**
@@ -370,7 +374,8 @@ export const zoneBootMark = {
  * High initial opacity — splash already owned the brand beat; opacity 0 reads as flicker.
  */
 export const zoneBootMarkShort = {
-  initial: { opacity: 0.92, scale: 0.98 },
+  /** Near-opaque — post-splash must not flash a second brand beat from low opacity. */
+  initial: { opacity: 0.96, scale: 0.99 },
   animate: { opacity: 1, scale: 1 },
   transition: { duration: DUR.switch, ease: EASE.outExpo },
 } as const;
@@ -391,22 +396,10 @@ export const zoneBootReduced = {
 
 /**
  * Zone switch inside Plaza (apagón).
- * Opacity-first; no scale/blur — scale+blur flickers on Windows GPUs.
- * Keep floor ≥0.9 so mode="wait" never flashes an empty shell.
+ * Alias of contentSwitch — same opacity-first motor (no scale/blur; Windows GPU).
+ * Prefer this name at plaza topic/reader boundaries for choreography clarity.
  */
-export const enterPlaza = {
-  initial: { opacity: 0.92, y: 3 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: DUR.tab, ease: EASE.outExpo },
-  },
-  exit: {
-    opacity: 0.92,
-    y: -2,
-    transition: { duration: DUR.micro, ease: EASE.easeIn },
-  },
-};
+export const enterPlaza = contentSwitch;
 
 /**
  * Shared short panel / disclosure open-close.

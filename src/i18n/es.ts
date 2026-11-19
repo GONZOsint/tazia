@@ -151,6 +151,7 @@ export const es: Messages = {
   readerDeleteVoteProgress: 'Voto de borrado: {have}/{need}',
   readerDeleteVoteWaiting: 'Falta: {names}',
   readerDeleteVoteYouVoted: 'Ya has votado.',
+  readerDeleteVoteObserver: 'Solo la tribu en línea congelada en este voto puede votar a favor.',
   readerDeleteIncinerating: 'La charla se apaga…',
 
   presenceEmptyTitle: 'Tribu vacía',

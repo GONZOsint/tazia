@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { QrCode, ShieldAlert } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useT } from '../../i18n';
 import { contentSwitch } from '../../motion/tokens';
 import {
@@ -133,6 +133,7 @@ function writeGlare(el: HTMLElement, gx: number, gy: number) {
 export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: InviteQrProps) {
   const t = useT();
   const { theme } = useTheme();
+  const reduceMotion = useReducedMotion();
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -204,10 +205,9 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
 
   // Perimeter fire lives on the same 3D surface as the QR (translateZ sibling).
   useEffect(() => {
-    if (!qrReady) return;
+    if (!qrReady || reduceMotion) return;
     const canvas = fireCanvasRef.current;
     if (!canvas) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     let ctrl: QrSecretFireController;
     try {
@@ -224,7 +224,7 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
     };
     // geom fields — avoid re-creating when only the object identity changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrReady, fireGeom.canvasSize, fireGeom.lineSize, fireGeom.lineRadius]);
+  }, [qrReady, reduceMotion, fireGeom.canvasSize, fireGeom.lineSize, fireGeom.lineRadius]);
 
   useEffect(() => {
     fireCtrlRef.current?.setFireOn(includesSecret);
@@ -236,12 +236,10 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   // Tilt owns transform for as long as a QR surface is mounted.
   // Depend on qrReady (bool), not dataUrl string — phrase-in-link regenerates the bitmap in place.
   useEffect(() => {
-    if (!qrReady) return;
+    if (!qrReady || reduceMotion) return;
     const stage = stageRef.current;
     const el = surfaceRef.current;
     if (!stage || !el) return;
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     // Touch / stylus: no hover parallax — drive from stage gestures + idle breath.
     const isTouch = window.matchMedia('(hover: none)').matches;
@@ -465,7 +463,7 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       el.style.removeProperty('--qr-gx');
       el.style.removeProperty('--qr-gy');
     };
-  }, [qrReady]);
+  }, [qrReady, reduceMotion]);
 
   if (error && !dataUrl) {
     return <p className="text-center text-xs text-danger-ink">{t('qrError')}</p>;
