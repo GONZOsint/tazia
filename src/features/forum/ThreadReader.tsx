@@ -612,7 +612,7 @@ export function ThreadReader({
               onChange={(e) => setReplyBody(e.target.value)}
               rows={2}
               placeholder={t('readerComposePlaceholder')}
-              className="input-base flex-1"
+              className="input-base min-h-[4.5rem] flex-1 resize-none"
               required
             />
             <motion.button

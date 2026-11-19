@@ -19,6 +19,8 @@
     <meta name="apple-mobile-web-app-title" content="TAZIA" />
     <!-- Blocking: paint with the right theme before CSS/body (avoids light↔dark FOUC). -->
     <script src="./theme-boot.js"></script>
+    <!-- Blocking: lang + title before React (avoids ES flash for EN users). -->
+    <script src="./locale-boot.js"></script>
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180" />
     <title>TAZIA — Zona Anónima Temporal en Acción</title>

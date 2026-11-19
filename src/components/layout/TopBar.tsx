@@ -200,46 +200,56 @@ export function TopBar({
 
         <div className="col-start-3 flex h-11 min-w-0 items-center justify-end gap-1.5 overflow-visible sm:gap-2">
           <ThemeToggle />
-          {/* Keep lang toggle in layout on sm+; only collapse on narrow + zone to free space */}
-          <span className={activeZone ? 'hidden sm:inline-flex' : 'inline-flex'}>
+          {/* Always reserve LangToggle width — never `hidden` on zone join (horizontal reflow). */}
+          <span className="inline-flex shrink-0">
             <LangToggle />
           </span>
-          {hasActiveRoom ? (
-            <motion.button
-              whileTap={burnHeating ? undefined : TAP}
-              transition={TAP_TRANSITION}
-              type="button"
-              onClick={onBurnSession}
-              disabled={burnHeating}
-              aria-label={t('leaveTab')}
-              title={t('leaveTab')}
-              className={`burn-heat session-burn-target inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg text-xs font-semibold text-danger-ink whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80 sm:w-[9.75rem] sm:px-3 ${
-                burnHeating ? 'is-heating' : ''
-              }`}
-            >
-              <span
-                className="burn-ignition-bar"
-                style={
-                  burnHeating
-                    ? { transform: 'scaleX(1)', transition: 'transform var(--dur-burn-ignition) var(--ease-out-expo)' }
-                    : undefined
-                }
-                aria-hidden="true"
-              />
-              {burnHeating ? (
-                <span className="relative z-10 inline-flex h-4 w-4 shrink-0" aria-hidden="true" />
-              ) : (
-                <motion.span
-                  layoutId={BURN.layoutId}
-                  className="burn-flame-icon relative z-10 inline-flex h-4 w-4 shrink-0"
-                  transition={BURN.layoutSpring}
-                >
-                  <Flame className="h-4 w-4" aria-hidden="true" />
-                </motion.span>
-              )}
-              <span className="relative z-10 hidden truncate sm:inline">{t('leaveTab')}</span>
-            </motion.button>
-          ) : null}
+          {/* Fixed burn slot so Theme/Lang do not shift when a zone appears. */}
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-end sm:w-[9.75rem]">
+            {hasActiveRoom ? (
+              <motion.button
+                whileTap={burnHeating ? undefined : TAP}
+                transition={TAP_TRANSITION}
+                type="button"
+                onClick={onBurnSession}
+                disabled={burnHeating}
+                aria-label={t('leaveTab')}
+                title={t('leaveTab')}
+                className={`burn-heat session-burn-target inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg text-xs font-semibold text-danger-ink whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80 sm:w-[9.75rem] sm:px-3 ${
+                  burnHeating ? 'is-heating' : ''
+                }`}
+              >
+                <span
+                  className="burn-ignition-bar"
+                  style={
+                    burnHeating
+                      ? {
+                          transform: 'scaleX(1)',
+                          transition:
+                            'transform var(--dur-burn-ignition) var(--ease-out-expo)',
+                        }
+                      : undefined
+                  }
+                  aria-hidden="true"
+                />
+                {burnHeating ? (
+                  <span
+                    className="relative z-10 inline-flex h-4 w-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <motion.span
+                    layoutId={BURN.layoutId}
+                    className="burn-flame-icon relative z-10 inline-flex h-4 w-4 shrink-0"
+                    transition={BURN.layoutSpring}
+                  >
+                    <Flame className="h-4 w-4" aria-hidden="true" />
+                  </motion.span>
+                )}
+                <span className="relative z-10 hidden truncate sm:inline">{t('leaveTab')}</span>
+              </motion.button>
+            ) : null}
+          </span>
         </div>
       </div>
     </header>

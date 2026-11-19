@@ -56,6 +56,13 @@ export function CreateRoomForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [spark, setSpark] = useState(false);
 
+  // Keep ember mounted through join so layoutId can morph onto the zone card; clear on unmount.
+  useEffect(() => {
+    if (!spark) return;
+    const timer = window.setTimeout(() => setSpark(false), IGNITE.finishMs);
+    return () => window.clearTimeout(timer);
+  }, [spark]);
+
   const createStrength = evaluatePassphraseStrength(createPhrase);
   const phraseForLink =
     includePhraseInLink && createPhrase.trim() ? createPhrase.trim() : undefined;
@@ -107,8 +114,6 @@ export function CreateRoomForm({
         if (!createStrength.isAcceptable) return;
         setSpark(true);
         haptic(HAPTIC_TAP);
-        // Keep ember mounted through join so layoutId can morph onto the zone card.
-        window.setTimeout(() => setSpark(false), IGNITE.finishMs);
         void onJoinRoom({
           roomId: createRoomId,
           secretPhrase: createPhrase,

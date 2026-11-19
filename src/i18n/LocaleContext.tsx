@@ -53,6 +53,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.documentElement.dataset.locale = locale;
     document.title = DICTS[locale].documentTitle;
   }, [locale]);
 

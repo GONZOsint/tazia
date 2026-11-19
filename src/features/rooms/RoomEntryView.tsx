@@ -687,7 +687,12 @@ export function RoomEntryView({
                     }`}
                     aria-current={isActive ? 'true' : undefined}
                   >
-                          {justBorn && !reduceMotion && (
+                          {/*
+                            Own layoutId only while pulseRoomId matches — survives the
+                            seenRoomIdsRef update that clears justBorn before paint.
+                            CTA spark unmounts in the same batch → single morph owner.
+                          */}
+                          {pulseRoomId === room.roomId && !reduceMotion && (
                             <motion.span
                               layoutId={IGNITE.layoutId}
                               className="pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-accent/30"

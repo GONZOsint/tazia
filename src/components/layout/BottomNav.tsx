@@ -93,7 +93,7 @@ export function BottomNav({
 
 function AnimateBadge({ count }: { count: number }) {
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {count > 0 && (
         <motion.span
           key="badge"

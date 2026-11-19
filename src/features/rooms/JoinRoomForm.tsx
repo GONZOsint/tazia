@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { ChevronDown, KeyRound, Loader2, QrCode } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { evaluatePassphraseStrength } from '../../core/crypto/passphraseWords';
@@ -45,6 +45,12 @@ export function JoinRoomForm({
   const [pasteOpen, setPasteOpen] = useState(Boolean(initialRoomId));
   const [scannerOpen, setScannerOpen] = useState(false);
   const [spark, setSpark] = useState(false);
+  // Keep ember mounted through join so layoutId can morph onto the zone card; clear on unmount.
+  useEffect(() => {
+    if (!spark) return;
+    const timer = window.setTimeout(() => setSpark(false), IGNITE.finishMs);
+    return () => window.clearTimeout(timer);
+  }, [spark]);
   const [phraseScrubbedHint, setPhraseScrubbedHint] = useState(
     Boolean(initialRoomId && initialPhrase)
   );
@@ -111,7 +117,6 @@ export function JoinRoomForm({
         if (!canJoin) return;
         setSpark(true);
         haptic(HAPTIC_TAP);
-        window.setTimeout(() => setSpark(false), IGNITE.finishMs);
         void onJoinRoom({
           roomId: joinRoomId.trim(),
           secretPhrase: joinPhrase.trim(),

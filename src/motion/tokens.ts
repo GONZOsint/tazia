@@ -332,7 +332,12 @@ export const zoneListLayout = {
   bounce: 0.1,
 } as const;
 
-/** Soft panel enter — keep opacity high to avoid blank-frame flicker. */
+/**
+ * Soft panel enter — keep opacity high to avoid blank-frame flicker.
+ * Exclusive view swaps (list↔thread, composer↔reader) MUST use
+ * AnimatePresence `mode="wait"`. Exit stays ≥0.92, so without wait both
+ * views stack (flow) or ghost (absolute inset) as a double header.
+ */
 export const contentSwitch = {
   initial: { opacity: 0.92, y: 3 },
   animate: { opacity: 1, y: 0 },
@@ -349,7 +354,8 @@ export const panelEnter = contentSwitch;
 
 /**
  * Hero ↔ configure stage swap (same viewport, no stack/scroll).
- * Keep opacity high like contentSwitch — mode="wait" + opacity 0 = blank-frame flicker.
+ * Keep opacity high like contentSwitch — exclusive swaps need mode="wait"
+ * (opacity 0 under wait reads as a blank frame; overlapping without wait ghosts).
  */
 export const stageSwitch = {
   initial: { opacity: 0.9, y: 8 },
@@ -397,24 +403,27 @@ export const zoneBootReduced = {
 /**
  * Zone switch inside Plaza (apagón).
  * Alias of contentSwitch — same opacity-first motor (no scale/blur; Windows GPU).
- * Prefer this name at plaza topic/reader boundaries for choreography clarity.
+ * Prefer this name at plaza topic/reader boundaries; pair with mode="wait".
  */
 export const enterPlaza = contentSwitch;
 
 /**
  * Shared short panel / disclosure open-close.
+ * Opacity-first only — never animate height:'auto' (reflows every frame and fights
+ * layout="position" siblings on zone cards). Height open/close belongs to CSS grid
+ * `0fr`/`1fr` wrappers (see Presence details) when a soft collapse is required.
  * Exit shorter than enter (Material / NN/g).
  */
 export const disclosure = {
-  initial: { opacity: 0, height: 0 },
+  initial: { opacity: 0.92, y: -3 },
   animate: {
     opacity: 1,
-    height: 'auto',
+    y: 0,
     transition: { duration: DUR.medium, ease: EASE.outExpo },
   },
   exit: {
-    opacity: 0,
-    height: 0,
+    opacity: 0.92,
+    y: -2,
     transition: { duration: DUR.tab, ease: EASE.easeIn },
   },
   transition: { duration: DUR.medium, ease: EASE.outExpo },

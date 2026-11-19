@@ -35,7 +35,7 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
       animate={disclosure.animate}
       exit={disclosure.exit}
       transition={disclosure.transition}
-      className="min-w-0 overflow-x-visible overflow-y-clip"
+      className="min-w-0 overflow-x-visible overflow-y-clip will-change-[opacity,transform]"
     >
       <div
         className={`invite-panel invite-panel--embedded min-w-0 ${hasSecret ? 'invite-panel--fire' : ''}`}

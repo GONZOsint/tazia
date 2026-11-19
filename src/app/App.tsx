@@ -586,7 +586,7 @@ export default function App() {
               inert={activeTab !== 'dms' ? true : undefined}
             >
               <Suspense fallback={<TabSkeleton />}>
-                <AnimatePresence initial={false}>
+                <AnimatePresence mode="wait" initial={false}>
                   {dmPeerId && selfUserId ? (
                     <motion.div
                       key={`dm-${dmPeerId}`}
@@ -624,6 +624,7 @@ export default function App() {
                       animate={contentSwitch.animate}
                       exit={contentSwitch.exit}
                       transition={contentSwitch.transition}
+                      className="flex min-h-0 flex-1 flex-col"
                     >
                       <DmListView
                         selfUserId={selfUserId}

@@ -82,6 +82,18 @@ export function ForumWorkspace({
   const threadSnapshotsRef = useRef<Map<string, ThreadGroup>>(new Map());
   const ashPlayedRef = useRef<Set<string>>(new Set());
 
+  /** Zone switch without remount — clear local UI so Plaza does not keep the previous room's thread/composer. */
+  useEffect(() => {
+    setSelectedThreadId(null);
+    setIsComposingThread(false);
+    setSearchQuery('');
+    setAuthorVisuals({});
+    setTopicsOpen(false);
+    setAshThread(null);
+    threadSnapshotsRef.current = new Map();
+    ashPlayedRef.current = new Set();
+  }, [roomId]);
+
   const deletedIds = useMemo(() => deletedThreadIds(messages), [messages]);
 
   const pendingDeleteIds = useMemo(() => {
@@ -305,7 +317,7 @@ export function ForumWorkspace({
           )}
 
           <div className="relative min-h-0 flex-1">
-          <AnimatePresence initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             {isComposingThread ? (
               <motion.div
                 key="composer"

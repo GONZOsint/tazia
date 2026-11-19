@@ -10,9 +10,12 @@ interface UseSwipeTabsOptions<T extends string> {
   disabled?: boolean;
 }
 
+const SNAP_MS = 160;
+
 /**
  * Horizontal swipe on the given element.
  * Writes transform on the active `.tab-panel` (not an inherited CSS var).
+ * Cancel / commit release with a short CSS snap so the panel does not jump.
  */
 export function useSwipeTabs<T extends string>(
   ref: React.RefObject<HTMLElement | null>,
@@ -30,18 +33,55 @@ export function useSwipeTabs<T extends string>(
     let tracking = false;
     let axis: 'undecided' | 'h' | 'v' = 'undecided';
     let activePanel: HTMLElement | null = null;
+    let snapTimer: number | null = null;
+
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const findActivePanel = (): HTMLElement | null => {
       const panel = el.querySelector('.tab-panel[data-active="true"]');
       return panel instanceof HTMLElement ? panel : null;
     };
 
-    const clearDrag = () => {
+    const hardClear = () => {
+      if (snapTimer != null) {
+        window.clearTimeout(snapTimer);
+        snapTimer = null;
+      }
       delete el.dataset.swiping;
       if (activePanel) {
+        activePanel.style.removeProperty('transition');
         activePanel.style.removeProperty('transform');
         activePanel = null;
       }
+    };
+
+    /** Tween transform to a final value, then clear inline styles. */
+    const snapClear = (toX: number, then?: () => void) => {
+      delete el.dataset.swiping;
+      const panel = activePanel;
+      if (!panel) {
+        then?.();
+        return;
+      }
+      if (prefersReduced) {
+        panel.style.removeProperty('transition');
+        panel.style.removeProperty('transform');
+        activePanel = null;
+        then?.();
+        return;
+      }
+      panel.style.transition = `transform ${SNAP_MS}ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1))`;
+      panel.style.transform = `translateX(${toX}px)`;
+      if (snapTimer != null) window.clearTimeout(snapTimer);
+      snapTimer = window.setTimeout(() => {
+        snapTimer = null;
+        panel.style.removeProperty('transition');
+        panel.style.removeProperty('transform');
+        if (activePanel === panel) activePanel = null;
+        then?.();
+      }, SNAP_MS);
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -55,6 +95,8 @@ export function useSwipeTabs<T extends string>(
       ) {
         return;
       }
+      // Interrupt any in-flight snap from a prior gesture.
+      if (snapTimer != null) hardClear();
       const touch = e.touches[0];
       if (!touch) return;
       startX = touch.clientX;
@@ -63,7 +105,10 @@ export function useSwipeTabs<T extends string>(
       axis = 'undecided';
       activePanel = findActivePanel();
       el.dataset.swiping = 'true';
-      if (activePanel) activePanel.style.transform = 'translateX(0px)';
+      if (activePanel) {
+        activePanel.style.removeProperty('transition');
+        activePanel.style.transform = 'translateX(0px)';
+      }
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -77,7 +122,7 @@ export function useSwipeTabs<T extends string>(
         if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
           axis = 'v';
           tracking = false;
-          clearDrag();
+          hardClear();
           return;
         }
         if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
@@ -105,14 +150,14 @@ export function useSwipeTabs<T extends string>(
 
     const onTouchEnd = (e: TouchEvent) => {
       if (!tracking || optsRef.current.disabled) {
-        clearDrag();
+        hardClear();
         tracking = false;
         return;
       }
       tracking = false;
       const touch = e.changedTouches[0];
       if (!touch || axis !== 'h') {
-        clearDrag();
+        hardClear();
         return;
       }
 
@@ -130,10 +175,11 @@ export function useSwipeTabs<T extends string>(
 
       if (commit) {
         const next = dx < 0 ? tabs[idx + 1]! : tabs[idx - 1]!;
-        clearDrag();
-        onSwipe(next);
+        const width = activePanel?.offsetWidth ?? el.offsetWidth ?? 320;
+        const exitX = dx < 0 ? -Math.min(width * 0.28, 120) : Math.min(width * 0.28, 120);
+        snapClear(exitX, () => onSwipe(next));
       } else {
-        clearDrag();
+        snapClear(0);
       }
       axis = 'undecided';
     };
@@ -141,7 +187,7 @@ export function useSwipeTabs<T extends string>(
     const onTouchCancel = () => {
       tracking = false;
       axis = 'undecided';
-      clearDrag();
+      snapClear(0);
     };
 
     el.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -153,7 +199,7 @@ export function useSwipeTabs<T extends string>(
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
       el.removeEventListener('touchcancel', onTouchCancel);
-      clearDrag();
+      hardClear();
     };
   }, [ref]);
 }

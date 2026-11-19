@@ -72,8 +72,10 @@ export function DmConversationView({
   const resizeComposer = useCallback(() => {
     const el = inputRef.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    // Collapse to min before measure so shrink works; min (not 0) avoids a blank flash.
+    el.style.height = '40px';
+    const next = Math.min(Math.max(el.scrollHeight, 40), 120);
+    el.style.height = `${next}px`;
   }, []);
 
   useLayoutEffect(() => {
@@ -123,10 +125,12 @@ export function DmConversationView({
     if (!forceScrollRef.current && !stickToBottomRef.current) return;
     const force = forceScrollRef.current;
     forceScrollRef.current = false;
-    // Smooth only on own send; stick-to-bottom on receive uses auto to avoid thrash with blur chrome.
-    bottomRef.current?.scrollIntoView({
-      behavior: reduceMotion || !force ? 'auto' : 'smooth',
+    // Defer one frame so bubble enter / composer resize settle before scrolling.
+    const behavior: ScrollBehavior = reduceMotion || !force ? 'auto' : 'smooth';
+    const id = window.requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
     });
+    return () => window.cancelAnimationFrame(id);
   }, [messages.length, reduceMotion]);
 
   const sendBody = async () => {
@@ -289,6 +293,7 @@ export function DmConversationView({
             onKeyDown={onComposerKeyDown}
             placeholder={t('dmsPlaceholder')}
             className="dm-composer__field"
+            style={{ height: '40px' }}
             enterKeyHint="send"
           />
           <motion.button
