@@ -1,20 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { CornerDownRight, Loader2, Send, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
-import { visualFromUserId, type LocalProfile } from '../../core/crypto/identity';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { CornerDownRight, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import {
+  visualFromUserId,
+  type LocalProfile,
+  type PeerVisual,
+} from '../../core/crypto/identity';
 import { useLocale, useT } from '../../i18n';
 import { MAX_BODY_CHARS, type ForumMessage } from '../../core/protocol';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { Identicon } from '../../components/content/Identicon';
 import { SafeMessageBody } from '../../components/content/SafeMessageBody';
+import { PlaneSendIcon } from '../../components/ui/PlaneSendIcon';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
-import { DUR, EASE, TAP, TAP_TRANSITION, bubbleEnter } from '../../motion/tokens';
+import { haptic, HAPTIC_TAP } from '../../motion/haptic';
+import {
+  TAP,
+  TAP_TRANSITION,
+  disclosure,
+  postOrigin,
+  resolveBubbleEnter,
+} from '../../motion/tokens';
 import type { ThreadGroup } from './RoomSidebar';
 
-export type AuthorVisualCache = Record<
-  string,
-  { fingerprintHex: string; identiconMatrix: boolean[] }
->;
+export type AuthorVisualCache = Record<string, PeerVisual>;
 
 interface ThreadReaderProps {
   thread: ThreadGroup;
@@ -93,10 +102,13 @@ function PostCard({
   replyLabel,
   locale,
   animateEnter,
+  fromSend,
+  firstContent,
+  reduceMotion,
 }: {
   message: ForumMessage;
   alias: string;
-  visual?: { identiconMatrix: boolean[] };
+  visual?: PeerVisual;
   isSelf: boolean;
   depth: number;
   parentAlias: string | null;
@@ -108,28 +120,39 @@ function PostCard({
   locale: string;
   /** False on first paint of a thread — avoids cascade flicker. */
   animateEnter: boolean;
+  fromSend?: boolean;
+  firstContent?: boolean;
+  reduceMotion: boolean | null;
 }) {
   const nested = depth > 0;
+  const enter = resolveBubbleEnter(reduceMotion, { fromSend, firstContent });
   return (
     <motion.article
       layout={false}
-      initial={animateEnter ? bubbleEnter.initial : false}
-      animate={bubbleEnter.animate}
-      transition={bubbleEnter.transition}
+      initial={animateEnter ? enter.initial : false}
+      animate={enter.animate}
+      transition={enter.transition}
+      style={postOrigin}
       className={`plaza-post ${nested ? 'plaza-post--nested' : ''} ${
         isSelf ? 'plaza-post--self' : ''
       } ${highlighted ? 'is-highlighted' : ''}`}
     >
       <header className="flex items-center gap-2">
         {visual ? (
-          <Identicon matrix={visual.identiconMatrix} size={22} label={alias} />
+          <Identicon
+            matrix={visual.identiconMatrix}
+            size={22}
+            label={alias}
+            fg={visual.fg}
+            bg={visual.bg}
+          />
         ) : (
           <div className="h-[22px] w-[22px] rounded-[var(--radius-ctrl)] bg-surface" />
         )}
         <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
           {alias}
           {isSelf ? youSuffix : ''}
-          <span className="ml-1.5 font-normal text-[11px] text-muted">
+          <span className="type-caption ml-1.5 font-normal">
             {formatClockTime(message.createdAtMs, locale)}
           </span>
         </p>
@@ -158,7 +181,7 @@ function PostCard({
         </div>
       )}
 
-      <div className="mt-1.5 text-sm leading-snug">
+      <div className="type-message mt-1.5">
         <SafeMessageBody text={message.body} />
       </div>
     </motion.article>
@@ -177,6 +200,7 @@ export function ThreadReader({
 }: ThreadReaderProps) {
   const t = useT();
   const { locale } = useLocale();
+  const reduceMotion = useReducedMotion();
   const [replyBody, setReplyBody] = useState('');
   const [replyParent, setReplyParent] = useState<ForumMessage | null>(null);
   const { planeKey, launching: planeLaunching, trigger: triggerPlane } = usePlaneLaunch();
@@ -184,14 +208,65 @@ export function ThreadReader({
   const [highlightId, setHighlightId] = useState<string | null>(null);
   /** After first paint, new posts may land with bubbleEnter. */
   const enterReadyRef = useRef(false);
+  const knownIdsRef = useRef<Set<string>>(new Set());
+  const seededRef = useRef(false);
+  const fromSendIdsRef = useRef<Set<string>>(new Set());
+  const pendingSendLandsRef = useRef(0);
+  const firstContentIdsRef = useRef<Set<string>>(new Set());
+  const wasEmptyRef = useRef(false);
   useEffect(() => {
     enterReadyRef.current = true;
   }, []);
+
+  // New thread → reseed before freshIds memo (same render as thread switch).
+  const threadIdTracked = useRef(thread.threadId);
+  if (threadIdTracked.current !== thread.threadId) {
+    threadIdTracked.current = thread.threadId;
+    knownIdsRef.current = new Set();
+    seededRef.current = false;
+    fromSendIdsRef.current = new Set();
+    pendingSendLandsRef.current = 0;
+    firstContentIdsRef.current = new Set();
+    wasEmptyRef.current = false;
+  }
 
   const posts = useMemo(
     () => [thread.rootPost, ...thread.replies],
     [thread.rootPost, thread.replies]
   );
+
+  const freshIds = useMemo(() => {
+    const fresh = new Set<string>();
+    if (!seededRef.current) return fresh;
+    for (const m of posts) {
+      if (knownIdsRef.current.has(m.msgId)) continue;
+      fresh.add(m.msgId);
+      if (wasEmptyRef.current && firstContentIdsRef.current.size === 0) {
+        firstContentIdsRef.current.add(m.msgId);
+        wasEmptyRef.current = false;
+      }
+      if (
+        m.authorUserId === selfUserId &&
+        pendingSendLandsRef.current > 0 &&
+        !fromSendIdsRef.current.has(m.msgId)
+      ) {
+        fromSendIdsRef.current.add(m.msgId);
+        pendingSendLandsRef.current -= 1;
+      }
+    }
+    return fresh;
+  }, [posts, selfUserId]);
+
+  useLayoutEffect(() => {
+    if (!seededRef.current) {
+      knownIdsRef.current = new Set(posts.map((p) => p.msgId));
+      seededRef.current = true;
+      // Root always exists; “empty” = no replies yet beyond root.
+      wasEmptyRef.current = thread.replies.length === 0;
+      return;
+    }
+    for (const p of posts) knownIdsRef.current.add(p.msgId);
+  }, [posts, thread.replies.length]);
 
   const tree = useMemo(
     () => buildTree(thread.rootPost, thread.replies),
@@ -229,7 +304,9 @@ export function ThreadReader({
 
   const resolveAlias = (userId: string) =>
     presenceAliases[userId] ||
-    (userId === selfUserId ? identity.alias : t('presenceNoAlias'));
+    (userId === selfUserId ? identity.alias : undefined) ||
+    authorVisuals[userId]?.suggestedAlias ||
+    t('presenceNoAlias');
 
   const handleReplyClick = (msg: ForumMessage) => {
     setReplyParent(msg);
@@ -241,12 +318,16 @@ export function ThreadReader({
     if (!replyBody.trim() || isBusy || submitting) return;
     setSubmitting(true);
     triggerPlane();
+    pendingSendLandsRef.current += 1;
     const parentId = replyParent ? replyParent.msgId : thread.rootPost.msgId;
     try {
       const ok = await onReplyThread(thread.threadId, parentId, replyBody.trim());
       if (ok) {
+        haptic(HAPTIC_TAP);
         setReplyBody('');
         setReplyParent(null);
+      } else {
+        pendingSendLandsRef.current = Math.max(0, pendingSendLandsRef.current - 1);
       }
     } finally {
       setSubmitting(false);
@@ -289,6 +370,16 @@ export function ThreadReader({
           replyLabel={t('readerReply')}
           locale={locale}
           animateEnter={enterReadyRef.current}
+          fromSend={
+            enterReadyRef.current &&
+            freshIds.has(msg.msgId) &&
+            fromSendIdsRef.current.has(msg.msgId) &&
+            !firstContentIdsRef.current.has(msg.msgId)
+          }
+          firstContent={
+            enterReadyRef.current && firstContentIdsRef.current.has(msg.msgId)
+          }
+          reduceMotion={reduceMotion}
         />
         {node.children.map((child, i) =>
           renderNode(child, depth + 1, i === node.children.length - 1)
@@ -304,7 +395,7 @@ export function ThreadReader({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="plaza-title shrink-0">
-        <h2 className="font-display text-lg font-semibold text-ink sm:text-xl [text-wrap:balance]">
+        <h2 className="type-title text-ink">
           {thread.title}
         </h2>
       </div>
@@ -319,20 +410,20 @@ export function ThreadReader({
 
       <form
         onSubmit={(e) => void handleSubmitReply(e)}
-        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-panel)] md:border md:p-3"
+        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-panel)] md:border md:p-3"
       >
         <div className="mx-auto max-w-[1280px]">
           <AnimatePresence initial={false}>
             {replyParent && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: DUR.tab, ease: EASE.outExpo }}
+                initial={disclosure.initial}
+                animate={disclosure.animate}
+                exit={disclosure.exit}
+                transition={disclosure.transition}
                 className="overflow-hidden"
               >
                 <div className="thread-quote thread-quote--composer mb-2 items-center justify-between">
-                  <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
+                  <span className="type-caption min-w-0 flex-1 truncate">
                     {replyAliasAt < 0 ? (
                       <span className="font-semibold text-ink">{replyLabel}</span>
                     ) : (
@@ -376,13 +467,11 @@ export function ThreadReader({
               disabled={!replyBody.trim() || isBusy || submitting}
               className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              {isBusy && !planeLaunching ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <span key={planeKey} className={planeKey > 0 ? 'plane-launching' : 'inline-flex'}>
-                  <Send className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-                </span>
-              )}
+              <PlaneSendIcon
+                planeKey={planeKey}
+                launching={planeLaunching}
+                busy={isBusy || submitting}
+              />
               <span className="hidden sm:inline">
                 {isBusy && !planeLaunching ? t('readerSending') : t('readerSend')}
               </span>

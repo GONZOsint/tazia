@@ -3,7 +3,7 @@ import { Shield, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { TrustLevel } from '../../core/trust/trustStore';
 import { useT } from '../../i18n';
-import { DUR, EASE } from '../../motion/tokens';
+import { DUR, EASE, badgePop } from '../../motion/tokens';
 
 interface TrustBadgeProps {
   level: TrustLevel;
@@ -34,7 +34,7 @@ export function TrustBadge({ level, className = '' }: TrustBadgeProps) {
   useEffect(() => {
     if (prevLevel.current !== level && level === 'verified') {
       setPop(true);
-      const id = window.setTimeout(() => setPop(false), 420);
+      const id = window.setTimeout(() => setPop(false), DUR.pulse * 1000);
       prevLevel.current = level;
       return () => window.clearTimeout(id);
     }
@@ -48,10 +48,22 @@ export function TrustBadge({ level, className = '' }: TrustBadgeProps) {
       aria-label={label}
       animate={
         pop
-          ? { opacity: [0.5, 1], scale: [0.85, 1.12, 1] }
-          : { opacity: 1, scale: 1 }
+          ? {
+              opacity: [0.5, 1],
+              scale: [0.82, 1.18, 1],
+              filter: [
+                'drop-shadow(0 0 0 transparent)',
+                'drop-shadow(0 0 8px color-mix(in oklab, var(--color-accent) 55%, transparent))',
+                'drop-shadow(0 0 0 transparent)',
+              ],
+            }
+          : { opacity: 1, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }
       }
-      transition={{ duration: DUR.medium, ease: EASE.outExpo }}
+      transition={
+        pop
+          ? { duration: DUR.pulse, ease: EASE.outExpo }
+          : badgePop.transition
+      }
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
     </motion.span>

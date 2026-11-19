@@ -25,7 +25,7 @@ function detectTheme(): ThemeMode {
   return 'light';
 }
 
-const THEME_COLOR = { light: '#e3e1db', dark: '#0c0e0a' } as const;
+const THEME_COLOR = { light: '#e4e1da', dark: '#0b0d09' } as const;
 
 function applyThemeClass(mode: ThemeMode) {
   const root = document.documentElement;

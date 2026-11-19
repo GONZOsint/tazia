@@ -2,7 +2,7 @@ import type { ComponentType } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCopyFeedback } from '../../hooks/useCopyFeedback';
-import { DUR, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION, iconSwap } from '../../motion/tokens';
 
 type IconComp = ComponentType<{
   className?: string;
@@ -47,10 +47,10 @@ export function CopyButton({
         {copied ? (
           <motion.span
             key="copied"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ duration: DUR.micro }}
+            initial={iconSwap.initial}
+            animate={iconSwap.animate}
+            exit={iconSwap.exit}
+            transition={iconSwap.transition}
             className="inline-flex items-center gap-1.5 text-ok"
           >
             <Check className="copy-ember-check h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -59,10 +59,10 @@ export function CopyButton({
         ) : (
           <motion.span
             key="idle"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ duration: DUR.micro }}
+            initial={iconSwap.initial}
+            animate={iconSwap.animate}
+            exit={iconSwap.exit}
+            transition={iconSwap.transition}
             className="inline-flex items-center gap-1.5"
           >
             <IdleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" strokeWidth={1.75} />

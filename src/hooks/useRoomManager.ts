@@ -7,6 +7,7 @@ import {
   type MutableRefObject,
 } from 'react';
 import { buildLocalProfile } from '../core/crypto/identity';
+import { evaluatePassphraseStrength } from '../core/crypto/passphraseWords';
 import { P2pActionError } from '../core/p2p/p2pTypes';
 import {
   MAX_ALIAS_CHARS,
@@ -190,7 +191,17 @@ export function useRoomManager(
         return;
       }
 
-      if (roomsRef.current.has(roomIdTrim)) {
+      if (!evaluatePassphraseStrength(phraseTrim).isAcceptable) {
+        setJoinError({ key: 'errWeakPhrase' });
+        return;
+      }
+
+      const existing = roomsRef.current.get(roomIdTrim);
+      if (existing) {
+        if (existing.phrase !== phraseTrim) {
+          setJoinError({ key: 'errPhraseMismatch' });
+          return;
+        }
         setActiveRoomId(roomIdTrim);
         onNavigateTab('forum');
         return;
@@ -273,7 +284,10 @@ export function useRoomManager(
             updateRoom(roomIdTrim, (r) => {
               const prev = r.dmMessages[peerId] ?? [];
               if (prev.some((m) => m.msgId === dm.msgId)) return r;
-              const dmMessages = { ...r.dmMessages, [peerId]: [...prev, dm] };
+              const next = [...prev, dm].sort(
+                (a, b) => a.createdAtMs - b.createdAtMs || a.msgId.localeCompare(b.msgId)
+              );
+              const dmMessages = { ...r.dmMessages, [peerId]: next };
               const viewingPeer =
                 roomIdTrim === activeRoomIdRef.current &&
                 dmsFocusedRef?.current === true &&
@@ -592,14 +606,18 @@ export function useRoomManager(
         const dm = await room.session.sendDirectMessage(toUserId, body);
         updateRoom(roomId, (r) => {
           const prev = r.dmMessages[toUserId] ?? [];
+          if (prev.some((m) => m.msgId === dm.msgId)) return r;
+          const next = [...prev, dm].sort(
+            (a, b) => a.createdAtMs - b.createdAtMs || a.msgId.localeCompare(b.msgId)
+          );
           return {
             ...r,
-            dmMessages: { ...r.dmMessages, [toUserId]: [...prev, dm] },
+            dmMessages: { ...r.dmMessages, [toUserId]: next },
           };
         });
         return true;
       } catch {
-        updateRoom(roomId, (r) => ({ ...r, roomError: { key: 'errPublish' } }));
+        updateRoom(roomId, (r) => ({ ...r, roomError: { key: 'errDmSend' } }));
         return false;
       }
     },
@@ -608,13 +626,14 @@ export function useRoomManager(
 
   const clearDmUnread = useCallback(
     (peerId: string) => {
-      if (!activeRoomId) return;
-      updateRoom(activeRoomId, (r) => ({
+      const roomId = activeRoomIdRef.current;
+      if (!roomId) return;
+      updateRoom(roomId, (r) => ({
         ...r,
         dmUnread: { ...r.dmUnread, [peerId]: 0 },
       }));
     },
-    [activeRoomId, updateRoom]
+    [updateRoom]
   );
 
   return {

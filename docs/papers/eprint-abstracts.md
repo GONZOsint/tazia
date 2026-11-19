@@ -1,5 +1,7 @@
 # ePrint abstracts (PDFs blocked by CDN 403 from this environment)
 
+English · [Español](eprint-abstracts.es.md)
+
 Local PDF download of ePrint returned HTTP 403. Abstracts captured for implementation reference.
 
 ## 2026/584 — Analyzing the WebRTC Ecosystem and Breaking Authentication in DTLS-SRTP
@@ -12,7 +14,7 @@ UC model for short authentication strings; misbinding ε=2^{-t}. TAZIA: 6 emoji 
 
 ## 2025/554 — Group Chat Encryption in MLS, Session, Signal, Matrix
 
-Insufficient binding between symmetric encryption and signatures enables insider replay/reorder. Fix pattern: bind group id / nonce / AD to signature and ciphertext. TAZIA v2: DM AAD = `roomId‖from‖to‖msgId`; fallback blob AAD = roomId.
+Insufficient binding between symmetric encryption and signatures enables insider replay/reorder. Fix pattern: bind group id / nonce / AD to signature and ciphertext. TAZEP (`tazep-v2`): DM AAD = `tazep.dm.aad.v2:{roomId}|{from}|{to}|{msgId}`; fallback blob AAD = `tazep.fallback.aad.v3:{roomId}`.
 
 ## 2025/1619 — Anonymity Wrappers (CCS’25)
 

@@ -81,8 +81,8 @@ async function sharedAesKey(
     {
       name: 'HKDF',
       hash: 'SHA-256',
-      salt: te.encode(`tazia.app/dm-v2:${roomId}`),
-      info: te.encode('tazia.app/dm-v2'),
+      salt: te.encode(`tazep/dm-v2:${roomId}`),
+      info: te.encode('tazep/dm-v2'),
     },
     hkdfKey,
     { name: 'AES-GCM', length: 256 },
@@ -92,7 +92,7 @@ async function sharedAesKey(
 }
 
 function dmAad(roomId: string, fromUserId: string, toUserId: string, msgId: string): Uint8Array {
-  return te.encode(`tazia.dm.aad.v2:${roomId}|${fromUserId}|${toUserId}|${msgId}`);
+  return te.encode(`tazep.dm.aad.v2:${roomId}|${fromUserId}|${toUserId}|${msgId}`);
 }
 
 export interface SealDmParams {

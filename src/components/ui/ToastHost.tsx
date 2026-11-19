@@ -7,9 +7,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { AnimatePresence, motion, type PanInfo } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion, type PanInfo } from 'motion/react';
 import { AlertBanner } from './AlertBanner';
-import { DUR, EASE } from '../../motion/tokens';
+import { toastEnter } from '../../motion/tokens';
 
 type ToastTone = 'success' | 'error' | 'warning' | 'info';
 
@@ -62,6 +62,7 @@ function ToastCard({
   item: ToastItem;
   onDismiss: (id: string) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.x > 85 || info.offset.y < -45) {
       onDismiss(item.id);
@@ -70,20 +71,15 @@ function ToastCard({
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 16, scale: 0.94 }}
-      animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
-      exit={{
-        opacity: 0,
-        y: 10,
-        scale: 0.96,
-        transition: { duration: DUR.micro, ease: EASE.exit },
-      }}
-      transition={{ duration: DUR.switch, ease: EASE.outExpo }}
-      drag
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      dragElastic={0.72}
-      onDragEnd={onDragEnd}
+      layout="position"
+      initial={toastEnter.initial}
+      animate={toastEnter.animate}
+      exit={toastEnter.exit}
+      transition={toastEnter.transition}
+      drag={reduceMotion ? false : true}
+      dragConstraints={reduceMotion ? undefined : { left: 0, right: 0, top: 0, bottom: 0 }}
+      dragElastic={reduceMotion ? undefined : 0.72}
+      onDragEnd={reduceMotion ? undefined : onDragEnd}
       className="pointer-events-auto tazia-toast-card"
       data-tone={item.tone}
       style={{ ['--toast-ttl' as string]: `${item.durationMs}ms` }}

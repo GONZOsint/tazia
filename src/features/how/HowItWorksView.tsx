@@ -29,8 +29,8 @@ export function HowItWorksView() {
 
   return (
     <main className="mx-auto max-w-[720px] px-4 py-4 sm:px-8 sm:py-6">
-      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{t('helpTitle')}</h1>
-      <p className="mt-3 text-sm leading-relaxed text-muted">{t('helpLede')}</p>
+      <h1 className="type-headline text-ink">{t('helpTitle')}</h1>
+      <p className="type-lede mt-3">{t('helpLede')}</p>
 
       <section className="mt-8" aria-labelledby="help-steps-title">
         <h2 id="help-steps-title" className="text-sm font-semibold text-ink">
@@ -42,7 +42,7 @@ export function HowItWorksView() {
               key={label}
               className="list-row flex gap-2.5 px-3 py-3 text-sm leading-snug text-muted"
             >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-on-accent">
+              <span className="type-badge flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent">
                 {i + 1}
               </span>
               <span className="min-w-0 pt-0.5">{label}</span>
@@ -58,7 +58,7 @@ export function HowItWorksView() {
               <Icon className="h-4 w-4 text-muted" aria-hidden="true" />
               {t(titleKey)}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{t(bodyKey)}</p>
+            <p className="type-lede mt-2">{t(bodyKey)}</p>
           </li>
         ))}
         <li className="rounded-[var(--radius-panel)] border border-warn-border bg-warn-bg p-5">
@@ -66,7 +66,7 @@ export function HowItWorksView() {
             <ShieldAlert className="h-4 w-4 text-warn" aria-hidden="true" />
             {t('helpSafetyTitle')}
           </h2>
-          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-warn-ink">
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[length:var(--type-body)] leading-[var(--leading-body)] text-warn-ink">
             <li>{t('helpSafety1')}</li>
             <li>{t('helpSafety2')}</li>
             <li>{t('helpSafety3')}</li>
@@ -87,7 +87,7 @@ export function HowItWorksView() {
           {moreOpen ? t('helpMoreHide') : t('helpMore')}
         </motion.button>
         {moreOpen && (
-          <p className="mt-3 font-mono text-[11px] leading-relaxed text-muted whitespace-pre-line">
+          <p className="type-caption mt-3 font-mono leading-relaxed whitespace-pre-line">
             {t('helpMoreBody')}
           </p>
         )}
@@ -106,7 +106,7 @@ export function HowItWorksView() {
         >
           {t('helpForgetDevice')}
         </motion.button>
-        <p className="mt-2 text-xs text-muted">
+        <p className="type-caption mt-2">
           {forgetDone ? t('helpForgetDone') : t('helpForgetHint')}
         </p>
       </div>

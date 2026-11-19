@@ -1,5 +1,7 @@
 # Spike: manual SDP / QR signaling (P3)
 
+English · [Español](sdp-qr-spike.es.md)
+
 **Status:** spike only — does **not** block shipping work. Not wired into the app.
 
 ## Goal
@@ -34,4 +36,4 @@ Bypass Trystero/Nostr signaling for a 1:1 (or tiny) mesh by exchanging SDP offer
 
 - Live mesh remains Trystero 0.27 (`leave` / `join`; no `restartIce` API).
 - Mobile resilience today: Wake Lock + `visibilitychange` / `online` → `nudgeTransport` + encrypted Nostr data-plane fallback.
-- Threat model: [`SECURITY.md`](../SECURITY.md). Wire format: [`PROTOCOL.md`](../PROTOCOL.md).
+- Threat model: [`SECURITY.md`](SECURITY.md). Wire format: [`PROTOCOL.md`](PROTOCOL.md).

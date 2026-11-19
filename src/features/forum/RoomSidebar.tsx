@@ -77,7 +77,7 @@ export function RoomSidebar({
     <aside className="space-y-3">
       {mobileSheet && (
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-display text-base font-semibold text-ink">{t('sidebarTopics')}</h2>
+          <h2 className="type-title text-ink">{t('sidebarTopics')}</h2>
           {onCloseSheet && (
             <button
               type="button"
@@ -93,7 +93,13 @@ export function RoomSidebar({
 
       <div className="panel-surface p-3.5 sm:p-4">
         <div className="flex items-start gap-3">
-          <Identicon matrix={profile.identiconMatrix} size={36} label={profile.alias} />
+          <Identicon
+            matrix={profile.identiconMatrix}
+            size={36}
+            label={profile.alias}
+            fg={profile.fg}
+            bg={profile.bg}
+          />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-semibold text-ink">{profile.alias}</p>
@@ -104,7 +110,7 @@ export function RoomSidebar({
                 relayActive={relayActive}
               />
             </div>
-            <p className="mt-0.5 truncate font-mono text-[10px] text-muted md:block hidden">
+            <p className="type-caption mt-0.5 truncate font-mono md:block hidden">
               {selfUserId}
             </p>
           </div>
@@ -207,7 +213,7 @@ export function RoomSidebar({
                   <span className="min-w-0 flex-1 line-clamp-2">{thread.title}</span>
                   {replyCount > 0 && (
                     <span
-                      className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                      className={`type-badge mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 ${
                         active ? 'bg-accent text-on-accent' : 'bg-surface text-muted'
                       }`}
                       title={

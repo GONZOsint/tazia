@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION, modalScrim, modalSheet } from '../../motion/tokens';
 
 interface IpConsentModalProps {
   open: boolean;
@@ -66,10 +66,10 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: DUR.micro }}
+          initial={modalScrim.initial}
+          animate={modalScrim.animate}
+          exit={modalScrim.exit}
+          transition={modalScrim.transition}
           className="fixed inset-0 z-50 flex items-end justify-center bg-scrim p-4 sm:items-center"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           role="dialog"
@@ -80,18 +80,18 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
           <motion.div
             ref={dialogRef}
             tabIndex={-1}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: DUR.modal, ease: EASE.outExpo }}
+            initial={modalSheet.initial}
+            animate={modalSheet.animate}
+            exit={modalSheet.exit}
+            transition={modalSheet.transition}
             className="panel-surface shadow-sheet w-full max-w-md p-5 outline-none sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="ip-consent-title" className="font-display text-lg font-semibold text-ink">
+            <h2 id="ip-consent-title" className="type-title text-ink">
               {t('consentTitle')}
             </h2>
             <IpExposureDiagram />
-            <p className="mt-2 text-sm leading-relaxed text-muted">{t('consentBody')}</p>
+            <p className="type-lede mt-2">{t('consentBody')}</p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <motion.button
                 whileTap={TAP}

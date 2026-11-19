@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { KeyRound, LogOut, PlusCircle, QrCode } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { identiconMatrixFromHex } from '../../core/crypto/identity';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react';
+import { identiconVisualFromHex } from '../../core/crypto/identity';
 import {
   countOtherPeers,
   MAX_ROOMS,
@@ -15,7 +15,21 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { TaziaLogo } from '../../components/brand/TaziaLogo';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { probeBrowserSupportSync } from '../../core/utils/browserSupport';
-import { DUR, EASE, TAP, TAP_TRANSITION, zoneCardExit } from '../../motion/tokens';
+import { ConfettiBurst } from '../../components/ui/ConfettiBurst';
+import {
+  BURN,
+  DUR,
+  EASE,
+  IGNITE,
+  TAP,
+  TAP_TRANSITION,
+  contentSwitch,
+  forgeEnter,
+  listRowEnter,
+  staggerChild,
+  zoneCardExit,
+} from '../../motion/tokens';
+import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { TurnRelaySettings } from './TurnRelaySettings';
@@ -59,10 +73,14 @@ export function RoomEntryView({
   );
   const [createFormKey, setCreateFormKey] = useState(0);
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
   const [qrRoomId, setQrRoomId] = useState<string | null>(null);
   const [pulseRoomId, setPulseRoomId] = useState<string | null>(null);
-  const prevJoinedIdsRef = useRef<Set<string>>(new Set(joinedRooms.map((r) => r.roomId)));
-  const prevJoinedCountRef = useRef(joinedRooms.length);
+  const [forgeConfetti, setForgeConfetti] = useState(false);
+  const [douseKey, setDouseKey] = useState(0);
+  /** Ids already painted — used so forgeEnter applies on first mount of a new card. */
+  const seenRoomIdsRef = useRef<Set<string>>(new Set(joinedRooms.map((r) => r.roomId)));
+  const prevErrorRef = useRef<string | null>(null);
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
   const reduceMotion = useReducedMotion();
@@ -78,30 +96,35 @@ export function RoomEntryView({
     if (showIceHint && hasZones) setEntryTab((cur) => cur ?? 'join');
   }, [showIceHint, hasZones]);
 
-  // After a successful join, collapse the form and mint a fresh create session
-  // so "Abrir" cannot reuse the previous zone id while the tab stays mounted.
   useEffect(() => {
-    const prev = prevJoinedCountRef.current;
-    prevJoinedCountRef.current = joinedRooms.length;
-    const prevIds = prevJoinedIdsRef.current;
+    if (errorMsg && errorMsg !== prevErrorRef.current) {
+      setDouseKey((k) => k + 1);
+    }
+    prevErrorRef.current = errorMsg;
+  }, [errorMsg]);
+
+  // After paint: detect new ids (render already used old seen set for forgeEnter).
+  useLayoutEffect(() => {
     const nextIds = new Set(joinedRooms.map((r) => r.roomId));
     let newlyJoined: string | null = null;
     for (const id of nextIds) {
-      if (!prevIds.has(id)) {
+      if (!seenRoomIdsRef.current.has(id)) {
         newlyJoined = id;
         break;
       }
     }
-    prevJoinedIdsRef.current = nextIds;
-    if (joinedRooms.length > prev) {
-      setEntryTab(null);
-      setCreateFormKey((k) => k + 1);
-      if (newlyJoined) {
-        setPulseRoomId(newlyJoined);
-        const t = window.setTimeout(() => setPulseRoomId((cur) => (cur === newlyJoined ? null : cur)), 450);
-        return () => window.clearTimeout(t);
-      }
-    }
+    seenRoomIdsRef.current = nextIds;
+    if (!newlyJoined) return;
+    setEntryTab(null);
+    setCreateFormKey((k) => k + 1);
+    setPulseRoomId(newlyJoined);
+    setForgeConfetti(true);
+    haptic(HAPTIC_TAP);
+    const t = window.setTimeout(
+      () => setPulseRoomId((cur) => (cur === newlyJoined ? null : cur)),
+      IGNITE.finishMs
+    );
+    return () => window.clearTimeout(t);
   }, [joinedRooms]);
 
   const openEntry = (tab: 'create' | 'join') => {
@@ -120,6 +143,7 @@ export function RoomEntryView({
 
   return (
     <main className="mx-auto max-w-[1280px] space-y-4 px-4 py-3 sm:px-8 sm:py-5 lg:py-6">
+      <LayoutGroup id="zone-ignite">
       {browserBlocked && (
         <AlertBanner tone="error">
           <p className="font-semibold">{t('browserBlockedTitle')}</p>
@@ -137,31 +161,31 @@ export function RoomEntryView({
             <motion.div
               initial={{ opacity: 0, y: enterY, scale: enterScale }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: DUR.switch, ease: EASE.outExpo }}
+              {...staggerChild(0, stagger)}
             >
               <TaziaLogo size={80} className="hero-landing-mark" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: stagger, duration: DUR.medium, ease: EASE.outExpo }}
-              className="mt-5 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl [text-wrap:balance]"
+              {...staggerChild(1, stagger)}
+              className="type-display mt-5 text-ink"
             >
               {t('brand')}
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: stagger * 2, duration: DUR.medium, ease: EASE.outExpo }}
-              className="mt-3 font-display text-lg font-semibold tracking-tight text-ink sm:text-xl [text-wrap:balance]"
+              {...staggerChild(2, stagger)}
+              className="type-subtitle mt-3 text-ink"
             >
               {t('roomsHeroTitle')}
             </motion.p>
             <motion.p
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: stagger * 3, duration: DUR.medium, ease: EASE.outExpo }}
-              className="mt-2 max-w-md text-sm leading-relaxed text-muted"
+              {...staggerChild(3, stagger)}
+              className="type-lede mt-2 max-w-md"
             >
               {t('roomsHeroBody')}
             </motion.p>
@@ -169,7 +193,7 @@ export function RoomEntryView({
             <motion.div
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: stagger * 4, duration: DUR.switch, ease: EASE.outExpo }}
+              {...staggerChild(4, stagger)}
               className="mt-9 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
             >
               <motion.button
@@ -211,45 +235,56 @@ export function RoomEntryView({
         <section className="panel-surface p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+              <h2 className="type-title text-ink">
                 {t('roomsJoinedTitle')}
               </h2>
               {joinedRooms.length < MAX_ROOMS && (
-                <p className="mt-0.5 text-xs text-muted">{t('roomsActiveHint')}</p>
+                <p className="type-caption mt-0.5">{t('roomsActiveHint')}</p>
               )}
             </div>
             <CapacityDots filled={joinedRooms.length} max={MAX_ROOMS} label={t('roomsCapacityAria', { n: joinedRooms.length, max: MAX_ROOMS })} />
           </div>
 
           <ul className="relative mt-3 space-y-2">
+            <ConfettiBurst play={forgeConfetti} onDone={() => setForgeConfetti(false)} />
             <AnimatePresence mode="popLayout" initial={false}>
               {joinedRooms.map((room) => {
                 const isActive = room.roomId === activeRoomId;
                 const dmUnread = Object.values(room.dmUnread).reduce((a, b) => a + b, 0);
                 const showQr = qrRoomId === room.roomId;
-                const justJoined = pulseRoomId === room.roomId;
+                const justBorn = !seenRoomIdsRef.current.has(room.roomId);
+                const justJoined = pulseRoomId === room.roomId || justBorn;
+                const incinerating = leavingId === room.roomId;
+                const enter =
+                  justBorn && !reduceMotion ? forgeEnter : listRowEnter;
+                const zoneIcon = identiconVisualFromHex(room.roomId);
                 return (
                   <motion.li
                     key={room.roomId}
-                    layout
-                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      scale: 1,
-                      transition: { duration: DUR.medium, ease: EASE.outExpo },
-                    }}
+                    layout={!incinerating}
+                    layoutDependency={leavingId ?? 'stable'}
+                    initial={enter.initial}
+                    animate={enter.animate}
                     exit={zoneCardExit.exit}
                     data-zone-id={room.roomId}
-                    className={`session-burn-target session-ignite-target overflow-hidden rounded-[var(--radius-ctrl)] border ${
+                    data-zone-card={room.roomId}
+                    className={`session-burn-target session-ignite-target relative overflow-hidden rounded-[var(--radius-ctrl)] border ${
                       isActive
                         ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                         : 'border-border bg-bg'
                     } ${justJoined ? 'zone-join-pulse igniting-front' : ''} ${
-                      room.relayFallbackActive ? 'relay-channel-tint' : ''
-                    }`}
+                      incinerating ? 'incinerated-collapse' : ''
+                    } ${room.relayFallbackActive ? 'relay-channel-tint' : ''}`}
                     aria-current={isActive ? 'true' : undefined}
                   >
+                    {justBorn && !reduceMotion && (
+                      <motion.span
+                        layoutId={IGNITE.layoutId}
+                        className="pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-accent/30"
+                        transition={EASE.ritualSpring}
+                        aria-hidden="true"
+                      />
+                    )}
                     <div className="flex items-stretch gap-1">
                       <button
                         type="button"
@@ -262,12 +297,14 @@ export function RoomEntryView({
                         }
                       >
                         <Identicon
-                          matrix={identiconMatrixFromHex(room.roomId)}
+                          matrix={zoneIcon.identiconMatrix}
                           size={40}
                           label={room.roomId}
+                          fg={zoneIcon.fg}
+                          bg={zoneIcon.bg}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-mono text-xs font-medium text-ink">
+                          <p className="truncate font-mono text-[length:var(--type-caption)] font-medium tracking-[0.01em] text-ink">
                             {room.roomId}
                           </p>
                           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -278,28 +315,28 @@ export function RoomEntryView({
                               relayActive={room.relayFallbackActive}
                             />
                             {isActive && (
-                              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
+                              <span className="type-badge rounded-full bg-accent px-2 py-0.5 text-on-accent">
                                 {t('roomsActiveLabel')}
                               </span>
                             )}
                             {room.unreadCount > 0 && (
-                              <span className="rounded-full bg-accent/90 px-2 py-0.5 text-[10px] font-bold text-on-accent">
+                              <span className="type-badge rounded-full bg-accent/90 px-2 py-0.5 text-on-accent">
                                 {room.unreadCount > 9 ? '9+' : room.unreadCount}
                               </span>
                             )}
                             {dmUnread > 0 && (
-                              <span className="rounded-full border border-border bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-muted">
+                              <span className="type-badge rounded-full border border-border bg-surface-raised px-2 py-0.5 font-semibold text-muted">
                                 {dmUnread > 9 ? '9+' : dmUnread}
                               </span>
                             )}
                           </div>
                           {room.roomError && (
-                            <p className="mt-1 truncate text-[11px] text-danger-ink">
+                            <p className="type-caption mt-1 truncate text-danger-ink">
                               {t(room.roomError.key, room.roomError.vars)}
                             </p>
                           )}
                           {!room.roomError && (room.transportNotice || room.relayFallbackActive) && (
-                            <p className="mt-1 truncate text-[11px] text-warn-ink">
+                            <p className="type-caption mt-1 truncate text-warn-ink">
                               {t(
                                 room.transportNotice?.key ?? 'infoRelayPath',
                                 room.transportNotice?.vars
@@ -351,7 +388,7 @@ export function RoomEntryView({
           <div className="mt-4 border-t border-border pt-4">
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-ink">{t('roomsAnotherTitle')}</h3>
-              <p className="mt-0.5 text-xs text-muted">
+              <p className="type-caption mt-0.5">
                 {atCap ? t('roomsMaxReached', { n: MAX_ROOMS }) : t('roomsAnotherHint')}
               </p>
             </div>
@@ -397,10 +434,10 @@ export function RoomEntryView({
         {entryTab && !browserBlocked && (
           <motion.section
             key={`entry-${entryTab}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: DUR.tab, ease: EASE.outExpo }}
+            initial={contentSwitch.initial}
+            animate={contentSwitch.animate}
+            exit={contentSwitch.exit}
+            transition={contentSwitch.transition}
             className="panel-surface p-4 sm:p-5"
           >
             {errorMsg && (
@@ -415,12 +452,13 @@ export function RoomEntryView({
               </AlertBanner>
             )}
 
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false}>
               {entryTab === 'create' ? (
                 <CreateRoomForm
                   key={`create-${createFormKey}`}
                   isJoining={isJoining}
                   onJoinRoom={onJoinRoom}
+                  douseKey={douseKey}
                 />
               ) : (
                 <JoinRoomForm
@@ -429,6 +467,7 @@ export function RoomEntryView({
                   initialPhrase={initialPhrase}
                   isJoining={isJoining}
                   onJoinRoom={onJoinRoom}
+                  douseKey={douseKey}
                 />
               )}
             </AnimatePresence>
@@ -460,9 +499,17 @@ export function RoomEntryView({
         onConfirm={() => {
           const id = leaveTarget;
           setLeaveTarget(null);
-          if (id && onLeaveRoom) void onLeaveRoom(id);
+          if (!id || !onLeaveRoom) return;
+          const delayMs = reduceMotion ? BURN.reducedCollapseMs : Math.round(DUR.burn * 1000);
+          setLeavingId(id);
+          window.setTimeout(() => {
+            void onLeaveRoom(id).finally(() => {
+              setLeavingId((cur) => (cur === id ? null : cur));
+            });
+          }, delayMs);
         }}
       />
+      </LayoutGroup>
     </main>
   );
 }

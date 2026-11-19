@@ -32,15 +32,24 @@ interface PassphraseStrengthBarProps {
   id: PassphraseStrengthId;
   score: 0 | 1 | 2 | 3;
   className?: string;
+  /** Increment to force passphrase-douse (e.g. join error). */
+  douseKey?: number;
 }
 
-export function PassphraseStrengthBar({ id, score, className = '' }: PassphraseStrengthBarProps) {
+export function PassphraseStrengthBar({
+  id,
+  score,
+  className = '',
+  douseKey = 0,
+}: PassphraseStrengthBarProps) {
   const t = useT();
   const copy = STRENGTH_COPY[id];
   const filled = filledCount(id, score);
   const title = `${t(copy.label)}: ${t(copy.hint)}`;
   const prevId = useRef(id);
+  const prevDouseKey = useRef(douseKey);
   const [tremor, setTremor] = useState(false);
+  const [douse, setDouse] = useState(false);
 
   useEffect(() => {
     const prev = prevId.current;
@@ -50,11 +59,24 @@ export function PassphraseStrengthBar({ id, score, className = '' }: PassphraseS
       const timer = window.setTimeout(() => setTremor(false), 320);
       return () => window.clearTimeout(timer);
     }
+    if (ACCEPTABLE.has(prev) && !ACCEPTABLE.has(id) && id !== 'empty') {
+      setDouse(true);
+      const timer = window.setTimeout(() => setDouse(false), 280);
+      return () => window.clearTimeout(timer);
+    }
   }, [id]);
+
+  useEffect(() => {
+    if (douseKey <= 0 || douseKey === prevDouseKey.current) return;
+    prevDouseKey.current = douseKey;
+    setDouse(true);
+    const timer = window.setTimeout(() => setDouse(false), 280);
+    return () => window.clearTimeout(timer);
+  }, [douseKey]);
 
   return (
     <div
-      className={`mt-2 ${tremor ? 'strength-accept-tremor' : ''} ${className}`}
+      className={`mt-2 ${tremor ? 'strength-accept-tremor' : ''} ${douse ? 'passphrase-douse' : ''} ${className}`}
       title={title}
       role="status"
       aria-label={title}

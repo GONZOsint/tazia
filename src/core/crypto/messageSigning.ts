@@ -1,6 +1,6 @@
 import * as ed from '@noble/ed25519';
 import { canonicalForumPayload, canonicalDmPayload, type ForumEvent, type DirectMessage } from '../protocol';
-import { b64ToBytes, bytesToB64, toArrayBuffer } from './bytes';
+import { b64ToBytes, bytesToB64, bytesToHex, toArrayBuffer } from './bytes';
 
 /** RFC 8410 SPKI prefix for a raw 32-byte Ed25519 public key. */
 const ED25519_SPKI_PREFIX = Uint8Array.from([
@@ -194,6 +194,56 @@ export async function verifyDirectMessage(
     const { sig, ...rest } = dm;
     const payload = new TextEncoder().encode(canonicalDmPayload(rest));
     return await publicKey.verify(b64ToBytes(sig), payload);
+  } catch {
+    return false;
+  }
+}
+
+/** SHA-256 hex digest of clamped sync event list (canonical JSON). */
+export async function digestSyncEvents(events: ForumEvent[]): Promise<string> {
+  const raw = new TextEncoder().encode(JSON.stringify(events));
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', raw));
+  return bytesToHex(hash);
+}
+
+export function canonicalSyncResPayload(
+  roomId: string,
+  reqId: string,
+  fromUserId: string,
+  toUserId: string,
+  eventsDigest: string
+): Uint8Array {
+  return new TextEncoder().encode(
+    JSON.stringify(['tazep.sync-res.v1', roomId, reqId, fromUserId, toUserId, eventsDigest])
+  );
+}
+
+export async function signSyncRes(
+  identity: SigningIdentity,
+  roomId: string,
+  reqId: string,
+  fromUserId: string,
+  toUserId: string,
+  eventsDigest: string
+): Promise<string> {
+  const payload = canonicalSyncResPayload(roomId, reqId, fromUserId, toUserId, eventsDigest);
+  const signature = await signWithIdentity(identity, payload);
+  return bytesToB64(signature);
+}
+
+export async function verifySyncRes(
+  publicKey: VerifyKey,
+  roomId: string,
+  reqId: string,
+  fromUserId: string,
+  toUserId: string,
+  eventsDigest: string,
+  sigB64: string
+): Promise<boolean> {
+  try {
+    if (!sigB64 || sigB64.length < 16) return false;
+    const payload = canonicalSyncResPayload(roomId, reqId, fromUserId, toUserId, eventsDigest);
+    return await publicKey.verify(b64ToBytes(sigB64), payload);
   } catch {
     return false;
   }

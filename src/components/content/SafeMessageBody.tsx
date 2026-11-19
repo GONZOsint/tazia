@@ -13,7 +13,7 @@ export function SafeMessageBody({ text }: SafeMessageBodyProps) {
   const paragraphs = text.split(/\n{2,}/);
 
   return (
-    <div className="space-y-3 text-[15px] leading-relaxed text-ink">
+    <div className="type-message space-y-3 text-ink">
       {paragraphs.map((paragraph, pIdx) => {
         const lines = paragraph.split('\n');
         return (
@@ -27,7 +27,7 @@ export function SafeMessageBody({ text }: SafeMessageBodyProps) {
                       return (
                         <span
                           key={idx}
-                          className="mx-0.5 inline-flex max-w-full align-middle items-center gap-1.5 rounded-[calc(var(--radius-ctrl)-4px)] border border-warn-border bg-warn-bg/80 px-2 py-0.5 font-mono text-[12px] text-warn-ink"
+                          className="type-caption mx-0.5 inline-flex max-w-full align-middle items-center gap-1.5 rounded-[calc(var(--radius-ctrl)-4px)] border border-warn-border bg-warn-bg/80 px-2 py-0.5 font-mono text-warn-ink"
                           title={t('linkDisabledTitle')}
                         >
                           <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-warn" aria-hidden="true" />
@@ -36,7 +36,7 @@ export function SafeMessageBody({ text }: SafeMessageBodyProps) {
                             text={part}
                             label={t('copyDefault')}
                             copiedLabel={t('copiedDefault')}
-                            className="min-h-[36px] rounded bg-surface-raised px-2 py-0.5 font-sans text-[11px] font-medium text-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
+                            className="type-caption min-h-[36px] rounded bg-surface-raised px-2 py-0.5 font-sans font-medium hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
                           />
                         </span>
                       );

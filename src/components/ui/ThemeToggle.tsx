@@ -1,7 +1,7 @@
 import { Moon, Sun } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION, iconSwap } from '../../motion/tokens';
 import { useTheme } from '../../theme';
 
 export function ThemeToggle({ className = '' }: { className?: string }) {
@@ -22,10 +22,10 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={isDark ? 'sun' : 'moon'}
-          initial={{ opacity: 0, rotate: -20, scale: 0.88 }}
-          animate={{ opacity: 1, rotate: 0, scale: 1 }}
-          exit={{ opacity: 0, rotate: 28, scale: 0.88 }}
-          transition={{ duration: DUR.tab, ease: EASE.outExpo }}
+          initial={{ ...iconSwap.initial, rotate: -20 }}
+          animate={{ ...iconSwap.animate, rotate: 0 }}
+          exit={{ ...iconSwap.exit, rotate: 28 }}
+          transition={iconSwap.transition}
           className="inline-flex"
         >
           {isDark ? (

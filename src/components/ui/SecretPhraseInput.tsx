@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION, iconSwap } from '../../motion/tokens';
 
 interface SecretPhraseInputProps {
   id: string;
@@ -67,20 +67,20 @@ export function SecretPhraseInput({
           {visible ? (
             <motion.span
               key="hide"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ duration: DUR.tap }}
+              initial={iconSwap.initial}
+              animate={iconSwap.animate}
+              exit={iconSwap.exit}
+              transition={iconSwap.transition}
             >
               <EyeOff className="h-4 w-4" aria-hidden="true" />
             </motion.span>
           ) : (
             <motion.span
               key="show"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ duration: DUR.tap }}
+              initial={iconSwap.initial}
+              animate={iconSwap.animate}
+              exit={iconSwap.exit}
+              transition={iconSwap.transition}
             >
               <Eye className="h-4 w-4" aria-hidden="true" />
             </motion.span>

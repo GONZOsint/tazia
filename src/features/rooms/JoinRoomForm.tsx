@@ -1,11 +1,12 @@
 import { lazy, Suspense, useState } from 'react';
 import { ChevronDown, KeyRound, Loader2, QrCode } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { evaluatePassphraseStrength } from '../../core/crypto/passphraseWords';
 import { buildInviteUrl, parseInviteInput } from '../../core/utils/inviteLink';
 import type { RoomJoinParams } from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
-import { DUR, TAP, TAP_TRANSITION, disclosure } from '../../motion/tokens';
+import { DUR, EASE, IGNITE, TAP, TAP_TRANSITION, disclosure } from '../../motion/tokens';
+import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
 
@@ -16,6 +17,7 @@ interface JoinRoomFormProps {
   initialPhrase?: string | null;
   isJoining: boolean;
   onJoinRoom: (params: RoomJoinParams) => Promise<void>;
+  douseKey?: number;
 }
 
 export function JoinRoomForm({
@@ -23,8 +25,10 @@ export function JoinRoomForm({
   initialPhrase = null,
   isJoining,
   onJoinRoom,
+  douseKey = 0,
 }: JoinRoomFormProps) {
   const t = useT();
+  const reduceMotion = useReducedMotion();
   const [joinInviteInput, setJoinInviteInput] = useState(
     initialRoomId
       ? buildInviteUrl(initialRoomId, initialPhrase ?? undefined)
@@ -37,6 +41,7 @@ export function JoinRoomForm({
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(Boolean(initialRoomId));
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [spark, setSpark] = useState(false);
 
   const handlePasteInviteInput = (raw: string) => {
     setJoinInviteInput(raw);
@@ -48,17 +53,11 @@ export function JoinRoomForm({
     }
   };
 
-  const canJoin = Boolean(joinRoomId.trim() && joinPhrase.trim());
-  const phraseNeeded = !!joinRoomId && !joinPhrase.trim();
   const joinStrength = evaluatePassphraseStrength(joinPhrase);
-  const showStrength =
-    !!joinPhrase &&
-    (joinStrength.id === 'weak' ||
-      joinStrength.id === 'short' ||
-      joinStrength.id === 'empty' ||
-      joinStrength.id === 'ok' ||
-      joinStrength.id === 'good' ||
-      joinStrength.id === 'strong');
+  const canJoin =
+    Boolean(joinRoomId.trim() && joinPhrase.trim()) && joinStrength.isAcceptable;
+  const phraseNeeded = !!joinRoomId && !joinPhrase.trim();
+  const showStrength = !!joinPhrase;
 
   return (
     <motion.form
@@ -70,7 +69,10 @@ export function JoinRoomForm({
       className="mt-1 space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!joinRoomId.trim() || !joinPhrase.trim()) return;
+        if (!canJoin) return;
+        setSpark(true);
+        haptic(HAPTIC_TAP);
+        window.setTimeout(() => setSpark(false), IGNITE.finishMs);
         void onJoinRoom({
           roomId: joinRoomId.trim(),
           secretPhrase: joinPhrase.trim(),
@@ -125,7 +127,7 @@ export function JoinRoomForm({
                   aria-label={t('roomsInvitePaste')}
                 />
                 {joinRoomId && (
-                  <p className="mt-1.5 font-mono text-[11px] text-muted">
+                  <p className="type-caption mt-1.5 font-mono">
                     {t('roomsRoomIdLabel')}: {joinRoomId}
                   </p>
                 )}
@@ -158,7 +160,11 @@ export function JoinRoomForm({
               />
             </div>
             {showStrength && (
-              <PassphraseStrengthBar id={joinStrength.id} score={joinStrength.score} />
+              <PassphraseStrengthBar
+                id={joinStrength.id}
+                score={joinStrength.score}
+                douseKey={douseKey}
+              />
             )}
           </motion.div>
         )}
@@ -210,23 +216,33 @@ export function JoinRoomForm({
         transition={TAP_TRANSITION}
         type="submit"
         disabled={!canJoin || isJoining}
-        className={
+        className={`${
           canJoin
-            ? 'btn-accent-sheen inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
-            : 'inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 text-sm font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
-        }
+            ? 'btn-accent-sheen relative inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+            : 'relative inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 text-sm font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+        } ${spark ? 'cta-ignite-spark' : ''}`}
       >
-        {isJoining ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            {t('roomsConnecting')}
-          </>
-        ) : (
-          <>
-            <KeyRound className="h-4 w-4" aria-hidden="true" />
-            {t('roomsJoinCta')}
-          </>
+        {spark && !reduceMotion && (
+          <motion.span
+            layoutId={IGNITE.layoutId}
+            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-accent"
+            transition={EASE.ritualSpring}
+            aria-hidden="true"
+          />
         )}
+        <span className="relative z-[1] inline-flex items-center gap-2">
+          {isJoining ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              {t('roomsConnecting')}
+            </>
+          ) : (
+            <>
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+              {t('roomsJoinCta')}
+            </>
+          )}
+        </span>
       </motion.button>
 
       {scannerOpen && (

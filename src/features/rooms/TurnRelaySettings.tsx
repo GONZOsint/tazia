@@ -4,7 +4,10 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
 import { disclosure } from '../../motion/tokens';
 
-const LS_KEY = 'tazia:turn-config';
+/** Session-scoped by default — credentials leave with the tab. */
+const SS_KEY = 'tazia:turn-config';
+/** Optional durable copy when user opts in to "remember on this device". */
+const LS_KEY = 'tazia:turn-config-persist';
 
 export interface TurnConfig {
   /** Use TURN as ICE fallback when direct/STUN fails (fixes CGNAT). */
@@ -14,6 +17,8 @@ export interface TurnConfig {
   url: string;
   username: string;
   credential: string;
+  /** Persist URL/creds to localStorage across sessions. */
+  rememberDevice: boolean;
 }
 
 const DEFAULT: TurnConfig = {
@@ -22,13 +27,33 @@ const DEFAULT: TurnConfig = {
   url: '',
   username: '',
   credential: '',
+  rememberDevice: false,
 };
+
+function parseTurn(raw: string | null): TurnConfig | null {
+  if (!raw) return null;
+  try {
+    return { ...DEFAULT, ...JSON.parse(raw) };
+  } catch {
+    return null;
+  }
+}
 
 export function loadTurnConfig(): TurnConfig {
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return DEFAULT;
-    return { ...DEFAULT, ...JSON.parse(raw) };
+    const fromSession = parseTurn(sessionStorage.getItem(SS_KEY));
+    if (fromSession) return fromSession;
+    const fromPersist =
+      parseTurn(localStorage.getItem(LS_KEY)) ??
+      parseTurn(localStorage.getItem('tazia:turn-config'));
+    if (fromPersist) {
+      const migrated = { ...fromPersist, rememberDevice: true };
+      sessionStorage.setItem(SS_KEY, JSON.stringify(migrated));
+      localStorage.setItem(LS_KEY, JSON.stringify(migrated));
+      localStorage.removeItem('tazia:turn-config');
+      return migrated;
+    }
+    return DEFAULT;
   } catch {
     return DEFAULT;
   }
@@ -68,7 +93,18 @@ export function buildRtcConfig(turn: TurnConfig = loadTurnConfig()): {
 }
 
 function saveTurnConfig(cfg: TurnConfig): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+  try {
+    sessionStorage.setItem(SS_KEY, JSON.stringify(cfg));
+    if (cfg.rememberDevice) {
+      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+    } else {
+      localStorage.removeItem(LS_KEY);
+      // Legacy key from older builds that always used localStorage.
+      localStorage.removeItem('tazia:turn-config');
+    }
+  } catch {
+    /* private mode / quota */
+  }
 }
 
 interface TurnRelaySettingsProps {
@@ -126,7 +162,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
             className="overflow-hidden"
           >
             <div className="space-y-3 pt-3">
-              <p className="text-[11px] text-muted">{t('turnRelayHint')}</p>
+              <p className="type-caption">{t('turnRelayHint')}</p>
 
               <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-ink">
                 <span className="relative inline-flex">
@@ -157,7 +193,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
               {config.enabled && (
                 <div className="space-y-3">
                   <div>
-                    <label htmlFor="turn-url" className="text-[11px] font-semibold text-ink">
+                    <label htmlFor="turn-url" className="type-label text-ink">
                       {t('turnServerUrl')}
                     </label>
                     <input
@@ -169,7 +205,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                     />
                   </div>
                   <div>
-                    <label htmlFor="turn-user" className="text-[11px] font-semibold text-ink">
+                    <label htmlFor="turn-user" className="type-label text-ink">
                       {t('turnUsername')}
                     </label>
                     <input
@@ -180,7 +216,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                     />
                   </div>
                   <div>
-                    <label htmlFor="turn-cred" className="text-[11px] font-semibold text-ink">
+                    <label htmlFor="turn-cred" className="type-label text-ink">
                       {t('turnCredential')}
                     </label>
                     <input
@@ -212,7 +248,29 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                     </span>
                     <span>{t('turnForceRelay')}</span>
                   </label>
-                  <p className="text-[11px] text-muted">{t('turnForceRelayHint')}</p>
+                  <p className="type-caption">{t('turnForceRelayHint')}</p>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-ink">
+                    <span className="relative inline-flex">
+                      <input
+                        type="checkbox"
+                        className="peer sr-only"
+                        checked={config.rememberDevice}
+                        onChange={(e) => update({ rememberDevice: e.target.checked })}
+                      />
+                      <span
+                        className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+                        data-checked={config.rememberDevice}
+                        aria-hidden="true"
+                      >
+                        <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
+                          <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </span>
+                    <span>{t('turnRememberDevice')}</span>
+                  </label>
+                  <p className="type-caption">{t('turnRememberDeviceHint')}</p>
                 </div>
               )}
 
@@ -221,12 +279,12 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                   type="button"
                   aria-expanded={techOpen}
                   onClick={() => setTechOpen((v) => !v)}
-                  className="min-h-[36px] text-left text-[11px] font-semibold text-muted underline-offset-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="type-label min-h-[36px] text-left text-muted underline-offset-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   {techOpen ? t('helpMoreHide') : t('helpMore')}
                 </button>
                 {techOpen && (
-                  <p className="mt-2 font-mono text-[10px] leading-relaxed text-faint whitespace-pre-line">
+                  <p className="type-caption mt-2 font-mono leading-relaxed text-faint whitespace-pre-line">
                     {t('turnTechNote')}
                   </p>
                 )}

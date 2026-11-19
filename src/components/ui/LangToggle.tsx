@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useLocale } from '../../i18n';
-import { EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { NAV_INDICATOR, TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 export function LangToggle({ className = '' }: { className?: string }) {
   const { locale, setLocale, t } = useLocale();
@@ -27,7 +27,7 @@ export function LangToggle({ className = '' }: { className?: string }) {
             <motion.span
               layoutId="lang-pill"
               className="absolute inset-0 rounded-[calc(var(--radius-ctrl)-2px)] bg-accent"
-              transition={EASE.spring}
+              transition={NAV_INDICATOR}
             />
           )}
           <span className="relative">{code === 'es' ? t('langEs') : t('langEn')}</span>

@@ -1,8 +1,12 @@
-@import "@fontsource/dm-sans/latin-400.css";
-@import "@fontsource/dm-sans/latin-600.css";
-@import "@fontsource/plus-jakarta-sans/latin-600.css";
-@import "@fontsource/plus-jakarta-sans/latin-700.css";
-@import "@fontsource/jetbrains-mono/latin-400.css";
+/* Space Grotesk (display) + IBM Plex Sans/Mono — privacy-tech pairing, self-hosted */
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-600.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
 @import "tailwindcss";
 
 :root {
@@ -12,11 +16,38 @@
   --space-4: 16px;
   --space-5: 24px;
   --tap-min: 44px;
-  --type-xs: 11px;
-  --type-sm: 13px;
-  --type-base: 15px;
-  --type-lg: 18px;
-  --type-display: 26px;
+  /* Mobile bottom nav content row (excludes safe-area) — keep App/composer offsets in sync */
+  --bottom-nav-h: 3.75rem;
+  /*
+   * Product type scale (≤7 steps). Tight steps for dense UI scanning;
+   * bigger jumps only at the top. Roles map to Material display/headline/
+   * title/body/label — not a marketing modular ratio.
+   *   badge 11 · caption 12 · ui 14 · body 16 · title 18 · headline 24 · display 36/48
+   */
+  --type-badge: 0.6875rem; /* 11 — pills / unread only */
+  --type-caption: 0.75rem; /* 12 — meta, helpers, mono keys */
+  --type-ui: 0.875rem; /* 14 — buttons, lists, nav, form chrome */
+  --type-body: 1rem; /* 16 — reading, messages, ledes */
+  --type-title: 1.125rem; /* 18 — section / modal / thread */
+  --type-headline: 1.5rem; /* 24 — page titles */
+  --type-display: 2.25rem; /* 36 — landing brand */
+  --type-display-lg: 3rem; /* 48 — landing brand sm+ */
+  /* Back-compat aliases used by older rules */
+  --type-xs: var(--type-caption);
+  --type-sm: var(--type-ui);
+  --type-base: var(--type-ui);
+  --type-lg: var(--type-title);
+  --type-xl: var(--type-headline);
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-ui: 1.4;
+  --leading-body: 1.5;
+  --leading-message: 1.55;
+  --tracking-display: -0.02em;
+  --tracking-headline: -0.02em;
+  --tracking-title: -0.015em;
+  --tracking-label: 0.04em;
+  --tracking-caption: 0.01em;
   --radius-ctrl: 10px;
   --radius-msg: 14px;
   --radius-panel: 16px;
@@ -30,47 +61,56 @@
   --dur-tab: 160ms;
   --dur-medium: 200ms;
   --dur-switch: 220ms;
-  --dur-burn: 420ms;
-  --dur-burn-ignition: 420ms;
-  --dur-ignite: 240ms;
+  --dur-modal: 220ms;
+  --dur-plane: 260ms;
   --dur-sheen: 300ms;
-  --dur-pulse: 450ms;
   --dur-flash: 280ms;
-  --dur-ring: 400ms;
+  --dur-pulse: 360ms;
+  --dur-ring: 360ms;
+  --dur-burn: 480ms;
+  --dur-burn-ignition: 480ms;
+  --dur-ignite: 280ms;
+  --dur-birth: 280ms;
+  --dur-ritual: 220ms;
+  --dur-confetti: 400ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
 
-  /* Warm-stone light — cooler than cream-AI, not flat grey */
-  --color-bg: #e3e1db;
-  --color-surface: #d8d5ce;
-  --color-surface-raised: #efede8;
-  --color-ink: #121211;
-  --color-muted: #4a4640;
-  --color-faint: #76716a;
-  --color-border: #b6b0a6;
+  /*
+   * Warm-stone + lime brand.
+   * Elevation (light): raised > bg > surface (surface = recessed / press-in).
+   */
+  --color-bg: #e4e1da;
+  --color-surface: #d6d2c9;
+  --color-surface-raised: #f1eee8;
+  --color-ink: #141310;
+  --color-muted: #454139;
+  --color-faint: #6a655c;
+  --color-border: #a8a195;
   --color-accent: #ccff66;
-  --color-accent-hover: #b8e85a;
-  --color-accent-soft: color-mix(in oklab, #ccff66 26%, #efede8);
+  --color-accent-hover: #b5e84f;
   --color-on-accent: #0a0d06;
   --color-on-danger: #ffffff;
-  --color-danger: #dc2626;
-  --color-danger-bg: color-mix(in oklab, #dc2626 10%, #efede8);
-  --color-danger-border: color-mix(in oklab, #dc2626 28%, #b6b0a6);
-  --color-danger-ink: #991b1b;
-  --color-warn: #d97706;
-  --color-warn-bg: color-mix(in oklab, #d97706 12%, #efede8);
-  --color-warn-border: color-mix(in oklab, #d97706 30%, #b6b0a6);
-  --color-warn-ink: #92400e;
-  --color-ok: #059669;
-  --color-ok-bg: color-mix(in oklab, #059669 10%, #efede8);
-  --color-ok-border: color-mix(in oklab, #059669 28%, #b6b0a6);
-  --color-ok-ink: #065f46;
-  --color-info: #0284c7;
-  --color-info-bg: color-mix(in oklab, #0284c7 10%, #efede8);
-  --color-info-border: color-mix(in oklab, #0284c7 28%, #b6b0a6);
-  --color-info-ink: #075985;
+  /* Semantic: warm/stone-adjacent; info = teal (sits with lime, not sky-blue) */
+  --color-danger: #c93c3c;
+  --color-danger-ink: #8f1f1f;
+  --color-warn: #c9780a;
+  --color-warn-ink: #8a4b08;
+  --color-ok: #1f7a5c;
+  --color-ok-ink: #0f4f3a;
+  --color-info: #0f7f78;
+  --color-info-ink: #0a524e;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 22%, var(--color-surface-raised));
+  --color-danger-bg: color-mix(in oklab, var(--color-danger) 10%, var(--color-surface-raised));
+  --color-danger-border: color-mix(in oklab, var(--color-danger) 28%, var(--color-border));
+  --color-warn-bg: color-mix(in oklab, var(--color-warn) 12%, var(--color-surface-raised));
+  --color-warn-border: color-mix(in oklab, var(--color-warn) 30%, var(--color-border));
+  --color-ok-bg: color-mix(in oklab, var(--color-ok) 10%, var(--color-surface-raised));
+  --color-ok-border: color-mix(in oklab, var(--color-ok) 28%, var(--color-border));
+  --color-info-bg: color-mix(in oklab, var(--color-info) 10%, var(--color-surface-raised));
+  --color-info-border: color-mix(in oklab, var(--color-info) 28%, var(--color-border));
   --color-scrim: color-mix(in oklab, #000 48%, transparent);
   --color-scrim-strong: color-mix(in oklab, #000 68%, transparent);
 
@@ -79,41 +119,42 @@
   --shadow-sheet: 0 16px 40px color-mix(in oklab, #000 14%, transparent);
   --shadow-logo: 0 1px 2px color-mix(in oklab, #000 8%, transparent);
 
-  /* Warm amber fire — sits with warn + stone, not neon red */
+  /* Warm amber fire — sits with warn + stone */
   --fire-core: #e8b84a;
-  --fire-mid: #d97706;
-  --fire-edge: #b45309;
+  --fire-mid: #c9780a;
+  --fire-edge: #9a4f0a;
 }
 
 html.dark {
-  --color-bg: #0c0e0a;
-  --color-surface: #131511;
-  --color-surface-raised: #1a1c16;
-  --color-ink: #f2f2ee;
-  --color-muted: #a3a39a;
-  --color-faint: #72726a;
-  --color-border: #2c2e28;
+  /* Olive-black stack: bg < surface < raised; lime accent unchanged */
+  --color-bg: #0b0d09;
+  --color-surface: #12140f;
+  --color-surface-raised: #1b1e16;
+  --color-ink: #f1f1ea;
+  --color-muted: #a8a996;
+  --color-faint: #7d7e70;
+  --color-border: #2e3128;
   --color-accent: #ccff66;
   --color-accent-hover: #d9ff88;
-  --color-accent-soft: color-mix(in oklab, #ccff66 14%, transparent);
   --color-on-accent: #0a0d06;
   --color-on-danger: #ffffff;
-  --color-danger: #f87171;
-  --color-danger-bg: color-mix(in oklab, #f87171 14%, #0c0e0a);
-  --color-danger-border: color-mix(in oklab, #f87171 32%, #2c2e28);
-  --color-danger-ink: #fecaca;
-  --color-warn: #fbbf24;
-  --color-warn-bg: color-mix(in oklab, #fbbf24 12%, #0c0e0a);
-  --color-warn-border: color-mix(in oklab, #fbbf24 30%, #2c2e28);
+  --color-danger: #f07a7a;
+  --color-danger-ink: #ffd0d0;
+  --color-warn: #f0c14d;
   --color-warn-ink: #fde68a;
-  --color-ok: #34d399;
-  --color-ok-bg: color-mix(in oklab, #34d399 12%, #0c0e0a);
-  --color-ok-border: color-mix(in oklab, #34d399 28%, #2c2e28);
-  --color-ok-ink: #a7f3d0;
-  --color-info: #38bdf8;
-  --color-info-bg: color-mix(in oklab, #38bdf8 12%, #0c0e0a);
-  --color-info-border: color-mix(in oklab, #38bdf8 28%, #2c2e28);
-  --color-info-ink: #bae6fd;
+  --color-ok: #4ecf9a;
+  --color-ok-ink: #b6f0d4;
+  --color-info: #3ecfc4;
+  --color-info-ink: #b8f5ef;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 14%, transparent);
+  --color-danger-bg: color-mix(in oklab, var(--color-danger) 14%, var(--color-bg));
+  --color-danger-border: color-mix(in oklab, var(--color-danger) 32%, var(--color-border));
+  --color-warn-bg: color-mix(in oklab, var(--color-warn) 12%, var(--color-bg));
+  --color-warn-border: color-mix(in oklab, var(--color-warn) 30%, var(--color-border));
+  --color-ok-bg: color-mix(in oklab, var(--color-ok) 12%, var(--color-bg));
+  --color-ok-border: color-mix(in oklab, var(--color-ok) 28%, var(--color-border));
+  --color-info-bg: color-mix(in oklab, var(--color-info) 12%, var(--color-bg));
+  --color-info-border: color-mix(in oklab, var(--color-info) 28%, var(--color-border));
   --color-scrim: color-mix(in oklab, #000 55%, transparent);
   --color-scrim-strong: color-mix(in oklab, #000 72%, transparent);
 
@@ -128,9 +169,9 @@ html.dark {
 }
 
 @theme {
-  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
@@ -167,10 +208,14 @@ html.dark {
 @layer base {
   html {
     overflow-x: clip;
+    /* Respect user/browser root size (a11y); scale lives in rem tokens. */
+    font-size: 100%;
   }
 
   body {
     font-family: var(--font-sans);
+    font-size: var(--type-ui);
+    line-height: var(--leading-ui);
     background-color: var(--color-bg);
     color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
@@ -180,6 +225,122 @@ html.dark {
 
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
+    letter-spacing: var(--tracking-headline);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-weight: 700;
+  }
+  h2, h3 {
+    font-weight: 600;
+  }
+
+  .font-mono {
+    font-variant-ligatures: none;
+    font-feature-settings: "ss01" 0, "calt" 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Type roles — prefer these over ad-hoc text-[Npx] / mixed Tailwind sizes.
+   * Hierarchy: weight + color first; size only when roles differ.
+   */
+  .type-display {
+    font-family: var(--font-display);
+    font-size: var(--type-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+  @media (min-width: 640px) {
+    .type-display {
+      font-size: var(--type-display-lg);
+    }
+  }
+
+  .type-headline {
+    font-family: var(--font-display);
+    font-size: var(--type-headline);
+    font-weight: 700;
+    letter-spacing: var(--tracking-headline);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  .type-title {
+    font-family: var(--font-display);
+    font-size: var(--type-title);
+    font-weight: 600;
+    letter-spacing: var(--tracking-title);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  .type-subtitle {
+    font-family: var(--font-display);
+    font-size: var(--type-title);
+    font-weight: 600;
+    letter-spacing: var(--tracking-title);
+    line-height: var(--leading-snug);
+    text-wrap: balance;
+  }
+  @media (min-width: 640px) {
+    .type-subtitle {
+      font-size: 1.25rem; /* 20 — one step under headline */
+    }
+  }
+
+  .type-ui {
+    font-size: var(--type-ui);
+    line-height: var(--leading-ui);
+  }
+
+  .type-lede {
+    font-size: var(--type-body);
+    line-height: var(--leading-body);
+    color: var(--color-muted);
+    text-wrap: pretty;
+  }
+
+  .type-message {
+    font-size: var(--type-body);
+    line-height: var(--leading-message);
+    text-wrap: pretty;
+  }
+
+  .type-label {
+    font-size: var(--type-caption);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    line-height: var(--leading-snug);
+  }
+
+  .type-caption {
+    font-size: var(--type-caption);
+    font-weight: 500;
+    letter-spacing: var(--tracking-caption);
+    line-height: var(--leading-snug);
+    color: var(--color-muted);
+  }
+
+  .type-badge {
+    font-size: var(--type-badge);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Alias kept for earlier call sites */
+  .type-meta {
+    font-size: var(--type-caption);
+    font-weight: 500;
+    letter-spacing: var(--tracking-caption);
+    line-height: var(--leading-snug);
+    color: var(--color-muted);
   }
 
   ::selection {
@@ -200,7 +361,9 @@ html.dark {
     border: 1px solid var(--color-border);
     background-color: var(--color-surface-raised);
     padding: 0.625rem 0.75rem;
+    /* ≥16px avoids iOS zoom; keep absolute for form fields */
     font-size: 16px;
+    line-height: var(--leading-snug);
     color: var(--color-ink);
     transition:
       border-color var(--dur-micro) var(--ease-out-expo),
@@ -232,6 +395,49 @@ html.dark {
     .chrome-elev-md-flat {
       box-shadow: none;
     }
+  }
+
+  /*
+   * Mobile bottom nav — M3 navigation bar anatomy (container + active indicator + badge).
+   * Height token kept in sync with App / composer `bottom-[calc(...)]` offsets.
+   */
+  .bottom-nav {
+    border-top: 1px solid color-mix(in oklab, var(--color-border) 85%, transparent);
+    background: color-mix(in oklab, var(--color-surface-raised) 92%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+  .bottom-nav__list {
+    min-height: var(--bottom-nav-h);
+  }
+  .bottom-nav__item {
+    min-height: var(--bottom-nav-h);
+    padding-top: 0.35rem;
+    padding-bottom: 0.3rem;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .bottom-nav__icon-slot {
+    width: 3.5rem; /* ~56 — M3 indicator width band */
+    height: 2rem; /* 32 — M3 active indicator height */
+  }
+  .bottom-nav__indicator {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: var(--color-accent-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent) 28%, transparent);
+  }
+  .bottom-nav__label {
+    font-size: var(--type-caption);
+    letter-spacing: 0.02em;
+  }
+  .bottom-nav__badge {
+    top: -0.15rem;
+    right: 0.15rem;
+  }
+  html.dark .bottom-nav {
+    background: color-mix(in oklab, var(--color-surface-raised) 88%, transparent);
   }
 
   .shadow-sheet {
@@ -364,19 +570,18 @@ html.dark {
     border-radius: 1px;
   }
 
-  /* Plaza posts — accent rail slab, not a generic bordered card */
+  /* Plaza posts */
   .plaza-post {
     position: relative;
     border-radius: var(--radius-msg);
-    border: 0;
+    border: 1px solid var(--color-border);
     background: var(--color-surface-raised);
     padding: 0.65rem 0.85rem 0.7rem 0.95rem;
-    box-shadow:
-      inset 3px 0 0 color-mix(in oklab, var(--color-accent) 55%, var(--color-border)),
-      0 1px 0 color-mix(in oklab, var(--color-border) 55%, transparent);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
     transition:
       box-shadow var(--dur-micro) var(--ease-out-expo),
-      background-color var(--dur-micro) var(--ease-out-expo);
+      background-color var(--dur-micro) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo);
   }
   @media (min-width: 640px) {
     .plaza-post {
@@ -385,50 +590,45 @@ html.dark {
   }
   .plaza-post--nested {
     background: color-mix(in oklab, var(--color-bg) 70%, var(--color-surface-raised));
-    box-shadow:
-      inset 2px 0 0 color-mix(in oklab, var(--color-accent) 38%, var(--color-border)),
-      0 1px 0 color-mix(in oklab, var(--color-border) 40%, transparent);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-border) 40%, transparent);
   }
   .plaza-post--self {
-    box-shadow:
-      inset 3px 0 0 var(--color-accent),
-      0 1px 0 color-mix(in oklab, var(--color-accent) 28%, transparent);
+    border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-accent) 28%, transparent);
     background: color-mix(in oklab, var(--color-accent-soft) 55%, var(--color-surface-raised));
   }
   .plaza-post--self.plaza-post--nested {
-    box-shadow:
-      inset 2px 0 0 color-mix(in oklab, var(--color-accent) 72%, var(--color-border)),
-      0 1px 0 color-mix(in oklab, var(--color-accent) 18%, transparent);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-accent) 18%, transparent);
   }
   .plaza-post.is-highlighted {
+    border-color: color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
     box-shadow:
-      inset 3px 0 0 var(--color-accent),
       0 0 0 1px color-mix(in oklab, var(--color-accent) 40%, transparent),
       0 0 18px color-mix(in oklab, var(--color-accent) 16%, transparent);
   }
 
   .plaza-title {
-    border: 0;
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-panel);
     background: var(--color-surface-raised);
     padding: 0.7rem 0.9rem 0.75rem 1rem;
-    box-shadow:
-      inset 3px 0 0 var(--color-accent),
-      0 1px 0 color-mix(in oklab, var(--color-border) 50%, transparent);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
   }
 
   .dm-bubble {
     border-radius: var(--radius-msg);
     padding: 0.625rem 1rem;
-    font-size: 0.875rem;
-    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+    font-size: var(--type-body);
+    line-height: var(--leading-message);
+    border: 1px solid var(--color-border);
     background: var(--color-surface-raised);
     color: var(--color-ink);
+    text-wrap: pretty;
   }
   .dm-bubble--self {
+    border-color: transparent;
     background: var(--color-accent);
     color: var(--color-on-accent);
-    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--color-on-accent) 22%, transparent);
   }
 
   .thread-quote {
@@ -439,10 +639,10 @@ html.dark {
     padding: 0.4rem 0.6rem;
     border-radius: calc(var(--radius-ctrl) - 2px);
     border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
-    border-left: 3px solid var(--color-accent);
     background: color-mix(in oklab, var(--color-bg) 88%, var(--color-surface-raised));
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: var(--type-caption);
+    line-height: var(--leading-snug);
+    letter-spacing: var(--tracking-caption);
     color: var(--color-muted);
   }
   .thread-quote--composer {
@@ -544,7 +744,6 @@ html.dark {
         var(--color-surface-raised) 45%,
         var(--color-bg) 100%
       );
-    box-shadow: inset 3px 0 0 var(--color-accent);
   }
   .hero-landing-mark {
     box-shadow:
@@ -628,21 +827,31 @@ html.dark {
   .burn-heat {
     position: relative;
     overflow: hidden;
+    isolation: isolate;
     transition:
       border-color var(--dur-micro) var(--ease-out-expo),
       box-shadow var(--dur-medium) var(--ease-out-expo),
-      color var(--dur-micro) var(--ease-out-expo);
+      color var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo);
   }
   .burn-heat .burn-ignition-bar {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      90deg,
-      color-mix(in oklab, var(--fire-edge) 55%, var(--color-danger)) 0%,
-      var(--fire-mid) 55%,
-      var(--fire-core) 100%
-    );
-    opacity: 0.48;
+    background:
+      linear-gradient(
+        105deg,
+        transparent 0%,
+        color-mix(in oklab, var(--fire-core) 35%, transparent) 42%,
+        transparent 68%
+      ),
+      linear-gradient(
+        90deg,
+        color-mix(in oklab, var(--fire-edge) 60%, var(--color-danger)) 0%,
+        var(--fire-mid) 48%,
+        var(--fire-core) 100%
+      );
+    background-size: 180% 100%, 100% 100%;
+    opacity: 0.5;
     transform: scaleX(0);
     transform-origin: left center;
     pointer-events: none;
@@ -652,116 +861,104 @@ html.dark {
   /* Gooey rising embers — CodePen burning-button technique, TAZIA palette. */
   .burn-embers {
     position: absolute;
-    inset: 0;
+    inset: -18% 0 0;
     pointer-events: none;
     z-index: 2;
     filter: url(#tazia-fire-goo);
     opacity: 0;
     transition: opacity var(--dur-micro) ease;
+    overflow: hidden;
   }
   .burn-embers span {
     position: absolute;
-    bottom: 16%;
+    bottom: 14%;
     left: 50%;
     width: 5px;
     height: 5px;
     border-radius: 50%;
     background: var(--fire-core);
+    box-shadow: 0 0 6px color-mix(in oklab, var(--fire-core) 55%, transparent);
     transform: translate(-50%, 0) scale(0.35);
     opacity: 0;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
   }
-  .burn-embers span:nth-child(1)  { left: 18%; width: 4px; height: 4px; background: var(--fire-mid); }
-  .burn-embers span:nth-child(2)  { left: 26%; width: 5px; height: 5px; }
-  .burn-embers span:nth-child(3)  { left: 34%; width: 3.5px; height: 3.5px; background: var(--fire-edge); }
-  .burn-embers span:nth-child(4)  { left: 42%; width: 4.5px; height: 4.5px; }
-  .burn-embers span:nth-child(5)  { left: 50%; width: 5.5px; height: 5.5px; background: var(--fire-core); }
+  .burn-embers span:nth-child(1)  { left: 16%; width: 4px; height: 4px; background: var(--fire-mid); }
+  .burn-embers span:nth-child(2)  { left: 24%; width: 5.5px; height: 5.5px; }
+  .burn-embers span:nth-child(3)  { left: 33%; width: 3.5px; height: 3.5px; background: var(--fire-edge); }
+  .burn-embers span:nth-child(4)  { left: 41%; width: 4.5px; height: 4.5px; }
+  .burn-embers span:nth-child(5)  { left: 50%; width: 6px; height: 6px; background: var(--fire-core); }
   .burn-embers span:nth-child(6)  { left: 58%; width: 4px; height: 4px; background: var(--fire-mid); }
   .burn-embers span:nth-child(7)  { left: 66%; width: 3.5px; height: 3.5px; }
   .burn-embers span:nth-child(8)  { left: 74%; width: 5px; height: 5px; background: var(--fire-edge); }
-  .burn-embers span:nth-child(9)  { left: 30%; width: 3px; height: 3px; background: var(--fire-core); }
-  .burn-embers span:nth-child(10) { left: 46%; width: 4px; height: 4px; background: var(--fire-mid); }
+  .burn-embers span:nth-child(9)  { left: 28%; width: 3px; height: 3px; background: var(--fire-core); }
+  .burn-embers span:nth-child(10) { left: 46%; width: 4.5px; height: 4.5px; background: var(--fire-mid); }
   .burn-embers span:nth-child(11) { left: 62%; width: 3.5px; height: 3.5px; }
-  .burn-embers span:nth-child(12) { left: 78%; width: 4.5px; height: 4.5px; background: var(--fire-core); }
+  .burn-embers span:nth-child(12) { left: 80%; width: 5px; height: 5px; background: var(--fire-core); }
 
-  /* Organic rise paths with horizontal drift (compressed CodePen rise family). */
+  /* Organic rise paths with horizontal drift (taller CodePen-style plume). */
   @keyframes burn-ember-rise-a {
-    0%   { opacity: 0; transform: translate(-50%, 4px) scale(0.4); }
-    18%  { opacity: 0.95; }
-    55%  { opacity: 0.85; transform: translate(calc(-50% - 3px), -12px) scale(0.7); }
-    100% { opacity: 0; transform: translate(calc(-50% - 9px), -26px) scale(0.08); }
+    0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.35); }
+    12%  { opacity: 1; }
+    45%  { opacity: 0.9; transform: translate(calc(-50% - 4px), -18px) scale(0.85); }
+    100% { opacity: 0; transform: translate(calc(-50% - 12px), -42px) scale(0.05); }
   }
   @keyframes burn-ember-rise-b {
-    0%   { opacity: 0; transform: translate(-50%, 5px) scale(0.35); }
-    16%  { opacity: 1; }
-    50%  { opacity: 0.9; transform: translate(calc(-50% + 4px), -10px) scale(0.75); }
-    100% { opacity: 0; transform: translate(calc(-50% + 11px), -24px) scale(0.1); }
+    0%   { opacity: 0; transform: translate(-50%, 7px) scale(0.3); }
+    14%  { opacity: 1; }
+    48%  { opacity: 0.92; transform: translate(calc(-50% + 5px), -16px) scale(0.9); }
+    100% { opacity: 0; transform: translate(calc(-50% + 14px), -38px) scale(0.08); }
   }
   @keyframes burn-ember-rise-c {
-    0%   { opacity: 0; transform: translate(-50%, 3px) scale(0.45); }
-    20%  { opacity: 0.9; }
-    100% { opacity: 0; transform: translate(calc(-50% - 2px), -30px) scale(0.05); }
+    0%   { opacity: 0; transform: translate(-50%, 5px) scale(0.4); }
+    16%  { opacity: 0.95; }
+    55%  { opacity: 0.8; transform: translate(calc(-50% - 1px), -22px) scale(0.7); }
+    100% { opacity: 0; transform: translate(calc(-50% - 3px), -48px) scale(0.04); }
   }
 
-  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-    .burn-heat:hover {
-      border-color: color-mix(in srgb, var(--fire-mid) 55%, var(--color-danger-border));
+  /* Hover = static heat tint only. Embers/flicker reserved for .is-heating (ritual). */
+  @media (hover: hover) {
+    .burn-heat:hover:not(.is-heating) {
+      border-color: color-mix(in srgb, var(--fire-mid) 60%, var(--color-danger-border));
+      background-color: color-mix(in oklab, var(--color-danger-bg) 70%, var(--fire-mid));
       box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--fire-mid) 22%, transparent),
-        0 0 18px color-mix(in srgb, var(--fire-mid) 22%, transparent);
+        0 0 0 1px color-mix(in srgb, var(--fire-mid) 28%, transparent),
+        0 0 14px color-mix(in srgb, var(--fire-mid) 18%, transparent);
     }
-    .burn-heat:hover .burn-flame-icon {
-      animation: flame-flicker-hover 0.55s ease-in-out infinite alternate;
+    .burn-heat:hover:not(.is-heating) .burn-flame-icon {
       color: var(--fire-mid);
+      transform: scale(1.06);
     }
-    .burn-heat:hover .burn-embers {
-      opacity: 1;
-    }
-    .burn-heat:hover .burn-embers span:nth-child(3n+1) {
-      animation: burn-ember-rise-a 0.85s linear infinite;
-    }
-    .burn-heat:hover .burn-embers span:nth-child(3n+2) {
-      animation: burn-ember-rise-b 0.72s linear infinite;
-    }
-    .burn-heat:hover .burn-embers span:nth-child(3n) {
-      animation: burn-ember-rise-c 0.96s linear infinite;
-    }
-    .burn-heat:hover .burn-embers span:nth-child(1)  { animation-delay: -0.42s; }
-    .burn-heat:hover .burn-embers span:nth-child(2)  { animation-delay: -0.18s; }
-    .burn-heat:hover .burn-embers span:nth-child(3)  { animation-delay: -0.65s; }
-    .burn-heat:hover .burn-embers span:nth-child(4)  { animation-delay: -0.08s; }
-    .burn-heat:hover .burn-embers span:nth-child(5)  { animation-delay: -0.51s; }
-    .burn-heat:hover .burn-embers span:nth-child(6)  { animation-delay: -0.29s; }
-    .burn-heat:hover .burn-embers span:nth-child(7)  { animation-delay: -0.74s; }
-    .burn-heat:hover .burn-embers span:nth-child(8)  { animation-delay: -0.12s; }
-    .burn-heat:hover .burn-embers span:nth-child(9)  { animation-delay: -0.38s; }
-    .burn-heat:hover .burn-embers span:nth-child(10) { animation-delay: -0.61s; }
-    .burn-heat:hover .burn-embers span:nth-child(11) { animation-delay: -0.22s; }
-    .burn-heat:hover .burn-embers span:nth-child(12) { animation-delay: -0.47s; }
   }
   .burn-heat.is-heating {
-    animation: thermal-tremor 0.11s linear infinite;
+    animation: thermal-tremor 0.1s linear infinite;
     border-color: var(--fire-mid) !important;
+    color: color-mix(in oklab, var(--color-danger-ink) 55%, var(--fire-core)) !important;
     box-shadow:
-      0 0 22px color-mix(in oklab, var(--fire-mid) 40%, transparent),
-      inset 0 0 10px color-mix(in oklab, var(--fire-edge) 18%, transparent) !important;
+      0 0 26px color-mix(in oklab, var(--fire-mid) 48%, transparent),
+      0 0 48px color-mix(in oklab, var(--fire-edge) 22%, transparent),
+      inset 0 0 14px color-mix(in oklab, var(--fire-edge) 24%, transparent) !important;
   }
   .burn-heat.is-heating .burn-embers {
     opacity: 1;
   }
   .burn-heat.is-heating .burn-ignition-bar {
-    opacity: 0.62;
+    opacity: 0.72;
+    animation: burn-ignition-shimmer 0.55s linear infinite;
+  }
+  .burn-heat.is-heating .burn-flame-icon {
+    color: var(--fire-core);
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--fire-core) 55%, transparent));
   }
   @media (prefers-reduced-motion: no-preference) {
     .burn-heat.is-heating .burn-embers span:nth-child(3n+1) {
-      animation: burn-ember-rise-a 0.48s linear infinite;
+      animation: burn-ember-rise-a 0.42s linear infinite;
     }
     .burn-heat.is-heating .burn-embers span:nth-child(3n+2) {
-      animation: burn-ember-rise-b 0.4s linear infinite;
+      animation: burn-ember-rise-b 0.36s linear infinite;
     }
     .burn-heat.is-heating .burn-embers span:nth-child(3n) {
-      animation: burn-ember-rise-c 0.54s linear infinite;
+      animation: burn-ember-rise-c 0.48s linear infinite;
     }
   }
 
@@ -771,14 +968,17 @@ html.dark {
     transition:
       box-shadow var(--dur-medium) var(--ease-out-expo),
       border-color var(--dur-micro) var(--ease-out-expo),
-      background-color var(--dur-micro) var(--ease-out-expo);
+      background-color var(--dur-micro) var(--ease-out-expo),
+      filter var(--dur-medium) var(--ease-out-expo);
   }
   .session-burn-target.burning-front {
     box-shadow:
-      0 0 28px color-mix(in oklab, var(--fire-mid) 38%, transparent),
-      0 0 48px color-mix(in oklab, var(--fire-edge) 16%, transparent),
-      inset 0 0 22px color-mix(in oklab, var(--fire-edge) 22%, transparent);
+      0 0 28px color-mix(in oklab, var(--fire-mid) 42%, transparent),
+      0 0 56px color-mix(in oklab, var(--fire-edge) 18%, transparent),
+      inset 0 0 26px color-mix(in oklab, var(--fire-edge) 26%, transparent);
     border-color: var(--fire-mid) !important;
+    filter: saturate(1.15) brightness(1.04);
+    animation: burn-front-pulse 0.32s ease-in-out infinite alternate;
   }
   .session-burn-target.incinerated-collapse {
     opacity: 0;
@@ -789,8 +989,8 @@ html.dark {
     padding-bottom: 0 !important;
     border-width: 0 !important;
     overflow: hidden;
-    filter: blur(8px) brightness(0.4);
-    transform: scale(0.95);
+    filter: blur(10px) brightness(0.28) saturate(0.4);
+    transform: scale(0.92) translateY(6px);
     transition:
       max-height var(--dur-burn) var(--ease-in-out-quart),
       opacity var(--dur-burn) var(--ease-exit),
@@ -893,32 +1093,81 @@ html.dark {
 
 .dice-rolling {
   display: inline-flex;
-  animation: dice-anticipate 0.48s var(--ease-spring);
+  animation: dice-anticipate var(--dur-plane) var(--ease-spring);
 }
 
-@keyframes paper-plane-launch {
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  45% { transform: translate(10px, -8px) scale(0.85); opacity: 0; }
-  55% { transform: translate(-8px, 6px) scale(0.85); opacity: 0; }
-  100% { transform: translate(0, 0) scale(1); opacity: 1; }
+/* Plane launch is Motion-only (usePlaneLaunch + PlaneSendIcon). */
+
+@keyframes passphrase-douse {
+  0% { transform: translateX(0); filter: brightness(1); }
+  20% { transform: translateX(-3px); filter: brightness(0.85) saturate(0.7); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); filter: brightness(0.7) saturate(0.5); }
+  100% { transform: translateX(0); filter: brightness(1); opacity: 1; }
+}
+.passphrase-douse {
+  animation: passphrase-douse var(--dur-ritual) var(--ease-out-expo) 1;
 }
 
-.plane-launching {
-  display: inline-flex;
-  animation: paper-plane-launch 0.26s var(--ease-out-expo);
+@keyframes qr-success-ring {
+  0% { transform: scale(0.85); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: scale(1.12); opacity: 0; }
+}
+.qr-success-ring {
+  animation: qr-success-ring var(--dur-ritual) var(--ease-out-expo) 1 forwards;
+}
+
+@keyframes cta-ignite-spark {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 0%, transparent); }
+  40% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 4px color-mix(in oklab, var(--color-accent) 35%, transparent),
+      0 0 18px color-mix(in oklab, var(--color-accent) 40%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cta-ignite-spark {
+    animation: cta-ignite-spark var(--dur-ignite) var(--ease-out-expo) 1;
+  }
 }
 
 @keyframes flame-flicker-hover {
-  0% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 2px var(--fire-mid)); }
-  100% { transform: scale(1.12) rotate(3deg); filter: drop-shadow(0 0 6px var(--fire-core)); }
+  0% { transform: scale(1) rotate(-4deg); filter: drop-shadow(0 0 2px var(--fire-mid)); }
+  100% { transform: scale(1.14) rotate(4deg); filter: drop-shadow(0 0 8px var(--fire-core)); }
 }
 
 @keyframes thermal-tremor {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  20% { transform: translate(-1.4px, 0.8px) rotate(-0.55deg); }
-  40% { transform: translate(1.5px, -0.9px) rotate(0.55deg); }
-  60% { transform: translate(-1.2px, -1px) rotate(-0.4deg); }
-  80% { transform: translate(1.3px, 1px) rotate(0.4deg); }
+  20% { transform: translate(-1.5px, 0.9px) rotate(-0.6deg); }
+  40% { transform: translate(1.6px, -1px) rotate(0.6deg); }
+  60% { transform: translate(-1.3px, -1.1px) rotate(-0.45deg); }
+  80% { transform: translate(1.4px, 1.1px) rotate(0.45deg); }
+}
+
+@keyframes burn-ignition-shimmer {
+  0% { background-position: 120% 0, 0 0; }
+  100% { background-position: -40% 0, 0 0; }
+}
+
+@keyframes burn-front-pulse {
+  0% {
+    box-shadow:
+      0 0 22px color-mix(in oklab, var(--fire-mid) 34%, transparent),
+      0 0 44px color-mix(in oklab, var(--fire-edge) 14%, transparent),
+      inset 0 0 20px color-mix(in oklab, var(--fire-edge) 20%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 34px color-mix(in oklab, var(--fire-mid) 52%, transparent),
+      0 0 64px color-mix(in oklab, var(--fire-edge) 24%, transparent),
+      inset 0 0 30px color-mix(in oklab, var(--fire-edge) 30%, transparent);
+  }
 }
 
 @keyframes zone-join-pulse {
@@ -1070,8 +1319,14 @@ html.dark {
 }
 
 @keyframes tab-panel-show {
-  from { opacity: 0.9; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.88;
+    transform: translateX(calc(var(--tab-enter-from, 0px)));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .tab-panel {
@@ -1080,6 +1335,8 @@ html.dark {
 
 .tab-panel[data-active='true'] {
   display: block;
+  transform: translateX(var(--tab-drag, 0px));
+  will-change: transform;
 }
 
 /* Plaza (in-zone): fill the shell and scroll inside the workspace. */
@@ -1094,6 +1351,16 @@ html.dark {
 @media (prefers-reduced-motion: no-preference) {
   .tab-panel[data-active='true'] {
     animation: tab-panel-show var(--dur-tab) var(--ease-out-expo);
+  }
+
+  /* Follow finger; snap back when released without commit. */
+  [data-swiping='true'] .tab-panel[data-active='true'] {
+    animation: none;
+    transition: none;
+  }
+
+  [data-swiping='false'] .tab-panel[data-active='true'] {
+    transition: transform var(--dur-tab) var(--ease-out-expo);
   }
 }
 
@@ -1133,6 +1400,11 @@ html.dark {
   100% { transform: scale(2.4); opacity: 0; }
 }
 
+@keyframes mesh-birth-wave {
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
 .mesh-radar-dot {
   position: relative;
   display: inline-flex;
@@ -1141,13 +1413,23 @@ html.dark {
   width: 8px;
   height: 8px;
 }
+/* Stable mesh: solid dot only — no infinite ping. */
 .mesh-radar-dot::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 999px;
   background-color: currentColor;
-  animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  opacity: 0;
+  pointer-events: none;
+}
+.mesh-radar-dot.is-birthing::before {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mesh-radar-dot.is-birthing::before {
+    animation: mesh-birth-wave var(--dur-pulse) var(--ease-out-expo) 1;
+  }
 }
 .mesh-radar-dot > span {
   position: relative;
@@ -1162,18 +1444,29 @@ html.dark {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
 }
-.wifi-arc-1 { animation: wifi-wave-step 1.8s ease-in-out infinite 0s; }
-.wifi-arc-2 { animation: wifi-wave-step 1.8s ease-in-out infinite 0.35s; }
+/* One-shot on mesh birth only (not idle). */
+.wifi-arc-1.is-birthing {
+  animation: wifi-wave-step var(--dur-birth) ease-in-out 1;
+}
 
+/* Parent owns perspective (shared vanishing point). Hit-test lives here — never on the tilting child. */
 .qr-perspective {
-  perspective: 1100px;
-  perspective-origin: 50% 42%;
+  perspective: 1000px;
+  perspective-origin: 50% 38%;
+  /* Room for lift shadow so it isn't clipped by a tight layout box. */
+  padding: 10px 14px 18px;
+  margin: -10px -14px -18px;
 }
 .qr-surface-3d {
+  --qr-gx: 42%;
+  --qr-gy: 28%;
+  --qr-shadow-x: -2px;
+  --qr-shadow-y: 14px;
+  --qr-lift: 0.28;
   position: relative;
-  overflow: hidden;
+  /* overflow stays on .qr-surface-face — grouping props (overflow) force flatten on preserve-3d (CSS Transforms 2). */
   transform-style: preserve-3d;
-  transform: rotateX(6.5deg) rotateY(-5.5deg) translateZ(0);
+  transform: rotateX(5.5deg) rotateY(-4.5deg) translateZ(0);
   border: 1px solid color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
   background:
     linear-gradient(
@@ -1183,35 +1476,56 @@ html.dark {
       color-mix(in oklab, var(--color-ink) 6%, var(--color-surface-raised))
     );
   box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 12%, transparent),
-    0 12px 26px color-mix(in oklab, #000 24%, transparent),
-    0 4px 10px color-mix(in oklab, #000 16%, transparent),
-    inset 0 1px 0 color-mix(in oklab, #fff 10%, transparent),
-    inset 0 -10px 18px color-mix(in oklab, #000 12%, transparent);
+    0 1px 0 color-mix(in oklab, #fff 14%, transparent),
+    var(--qr-shadow-x) var(--qr-shadow-y) calc(18px + 14px * var(--qr-lift))
+      color-mix(in oklab, #000 calc(18% + 10% * var(--qr-lift)), transparent),
+    calc(var(--qr-shadow-x) * 0.35) calc(var(--qr-shadow-y) * 0.45) 8px
+      color-mix(in oklab, #000 calc(10% + 6% * var(--qr-lift)), transparent),
+    inset 0 1px 0 color-mix(in oklab, #fff 12%, transparent),
+    inset 0 -8px 14px color-mix(in oklab, #000 10%, transparent);
   transition: box-shadow var(--dur-medium) var(--ease-out-expo);
+}
+/* Promote layer only while the JS lerp is active (MDN: avoid permanent will-change). */
+.qr-surface-3d.is-tilting {
   will-change: transform;
 }
-.qr-surface-3d::before {
+.qr-surface-face {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+  transform: translateZ(0.1px);
+  background: inherit;
+}
+/* Specular glare — radial follows pointer; keep low opacity so on-screen QR contrast stays scannable. */
+.qr-surface-face::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(
-    125deg,
-    color-mix(in oklab, #fff 14%, transparent),
-    transparent 36%,
-    transparent 64%,
-    color-mix(in oklab, #000 12%, transparent)
-  );
+  background:
+    radial-gradient(
+      circle 55% at var(--qr-gx) var(--qr-gy),
+      color-mix(in oklab, #fff calc(10% + 8% * var(--qr-lift)), transparent),
+      transparent 58%
+    ),
+    linear-gradient(
+      125deg,
+      color-mix(in oklab, #fff 10%, transparent),
+      transparent 36%,
+      transparent 64%,
+      color-mix(in oklab, #000 9%, transparent)
+    );
+  opacity: calc(0.55 + 0.25 * var(--qr-lift));
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
   transition: opacity var(--dur-medium) var(--ease-out-expo);
 }
-.qr-surface-3d > img {
+.qr-surface-3d > .qr-surface-face > img {
   position: relative;
   z-index: 0;
-  transform: translateZ(10px);
-  filter: drop-shadow(0 5px 9px color-mix(in oklab, #000 20%, transparent));
+  display: block;
+  /* Soft contact shadow without filter (filter forces flattening / extra paints). */
+  box-shadow: 0 4px 10px color-mix(in oklab, #000 16%, transparent);
 }
 .qr-laser-line {
   position: absolute;
@@ -1319,20 +1633,7 @@ html.dark {
   transform: translateZ(12px);
   filter: drop-shadow(0 3px 5px color-mix(in oklab, #000 22%, transparent));
 }
-@media (prefers-reduced-motion: no-preference) {
-  .verify-emoji-cell.is-idle .verify-emoji-glyph {
-    animation: verify-emoji-float 2.8s var(--ease-in-out-quart) infinite;
-  }
-  .verify-emoji-cell.is-idle:nth-child(2) .verify-emoji-glyph { animation-delay: 0.18s; }
-  .verify-emoji-cell.is-idle:nth-child(3) .verify-emoji-glyph { animation-delay: 0.36s; }
-  .verify-emoji-cell.is-idle:nth-child(4) .verify-emoji-glyph { animation-delay: 0.12s; }
-  .verify-emoji-cell.is-idle:nth-child(5) .verify-emoji-glyph { animation-delay: 0.48s; }
-  .verify-emoji-cell.is-idle:nth-child(6) .verify-emoji-glyph { animation-delay: 0.28s; }
-}
-@keyframes verify-emoji-float {
-  0%, 100% { transform: translateZ(12px) translateY(0); }
-  50% { transform: translateZ(14px) translateY(-1.5px); }
-}
+/* Idle verify glyphs stay static — motion only on match handshake. */
 
 #burn-fire-canvas {
   position: fixed;
@@ -1350,15 +1651,16 @@ html.dark {
   .animate-ping { animation: none !important; }
   .dice-rolling,
   .zone-join-pulse,
-  .plane-launching,
+  .passphrase-douse,
+  .qr-success-ring,
+  .cta-ignite-spark,
   .burn-heat.is-heating,
-  .burn-heat:hover .burn-flame-icon,
-  .burn-heat:hover .burn-embers span,
+  .burn-heat.is-heating .burn-ignition-bar,
   .burn-heat.is-heating .burn-embers span,
+  .session-burn-target.burning-front,
   .session-ignite-target.igniting-front::after,
-  .mesh-radar-dot::before,
-  .wifi-arc-1,
-  .wifi-arc-2,
+  .mesh-radar-dot.is-birthing::before,
+  .wifi-arc-1.is-birthing,
   .qr-surface-3d.scanning .qr-laser-line,
   .mesh-connected-flash,
   .copy-ember-check,
@@ -1366,8 +1668,7 @@ html.dark {
   .strength-accept-tremor,
   .phrase-ignite,
   .phrase-douse,
-  .peer-join-dot,
-  .verify-emoji-cell.is-idle .verify-emoji-glyph {
+  .peer-join-dot {
     animation: none !important;
   }
   .session-ignite-target.igniting-front {
@@ -1408,9 +1709,25 @@ html.dark {
   .qr-surface-3d {
     transition: none;
     transform: none;
+    --qr-shadow-x: 0px;
+    --qr-shadow-y: 6px;
+    --qr-lift: 0;
     box-shadow:
       0 1px 0 color-mix(in oklab, #fff 8%, transparent),
       0 4px 12px color-mix(in oklab, #000 18%, transparent);
+  }
+  .qr-surface-3d.is-tilting {
+    will-change: auto;
+  }
+  .qr-surface-face::before {
+    opacity: 0.4;
+    background: linear-gradient(
+      125deg,
+      color-mix(in oklab, #fff 8%, transparent),
+      transparent 40%,
+      transparent 62%,
+      color-mix(in oklab, #000 8%, transparent)
+    );
   }
   .verify-emoji-grid {
     transform: none !important;
@@ -1421,6 +1738,12 @@ html.dark {
   }
   .burn-heat .burn-ignition-bar {
     transition: none;
+  }
+  .passphrase-douse {
+    animation: none !important;
+  }
+  .qr-success-ring {
+    animation: none !important;
   }
 }
 

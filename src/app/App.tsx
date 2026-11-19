@@ -15,7 +15,9 @@ import { RoomEntryView } from '../features/rooms/RoomEntryView';
 import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useT } from '../i18n';
-import { DUR, EASE, IGNITE, TAP, TAP_TRANSITION, contentSwitch, enterPlaza } from '../motion/tokens';
+import { IGNITE, TAP, TAP_TRANSITION, bannerEnter, contentSwitch, enterPlaza } from '../motion/tokens';
+import { haptic, HAPTIC_RITUAL } from '../motion/haptic';
+import { cachedPeerVisual } from '../core/crypto/identity';
 import {
   parseInviteInput,
   scrubPhraseFromLocationHash,
@@ -83,7 +85,7 @@ export default function App() {
     igniteTimerRef.current = window.setTimeout(() => {
       setIgniteRoomId((cur) => (cur === roomId ? null : cur));
       igniteTimerRef.current = null;
-    }, IGNITE.finishMs);
+    }, IGNITE.finishMs); // spark → ring → glow settle
   }, []);
 
   const {
@@ -195,6 +197,8 @@ export default function App() {
     dmsTabFocusedRef.current = tab === 'dms';
     if (tab === 'forum' && activeRoomId) clearForumUnread(activeRoomId);
     if (tab === 'dms' && dmPeerId) clearDmUnread(dmPeerId);
+    // Mobile-messenger pattern: leave thread when leaving Susurros so unread stays honest.
+    if (tab !== 'dms') setDmPeerId(null);
     setMountedTabs((prev) => {
       if (prev.has(tab)) return prev;
       const next = new Set(prev);
@@ -266,6 +270,8 @@ export default function App() {
 
   const roomList = [...rooms.values()];
   const plazaLocked = activeTab === 'forum' && isInRoom;
+  const dmsThreadOpen = activeTab === 'dms' && Boolean(dmPeerId);
+  const fillLocked = plazaLocked || dmsThreadOpen;
 
   // Also mount tabs navigated via join/switchRoom (bypasses selectTab).
   useEffect(() => {
@@ -281,17 +287,17 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <div
         ref={mainRef}
-        className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0"
+        className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-0"
       >
         {/* Gooey metaball fire (CodePen burning-button) — CSS url(#tazia-fire-goo) */}
         <svg width="0" height="0" className="absolute" aria-hidden="true" focusable="false">
           <defs>
             <filter id="tazia-fire-goo">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="3.6" result="blur" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="4.2" result="blur" />
               <feColorMatrix
                 in="blur"
                 mode="matrix"
-                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9"
                 result="goo"
               />
               <feBlend in="SourceGraphic" in2="goo" />
@@ -327,10 +333,10 @@ export default function App() {
         <AnimatePresence initial={false}>
           {burnNotice && (
             <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: DUR.medium, ease: EASE.outExpo }}
+              initial={bannerEnter.initial}
+              animate={bannerEnter.animate}
+              exit={bannerEnter.exit}
+              transition={bannerEnter.transition}
               className="mx-auto mt-4 flex max-w-[1280px] items-center px-4 sm:px-8"
             >
               <AlertBanner tone="success" role="status" className="w-full">
@@ -356,6 +362,7 @@ export default function App() {
           onCancel={() => setBurnConfirmOpen(false)}
           onConfirm={() => {
             setBurnConfirmOpen(false);
+            haptic(HAPTIC_RITUAL);
             setBurnPlaying(true);
           }}
         />
@@ -386,7 +393,7 @@ export default function App() {
           id="main-content"
           tabIndex={-1}
           className={`flex min-h-0 flex-1 flex-col outline-none ${
-            plazaLocked ? 'overflow-hidden' : 'overflow-y-auto'
+            fillLocked ? 'overflow-hidden' : 'overflow-y-auto'
           }`}
         >
           {mountedTabs.has('rooms') && (
@@ -528,6 +535,7 @@ export default function App() {
             <div
               className="tab-panel"
               data-active={activeTab === 'dms' ? 'true' : 'false'}
+              data-fill={dmsThreadOpen ? 'true' : undefined}
               aria-hidden={activeTab !== 'dms'}
               inert={activeTab !== 'dms' ? true : undefined}
             >
@@ -540,11 +548,16 @@ export default function App() {
                       animate={contentSwitch.animate}
                       exit={contentSwitch.exit}
                       transition={contentSwitch.transition}
+                      className="flex min-h-0 flex-1 flex-col"
                     >
                       <DmConversationView
                         selfUserId={selfUserId}
                         peerId={dmPeerId}
-                        peerAlias={presence[dmPeerId]?.alias || dmPeerId}
+                        peerAlias={
+                          presence[dmPeerId]?.alias ||
+                          cachedPeerVisual(dmPeerId)?.suggestedAlias ||
+                          t('presenceNoAlias')
+                        }
                         messages={dmMessages[dmPeerId] ?? []}
                         onSend={async (body) => {
                           const ok = await sendDm(dmPeerId, body);

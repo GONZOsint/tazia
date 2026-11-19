@@ -1,10 +1,10 @@
 import { Flame } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { identiconMatrixFromHex } from '../../core/crypto/identity';
+import { identiconVisualFromHex } from '../../core/crypto/identity';
 import type { MeshStatus } from '../../core/protocol';
 import { countOtherPeers } from '../../hooks/useRoomManager';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { BURN, NAV_INDICATOR, TAP, TAP_TRANSITION, badgeMelt } from '../../motion/tokens';
 import { TaziaLogo } from '../brand/TaziaLogo';
 import { Identicon } from '../content/Identicon';
 import { MeshStatusBadge } from '../session/MeshStatusBadge';
@@ -59,6 +59,7 @@ export function TopBar({
       ? `${activeZone.roomId.slice(0, 6)}…`
       : activeZone.roomId
     : '';
+  const zoneIcon = activeZone ? identiconVisualFromHex(activeZone.roomId) : null;
 
   return (
     <header
@@ -81,7 +82,7 @@ export function TopBar({
           >
             <TaziaLogo size={36} />
             <span className="hidden min-w-0 sm:block">
-              <span className="font-display text-xl font-bold tracking-tight text-ink">
+              <span className="type-title text-ink">
                 {t('brand')}
               </span>
             </span>
@@ -108,16 +109,20 @@ export function TopBar({
                 igniting || zoneSwitchPulse ? 'igniting-front' : ''
               }`}
             >
-              <Identicon
-                matrix={identiconMatrixFromHex(activeZone.roomId)}
-                size={22}
-                label={activeZone.roomId}
-              />
-              <span className="hidden min-w-0 truncate font-mono text-[11px] font-medium text-ink sm:inline">
+              {zoneIcon && (
+                <Identicon
+                  matrix={zoneIcon.identiconMatrix}
+                  size={22}
+                  label={activeZone.roomId}
+                  fg={zoneIcon.fg}
+                  bg={zoneIcon.bg}
+                />
+              )}
+              <span className="type-caption hidden min-w-0 truncate font-mono font-medium text-ink sm:inline">
                 {shortId}
               </span>
               {roomsCount > 1 && (
-                <span className="inline-flex h-4 min-w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[9px] font-bold tabular-nums text-on-accent">
+                <span className="type-badge inline-flex h-4 min-w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-on-accent">
                   {roomsCount}
                 </span>
               )}
@@ -135,7 +140,7 @@ export function TopBar({
 
         <nav
           aria-label={t('navAria')}
-          className="no-scrollbar col-start-2 hidden h-full items-stretch gap-5 overflow-x-auto text-sm font-medium md:flex sm:gap-7"
+          className="no-scrollbar col-start-2 hidden h-full items-stretch gap-5 overflow-x-auto text-sm font-medium tracking-[0.01em] md:flex sm:gap-7"
         >
           {DESKTOP_NAV_ITEMS.map(({ id, labelKey, Icon }) => {
             const isActive = activeTab === id;
@@ -164,20 +169,24 @@ export function TopBar({
                 />
                 {/* Same weight always — active is color + underline only (no width jump). */}
                 <span>{t(labelKey)}</span>
-                {badge > 0 && (
-                  <motion.span
-                    initial={{ scale: 0.6, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: DUR.micro }}
-                    className="absolute -right-2 top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold tabular-nums text-on-accent"
-                  >
-                    {badge > 9 ? '9+' : badge}
-                  </motion.span>
-                )}
+                <AnimatePresence>
+                  {badge > 0 && (
+                    <motion.span
+                      key={`badge-${id}`}
+                      initial={badgeMelt.initial}
+                      animate={badgeMelt.animate}
+                      exit={badgeMelt.exit}
+                      transition={badgeMelt.transition}
+                      className="type-badge absolute -right-2 top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-on-accent"
+                    >
+                      {badge > 9 ? '9+' : badge}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
                 {isActive && (
                   <motion.span
                     layoutId="topbar-active-underline"
-                    transition={{ duration: DUR.tab, ease: EASE.outExpo }}
+                    transition={NAV_INDICATOR}
                     aria-hidden="true"
                     className="absolute inset-x-0 bottom-0 h-[2px] bg-accent"
                   />
@@ -219,7 +228,17 @@ export function TopBar({
                 <span /><span /><span /><span /><span /><span />
                 <span /><span /><span /><span /><span /><span />
               </span>
-              <Flame className="burn-flame-icon relative z-10 h-4 w-4 shrink-0" aria-hidden="true" />
+              {burnHeating ? (
+                <span className="relative z-10 inline-flex h-4 w-4 shrink-0" aria-hidden="true" />
+              ) : (
+                <motion.span
+                  layoutId={BURN.layoutId}
+                  className="burn-flame-icon relative z-10 inline-flex h-4 w-4 shrink-0"
+                  transition={{ type: 'spring', visualDuration: 0.32, bounce: 0.12 }}
+                >
+                  <Flame className="h-4 w-4" aria-hidden="true" />
+                </motion.span>
+              )}
               <span className="relative z-10 hidden truncate sm:inline">{t('leaveTab')}</span>
             </motion.button>
           ) : null}

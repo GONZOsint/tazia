@@ -8,11 +8,12 @@ export interface VerifyKeyRegistryOptions {
 }
 
 /**
- * SPKI → VerifyKey cache with invalidation on key rotation / repin.
+ * SPKI → VerifyKey cache. Always verifies against TrustStore pinned key;
+ * key rotation sets `changed` without silently switching the verify key.
  */
 export class VerifyKeyRegistry {
   private readonly verifyKeyCache = new Map<string, VerifyKey>();
-  private readonly knownPubKeys = new Map<string, string>();
+  private readonly cachedPinSpki = new Map<string, string>();
   private readonly trustStore: TrustStore;
   private readonly onKeyChange?: (userId: string, level: TrustLevel) => void;
   private readonly onKeysReady?: (userId: string) => void;
@@ -24,34 +25,24 @@ export class VerifyKeyRegistry {
   }
 
   getKnownSpki(userId: string): string | undefined {
-    return this.knownPubKeys.get(userId);
+    return this.trustStore.get(userId)?.pinnedKeyB64;
   }
 
-  async observe(userId: string, spkiB64: string): Promise<VerifyKey | null> {
-    if (!userId || !spkiB64 || spkiB64.length < 32) return null;
-
-    const prev = this.knownPubKeys.get(userId);
-    this.knownPubKeys.set(userId, spkiB64);
-
-    const trustLevel = this.trustStore.observe(userId, spkiB64);
-    if (trustLevel === 'changed') {
-      this.onKeyChange?.(userId, trustLevel);
-    }
-
-    if (prev === spkiB64) {
-      const existing = this.verifyKeyCache.get(userId);
-      if (existing) {
+  private async loadPinned(userId: string, pinned: string): Promise<VerifyKey | null> {
+    if (this.cachedPinSpki.get(userId) === pinned) {
+      const cached = this.verifyKeyCache.get(userId);
+      if (cached) {
         this.onKeysReady?.(userId);
-        return existing;
+        return cached;
       }
-    } else if (prev) {
-      // Key rotated or first observe after change — drop stale VerifyKey.
+    } else {
       this.verifyKeyCache.delete(userId);
     }
 
     try {
-      const key = await importVerifyKey(spkiB64);
+      const key = await importVerifyKey(pinned);
       this.verifyKeyCache.set(userId, key);
+      this.cachedPinSpki.set(userId, pinned);
       this.onKeysReady?.(userId);
       return key;
     } catch {
@@ -59,24 +50,37 @@ export class VerifyKeyRegistry {
     }
   }
 
-  /** After TrustStore.repin — re-import current SPKI. */
+  async observe(userId: string, spkiB64: string): Promise<VerifyKey | null> {
+    if (!userId || !spkiB64 || spkiB64.length < 32) return null;
+
+    const trustLevel = this.trustStore.observe(userId, spkiB64);
+    const pinned = this.trustStore.get(userId)?.pinnedKeyB64;
+    if (!pinned) return null;
+
+    if (trustLevel === 'changed') {
+      this.onKeyChange?.(userId, trustLevel);
+    }
+
+    return this.loadPinned(userId, pinned);
+  }
+
+  /** After TrustStore.repin — re-import pinned SPKI. */
   async invalidateAndReload(userId: string): Promise<VerifyKey | null> {
     this.verifyKeyCache.delete(userId);
-    const spki = this.knownPubKeys.get(userId);
-    if (!spki) return null;
-    return this.observe(userId, spki);
+    this.cachedPinSpki.delete(userId);
+    const pinned = this.trustStore.get(userId)?.pinnedKeyB64;
+    if (!pinned) return null;
+    return this.loadPinned(userId, pinned);
   }
 
   async get(userId: string): Promise<VerifyKey | null> {
-    const cached = this.verifyKeyCache.get(userId);
-    if (cached) return cached;
-    const spki = this.knownPubKeys.get(userId);
-    if (!spki) return null;
-    return this.observe(userId, spki);
+    const pinned = this.trustStore.get(userId)?.pinnedKeyB64;
+    if (!pinned) return null;
+    return this.loadPinned(userId, pinned);
   }
 
   clear(): void {
     this.verifyKeyCache.clear();
-    this.knownPubKeys.clear();
+    this.cachedPinSpki.clear();
   }
 }

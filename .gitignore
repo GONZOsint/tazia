@@ -10,3 +10,4 @@ coverage/
 !.env.example
 docs/papers/*.pdf
 !docs/papers/README.md
+!docs/papers/README.es.md

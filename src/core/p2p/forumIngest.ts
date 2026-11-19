@@ -28,9 +28,10 @@ export class ForumIngest {
 
   async ingest(
     event: ForumEvent,
-    opts: { liveUserId: string | null; source: 'live' | 'sync' }
+    opts: { liveUserId?: string | null; source: 'live' | 'sync' | 'fallback' }
   ): Promise<boolean> {
-    if (!isValidForumEvent(event, { clockSource: opts.source })) {
+    const clockSource = opts.source === 'sync' ? 'sync' : 'live';
+    if (!isValidForumEvent(event, { clockSource })) {
       if (opts.source === 'sync') this.deps.onRejectedSync?.();
       return false;
     }
@@ -38,6 +39,11 @@ export class ForumIngest {
     if (opts.liveUserId) {
       if (event.authorUserId !== opts.liveUserId) return false;
       if (!this.deps.rateLimiter.allow(opts.liveUserId, MAX_PUBLISH_PER_MINUTE)) {
+        return false;
+      }
+    } else if (opts.source === 'fallback' || opts.source === 'sync') {
+      // No Trystero transport binding (fallback) / sync fan-in — rate-limit by author.
+      if (!this.deps.rateLimiter.allow(event.authorUserId, MAX_PUBLISH_PER_MINUTE)) {
         return false;
       }
     }

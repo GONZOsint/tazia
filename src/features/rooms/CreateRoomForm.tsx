@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Dices, KeyRound, Link2, Loader2, Radio, ShieldAlert } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
-import { DUR, EASE, TAP, TAP_TRANSITION, disclosure } from '../../motion/tokens';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import {
+  DUR,
+  EASE,
+  IGNITE,
+  TAP,
+  TAP_TRANSITION,
+  contentSwitch,
+  disclosure,
+} from '../../motion/tokens';
+import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import { generateRandomHex } from '../../core/crypto/identity';
 import {
   evaluatePassphraseStrength,
@@ -20,19 +29,22 @@ import { useToast } from '../../components/ui/ToastHost';
 interface CreateRoomFormProps {
   isJoining: boolean;
   onJoinRoom: (params: RoomJoinParams) => Promise<void>;
+  douseKey?: number;
 }
 
-export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
+export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRoomFormProps) {
   const t = useT();
   const toast = useToast();
+  const reduceMotion = useReducedMotion();
   const [createRoomId] = useState(() => generateRandomHex(8));
-  const [createPhrase, setCreatePhrase] = useState(() => generateMemorablePassphrase(4));
+  const [createPhrase, setCreatePhrase] = useState(() => generateMemorablePassphrase(6));
   const [showCreatePhrase, setShowCreatePhrase] = useState(true);
   const [createAlias, setCreateAlias] = useState('');
   const [includePhraseInLink, setIncludePhraseInLink] = useState(false);
   const [diceSpinKey, setDiceSpinKey] = useState(0);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [spark, setSpark] = useState(false);
 
   const createStrength = evaluatePassphraseStrength(createPhrase);
   const phraseForLink =
@@ -59,6 +71,10 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
       onSubmit={(e) => {
         e.preventDefault();
         if (!createStrength.isAcceptable) return;
+        setSpark(true);
+        haptic(HAPTIC_TAP);
+        // Keep ember mounted through join so layoutId can morph onto the zone card.
+        window.setTimeout(() => setSpark(false), IGNITE.finishMs);
         void onJoinRoom({
           roomId: createRoomId,
           secretPhrase: createPhrase,
@@ -78,7 +94,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                 transition={TAP_TRANSITION}
                 type="button"
                 onClick={() => {
-                  setCreatePhrase(generateMemorablePassphrase(4));
+                  setCreatePhrase(generateMemorablePassphrase(6));
                   setShowCreatePhrase(true);
                   setDiceSpinKey((k) => k + 1);
                 }}
@@ -99,7 +115,11 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
                 onToggleVisible={() => setShowCreatePhrase((v) => !v)}
               />
             </div>
-            <PassphraseStrengthBar id={createStrength.id} score={createStrength.score} />
+            <PassphraseStrengthBar
+              id={createStrength.id}
+              score={createStrength.score}
+              douseKey={douseKey}
+            />
             <div className="mt-2">
               <CopyButton
                 text={createPhrase}
@@ -156,19 +176,29 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
             transition={TAP_TRANSITION}
             type="submit"
             disabled={!createStrength.isAcceptable || isJoining}
-            className="btn-accent-sheen btn-ring-hover mt-auto inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className={`btn-accent-sheen btn-ring-hover relative mt-auto inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${spark ? 'cta-ignite-spark' : ''}`}
           >
-            {isJoining ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {t('roomsConnecting')}
-              </>
-            ) : (
-              <>
-                <Radio className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-                {t('roomsOpen')}
-              </>
+            {spark && !reduceMotion && (
+              <motion.span
+                layoutId={IGNITE.layoutId}
+                className="pointer-events-none absolute inset-0 rounded-[inherit] bg-accent"
+                transition={EASE.ritualSpring}
+                aria-hidden="true"
+              />
             )}
+            <span className="relative z-[1] inline-flex items-center gap-2">
+              {isJoining ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  {t('roomsConnecting')}
+                </>
+              ) : (
+                <>
+                  <Radio className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+                  {t('roomsOpen')}
+                </>
+              )}
+            </span>
           </motion.button>
         </div>
 
@@ -190,10 +220,10 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
           </div>
 
           <motion.label
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12, duration: DUR.tab, ease: EASE.outExpo }}
-            className="invite-opt mt-auto flex min-h-[44px] cursor-pointer items-center gap-3 pt-2 text-xs text-muted"
+            initial={contentSwitch.initial}
+            animate={contentSwitch.animate}
+            transition={{ ...contentSwitch.transition, delay: 0.12 }}
+            className="invite-opt mt-auto flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
           >
             <span className="relative inline-flex">
               <input

@@ -4,7 +4,7 @@
 
 Live temporary zone in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, **burn the session** when done. On phones you can **Install / Add to Home Screen** (PWA) for an app-like shell — the plaza still needs the network and live peers.
 
-Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: `agora-forum-v2` (Ed25519-signed events; sealed-only Susurros). App ID: `tazia.app`. **Breaking:** v1 peers do not interoperate.
+Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: **TAZEP** (`tazep-v2` — TAZ Encryption Protocol; Ed25519-signed events; sealed-only Susurros). App ID: `tazia.app`. **Breaking:** `agora-forum-v*` peers do not interoperate.
 
 Spanish README: [`README.es.md`](README.es.md).
 
@@ -22,10 +22,10 @@ You must be **online at the same time**. No async mailbox.
 ### Features
 
 - **Several zones at once** (up to **3**): each keeps its own live P2P session; **Zones** lists them; switch or leave one; Plaza / Tribe / Whispers show the **active** zone; **Burn** clears all on this device. Soft cap **50** users/zone (mesh best ~6 peers)
-- Whispers (Ed25519 + pairwise X25519 seal required; room-bound AAD) scoped to the active zone
-- TOFU trust + 6-emoji safety codes bound to `roomId` (Tribe)
-- Optional self-hosted TURN (ICE fallback / hide IP) — see [`TURN.md`](TURN.md)
-- Encrypted Nostr data-plane fallback when ICE fails (ciphertext only; not true P2P)
+- Whispers (Ed25519 + pairwise X25519 seal required; `tazep.dm.aad.v2` room-bound AAD) scoped to the active zone
+- TOFU trust + 6-emoji SAS (~48-bit unique pool) bound to `roomId` (Tribe)
+- Optional self-hosted TURN (ICE fallback / hide IP) — see [`docs/TURN.md`](docs/TURN.md)
+- Encrypted Nostr data-plane fallback when ICE fails (`tazep.*` envelopes; ciphertext only; not true P2P)
 
 ### Several zones
 
@@ -38,7 +38,7 @@ If Firefox shows `WebRTC: ICE failed, add a TURN server`, STUN alone cannot punc
 1. Meet on the **same Wi‑Fi** (host / mDNS candidates) — on GitHub Pages, allow **Local network** if Chrome asks; disable AP/client isolation; leave **Force relay** off.
 2. Run your own **coturn** and enable TURN under Zones → **Fix** (both peers need it).
 
-JS-side helpers: `iceCandidatePoolSize`, Trystero `turnConfig`, LNA priming, and an **encrypted Nostr data-plane fallback** when ICE fails so chat still works on Pages without TURN (not true P2P; relays see ciphertext). Self-hosted TURN remains the path for a real mesh. Details: [`TURN.md`](TURN.md).
+JS-side helpers: `iceCandidatePoolSize`, Trystero `turnConfig`, LNA priming, and an **encrypted Nostr data-plane fallback** when ICE fails so chat still works on Pages without TURN (not true P2P; relays see ciphertext). Self-hosted TURN remains the path for a real mesh. Details: [`docs/TURN.md`](docs/TURN.md).
 
 ## Development
 
@@ -58,12 +58,15 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 
 ## Docs
 
-| Doc | Language | Contents |
-| --- | --- | --- |
-| [`SECURITY.md`](SECURITY.md) | ES | Threat model, TOFU, CSP, honest limits |
-| [`PROTOCOL.md`](PROTOCOL.md) | ES | `agora-forum-v2` wire format |
-| [`TURN.md`](TURN.md) | EN | Self-hosted coturn + ICE failed checklist |
-| [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) | EN | Manual SDP/QR signaling spike (not shipped) |
+Index: [`docs/README.md`](docs/README.md) · [`docs/README.es.md`](docs/README.es.md). Each doc has English (`*.md`) and Spanish (`*.es.md`).
+
+| Doc | English | Español | Contents |
+| --- | --- | --- | --- |
+| Security | [`docs/SECURITY.md`](docs/SECURITY.md) | [`docs/SECURITY.es.md`](docs/SECURITY.es.md) | Threat model, TOFU, CSP, honest limits |
+| Protocol | [`docs/PROTOCOL.md`](docs/PROTOCOL.md) | [`docs/PROTOCOL.es.md`](docs/PROTOCOL.es.md) | TAZEP `tazep-v2` wire format |
+| TURN / ICE | [`docs/TURN.md`](docs/TURN.md) | [`docs/TURN.es.md`](docs/TURN.es.md) | Self-hosted coturn + ICE failed checklist |
+| SDP/QR spike | [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) | [`docs/sdp-qr-spike.es.md`](docs/sdp-qr-spike.es.md) | Manual signaling spike (not shipped) |
+| Papers | [`docs/papers/`](docs/papers/) | [`docs/papers/README.es.md`](docs/papers/README.es.md) | Local PDF cache + abstracts |
 
 ## Papers / readings
 
@@ -73,7 +76,7 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 | [AW CCS’25 / ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Metadata hiding (not implemented) |
 | [WebRTC IP leakage 2025](https://arxiv.org/abs/2510.16168) + [RFC 8828](https://www.rfc-editor.org/rfc/rfc8828.html) | IP consent UX |
 | [ePrint 2026/584](https://eprint.iacr.org/2026/584.pdf) | Do not treat DTLS alone as authorship |
-| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Validates emoji verify; we use 6 emoji from a ≥256 pool + `roomId` binding |
+| [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) SAS + OOB | Validates emoji verify; we use 6 emoji from a 256-unique pool + `roomId` binding |
 | [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | WebRTC security; TOFU weak without OOB |
 | [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN still needed as fallback |
 | [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Why residential ICE fails without TURN |

@@ -1,13 +1,14 @@
 /**
- * Protocolo agora-forum-v2 (P2P / Trystero).
+ * TAZEP — TAZ Encryption Protocol (`tazep-v2`).
  *
- * Breaking vs v1:
+ * Breaking vs agora-forum-v2 / v1:
+ * - PROTOCOL_NAME = tazep-v2 (domain tags tazep.*)
  * - PROTOCOL_VERSION = 2
  * - Susurros sealed-only (seal:2 + bodyCipherB64; empty body)
  * - Presence requires encPubKeyRawB64
  */
 
-export const PROTOCOL_NAME = 'agora-forum-v2';
+export const PROTOCOL_NAME = 'tazep-v2';
 export const PROTOCOL_VERSION = 2 as const;
 
 export type ForumMessageType = 'NEW_THREAD' | 'REPLY';
@@ -51,6 +52,8 @@ export const MAX_USER_ID_CHARS = 64;
 export const MAX_SIG_B64_CHARS = 128;
 export const MAX_SYNC_MESSAGES = 500;
 export const MAX_PUBLISH_PER_MINUTE = 30;
+/** Soft cap for Susurro sends per peer (WebRTC + Nostr fallback). */
+export const MAX_DM_PER_MINUTE = 30;
 /** Respuestas sync por peer y minuto (anti-abuso blando). */
 export const MAX_SYNC_ANSWERS_PER_MINUTE = 12;
 /** Ventana de reloj para mensajes en vivo (±5 min). */
@@ -59,6 +62,12 @@ export const LIVE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 export const SYNC_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 /** Max bytes totals aceptados en una respuesta de sync (2 MB). */
 export const MAX_SYNC_TOTAL_BYTES = 2 * 1024 * 1024;
+/** Trystero maxReceiveBytes — must be ≥ sync payload + framing. */
+export const MAX_RECEIVE_BYTES = MAX_SYNC_TOTAL_BYTES + 512 * 1024;
+/** Soft cap for presence makeUserState JSON. */
+export const MAX_PRESENCE_STATE_BYTES = 4_096;
+/** Soft cap for Nostr EVENT created_at skew (±5 min). */
+export const NOSTR_EVENT_CLOCK_SKEW_SEC = 300;
 
 export type MeshStatus = 'connecting' | 'alone' | 'mesh' | 'syncing';
 
@@ -116,6 +125,7 @@ export function isValidDirectMessage(value: unknown): value is DirectMessage {
     return false;
   }
   if (typeof v.createdAtMs !== 'number' || !Number.isFinite(v.createdAtMs)) return false;
+  if (Math.abs(Date.now() - v.createdAtMs) > LIVE_CLOCK_SKEW_MS) return false;
   if (typeof v.sig !== 'string' || v.sig.length < 16 || v.sig.length > MAX_SIG_B64_CHARS) return false;
   return true;
 }

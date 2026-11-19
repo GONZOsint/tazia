@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { ShieldCheck, X } from 'lucide-react';
+import { Check, ShieldCheck, X } from 'lucide-react';
 import { AnimatePresence, motion, stagger, useAnimate, useReducedMotion } from 'motion/react';
 import { deriveEmojiSafetyCode } from '../../core/trust/trustStore';
 import { useT } from '../../i18n';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { ConfettiBurst } from '../ui/ConfettiBurst';
+import {
+  CONFETTI,
+  DUR,
+  EASE,
+  TAP,
+  TAP_TRANSITION,
+  modalScrim,
+  modalSheet,
+} from '../../motion/tokens';
+import { haptic, HAPTIC_RITUAL } from '../../motion/haptic';
 
 interface EmojiVerifyModalProps {
   open: boolean;
@@ -40,6 +50,8 @@ export function EmojiVerifyModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const [code, setCode] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [handshakeDone, setHandshakeDone] = useState(false);
+  const [confetti, setConfetti] = useState(false);
   const [emojiScope, animate] = useAnimate();
   const reduceMotion = useReducedMotion();
 
@@ -57,6 +69,8 @@ export function EmojiVerifyModal({
   useEffect(() => {
     if (!open) {
       setVerifying(false);
+      setHandshakeDone(false);
+      setConfetti(false);
       setCode(null);
       return;
     }
@@ -148,32 +162,41 @@ export function EmojiVerifyModal({
     setVerifying(true);
     if (!reduceMotion) {
       try {
-        navigator.vibrate?.(10);
+        haptic(HAPTIC_RITUAL);
       } catch {
         /* ignore */
       }
     }
     if (emojiScope.current) {
-      await animate(
-        '[data-emoji-cell]',
-        reduceMotion
-          ? { opacity: [1, 0.55, 1] }
-          : {
-              opacity: [1, 1, 1],
-              scale: [1, 1.1, 1],
-              y: [0, -3, 0],
-              rotateX: [0, -8, 0],
-              boxShadow: [
-                '0 8px 16px color-mix(in oklab, #000 16%, transparent)',
-                '0 0 0 1px color-mix(in oklab, var(--color-accent) 55%, transparent), 0 12px 22px color-mix(in oklab, var(--color-accent) 28%, transparent)',
-                '0 8px 16px color-mix(in oklab, #000 16%, transparent)',
-              ],
-            },
-        { duration: 0.26, delay: stagger(0.04), ease: EASE.outExpo }
-      );
-    } else {
-      await new Promise((r) => window.setTimeout(r, 260));
+      if (reduceMotion) {
+        await animate('[data-emoji-cell]', { opacity: [1, 0.4, 0] }, { duration: DUR.micro });
+      } else {
+        // Pulse then collapse toward center
+        await animate(
+          '[data-emoji-cell]',
+          {
+            scale: [1, 1.08, 1],
+            y: [0, -2, 0],
+          },
+          { duration: DUR.tab, delay: stagger(0.03), ease: EASE.outExpo }
+        );
+        await animate(
+          '[data-emoji-cell]',
+          {
+            opacity: 0,
+            scale: 0.35,
+            x: [0, 0],
+            y: [0, 8],
+          },
+          { duration: DUR.switch, ease: EASE.easeIn }
+        );
+      }
     }
+    setHandshakeDone(true);
+    setConfetti(true);
+    await new Promise((r) =>
+      window.setTimeout(r, reduceMotion ? DUR.micro * 1000 : CONFETTI.ms * 0.55)
+    );
     onVerify();
   };
 
@@ -181,10 +204,10 @@ export function EmojiVerifyModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: DUR.micro }}
+          initial={modalScrim.initial}
+          animate={modalScrim.animate}
+          exit={modalScrim.exit}
+          transition={modalScrim.transition}
           className="fixed inset-0 z-50 flex items-center justify-center bg-scrim-strong p-4"
           role="dialog"
           aria-modal="true"
@@ -194,13 +217,14 @@ export function EmojiVerifyModal({
           <motion.div
             ref={dialogRef}
             tabIndex={-1}
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 4 }}
-            transition={{ duration: DUR.modal, ease: EASE.outExpo }}
+            initial={modalSheet.initial}
+            animate={modalSheet.animate}
+            exit={modalSheet.exit}
+            transition={modalSheet.transition}
             className="panel-surface shadow-sheet relative w-full max-w-xs overflow-hidden outline-none"
             onClick={(e) => e.stopPropagation()}
           >
+            <ConfettiBurst play={confetti} onDone={() => setConfetti(false)} origin={{ x: 50, y: 42 }} />
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                 <ShieldCheck className="h-4 w-4 text-ok" aria-hidden="true" />
@@ -224,12 +248,13 @@ export function EmojiVerifyModal({
               <p className="mt-1 text-xs font-semibold text-ink">{peerAlias}</p>
 
               {code ? (
-                <div className="verify-emoji-stage mx-auto mt-4 max-w-[14rem]">
+                <div className="verify-emoji-stage relative mx-auto mt-4 max-w-[14rem]">
                   <div
                     ref={emojiScope}
-                    className="verify-emoji-grid grid grid-cols-3 gap-2"
+                    className={`verify-emoji-grid grid grid-cols-3 gap-2 ${handshakeDone ? 'pointer-events-none' : ''}`}
                     role="img"
                     aria-label={t('trustEmojiLabel')}
+                    style={{ opacity: handshakeDone ? 0 : 1 }}
                   >
                     {glyphs.map((glyph, i) => (
                       <motion.span
@@ -247,7 +272,7 @@ export function EmojiVerifyModal({
                           duration: DUR.switch,
                           ease: EASE.outExpo,
                         }}
-                        className={`verify-emoji-cell ${verifying ? '' : 'is-idle'}`}
+                        className="verify-emoji-cell"
                         style={{ transformStyle: 'preserve-3d' }}
                       >
                         <span className="verify-emoji-glyph" aria-hidden="true">
@@ -256,6 +281,25 @@ export function EmojiVerifyModal({
                       </motion.span>
                     ))}
                   </div>
+                  <AnimatePresence>
+                    {handshakeDone && (
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center"
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={
+                          reduceMotion
+                            ? { duration: DUR.micro }
+                            : { ...EASE.ritualSpring }
+                        }
+                      >
+                        <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_24px_color-mix(in_oklab,var(--color-accent)_45%,transparent)]">
+                          <Check className="h-8 w-8" strokeWidth={2.5} aria-hidden="true" />
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-muted">…</p>

@@ -52,7 +52,7 @@ export const en = {
   phraseHide: 'Hide phrase',
   roomsGeneratePhrase: 'Generate',
   roomsAliasLabel: 'Alias',
-  roomsAliasPlaceholder: 'Optional',
+  roomsAliasPlaceholder: 'Empty = suggested name (e.g. Serena Marea)',
   roomsInviteTitle: 'Invite',
   roomsCopyLink: 'Copy link',
   roomsCopyPhrase: 'Copy phrase',
@@ -184,7 +184,7 @@ export const en = {
   helpMore: 'Technical detail',
   helpMoreHide: 'Hide technical detail',
   helpMoreBody:
-    '• P2P mesh over WebRTC via Trystero\n• If ICE fails: encrypted Nostr relay data-plane fallback (ciphertext only; not true P2P)\n• Protocol agora-forum-v2 with Ed25519 + sealed-only Susurros (X25519)\n• Optional TURN (coturn) for ICE rescue or hiding IP\n• TOFU trust + 6-emoji safety code bound to roomId (~48-bit SAS)\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md, docs/papers/',
+    '• P2P mesh over WebRTC via Trystero\n• If ICE fails: encrypted Nostr relay data-plane fallback (ciphertext only; not true P2P)\n• Protocol TAZEP (tazep-v2) with Ed25519 + sealed-only Susurros (X25519)\n• Optional TURN (coturn) for ICE rescue or hiding IP\n• TOFU trust + 6-emoji safety code bound to roomId (~48-bit SAS)\n• Docs: docs/SECURITY.md, docs/PROTOCOL.md, docs/TURN.md, docs/papers/',
   helpForgetDevice: 'Forget this device',
   helpForgetDone: 'Address notice cleared in this browser.',
   helpForgetHint: 'You will see the address notice again next time you enter a zone.',
@@ -207,6 +207,9 @@ export const en = {
     'Open the site at an address that starts with https:// (the version without the lock will not work).',
 
   errMissingFields: 'Zone code or phrase is missing.',
+  errWeakPhrase: 'That phrase is too weak — use at least six memorable words.',
+  errPhraseMismatch:
+    'You are already in this zone with a different phrase. Leave it first, then join again.',
   errJoinFailed: 'Could not enter the zone.',
   errDecrypt: 'The phrase does not match. Check it with the group.',
   errRoomFull: 'The zone is full.',
@@ -219,6 +222,7 @@ export const en = {
   errRelay: 'Could not reach the helpers that introduce you. Try again in a few seconds.',
   errPublishRate: 'Too many messages. Wait a moment.',
   errPublish: 'Could not send.',
+  errDmSend: 'Could not send this whisper.',
   errSync: 'Could not update messages.',
   errGeneric: 'Network problem ({code}).',
   errMaxRooms: 'Zone limit reached (max {n}).',
@@ -276,6 +280,8 @@ export const en = {
   navDms: 'Whispers',
   dmsTitle: 'Whispers',
   dmsEmpty: 'No whispers yet. Tap someone in the tribe to start.',
+  dmsThreadEmpty: 'Say hello — this whisper is sealed pairwise (X25519 + room AAD).',
+  dmsSealedHint: 'Sealed pairwise in this zone (not transport E2E)',
   dmsStartChat: 'Whisper',
   dmsSend: 'Send',
   dmsPlaceholder: 'Whisper…',
@@ -291,10 +297,13 @@ export const en = {
   turnForceRelay: 'Hide my internet address',
   turnForceRelayHint:
     'Everything goes through the helper server. Without a working server, you will not connect.',
+  turnRememberDevice: 'Remember on this device',
+  turnRememberDeviceHint:
+    'Off by default: TURN settings stay in this tab only. On stores them in the browser until you clear site data.',
   turnServerUrl: 'Server address',
   turnUsername: 'Username',
   turnCredential: 'Password',
   turnFixCta: 'Fix',
   turnTechNote:
-    'TURN/ICE fields (coturn or similar). Typical URL: turn:host:3478 or turns:…. Enabling relay-only forces iceTransportPolicy=relay. Both sides need the same server. Guide: TURN.md.',
+    'TURN/ICE fields (coturn or similar). Typical URL: turn:host:3478 or turns:…. Enabling relay-only forces iceTransportPolicy=relay. Both sides need the same server. Guide: docs/TURN.md.',
 } as const;

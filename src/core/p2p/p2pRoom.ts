@@ -1,8 +1,11 @@
 import { joinRoom, type Room, type Unsubscribe } from 'trystero';
 import {
+  digestSyncEvents,
   generateSigningIdentity,
   signDirectMessage,
   signForumEvent,
+  signSyncRes,
+  verifySyncRes,
   wipeSigningIdentity,
   type SigningIdentity,
 } from '../crypto/messageSigning';
@@ -15,7 +18,11 @@ import {
 import {
   APP_ID,
   MAX_DM_BODY_CHARS,
+  MAX_DM_CIPHER_B64_CHARS,
+  MAX_DM_PER_MINUTE,
+  MAX_PRESENCE_STATE_BYTES,
   MAX_PUBLISH_PER_MINUTE,
+  MAX_RECEIVE_BYTES,
   MAX_SYNC_ANSWERS_PER_MINUTE,
   MAX_USERS,
   PROTOCOL_VERSION,
@@ -27,6 +34,12 @@ import {
 } from '../protocol';
 import { PeerRateLimiter } from './rateLimit';
 import { startNostrFallback, type NostrFallbackBus } from './nostrFallback';
+import {
+  signGoodbyeAttestation,
+  signPresenceAttestation,
+  verifyGoodbyeAttestation,
+  verifyPresenceAttestation,
+} from '../crypto/presenceAttest';
 import { TrustStore } from '../trust/trustStore';
 import {
   P2pActionError,
@@ -61,12 +74,13 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const encIdentity: EncryptionIdentity | null = await generateEncryptionIdentity();
   if (!encIdentity) {
     wipeSigningIdentity(signing);
-    throw new P2pActionError('unknown', 'X25519 required for agora-forum-v2 Susurros');
+    throw new P2pActionError('unknown', 'X25519 required for TAZEP Susurros');
   }
 
   const trustStore = new TrustStore();
   const rateLimiter = new PeerRateLimiter();
   const syncAnswerLimiter = new PeerRateLimiter();
+  const dmRateLimiter = new PeerRateLimiter();
   const localMessages = new Map<string, ForumEvent>();
   const knownEncPubKeys = new Map<string, string>();
   const selfRef = { userId: '' };
@@ -124,6 +138,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   pruneTimer = setInterval(() => {
     rateLimiter.pruneStale();
     syncAnswerLimiter.pruneStale();
+    dmRateLimiter.pruneStale();
   }, 5 * 60_000);
 
   const mergeOnline = () => {
@@ -166,6 +181,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         password,
         identity: 'none',
         maxUsers: MAX_USERS,
+        maxReceiveBytes: MAX_RECEIVE_BYTES,
         trickleIce: true,
         rtcConfig,
         ...(options.turnConfig?.length ? { turnConfig: options.turnConfig } : {}),
@@ -192,7 +208,16 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const forumSync = room.makeAction<{ want: string }, ForumEvent[]>('forumSync', {
     kind: 'request',
   });
+  // Reject oversized inbound actions before JSON parse / ingest (Trystero onReceive).
+  const maxForumWire = 24_000;
+  const maxDmWire = MAX_DM_CIPHER_B64_CHARS + 2_048;
+  unsubs.push(
+    forumMsg.onReceive(({ byteLength }) => byteLength <= maxForumWire),
+    directMsg.onReceive(({ byteLength }) => byteLength <= maxDmWire),
+    forumSync.onReceive(({ byteLength }) => byteLength <= MAX_RECEIVE_BYTES)
+  );
   const presence = room.makeUserState<PresenceState>('presence', emptyPresence(), {
+    maxBytes: MAX_PRESENCE_STATE_BYTES,
     validate: (next) => {
       if (!next || typeof next !== 'object') return false;
       const alias = (next as PresenceState).alias;
@@ -200,6 +225,25 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       return isValidPresenceState(next);
     },
   });
+
+  const publishPresenceFallback = async (state: PresenceState) => {
+    if (!fallback || left) return;
+    const attestSig = await signPresenceAttestation(
+      signing,
+      roomId,
+      selfRef.userId,
+      state.signPubKeySpkiB64,
+      state.encPubKeyRawB64
+    );
+    await fallback.publish({
+      v: 2,
+      t: 'presence',
+      userId: selfRef.userId,
+      state,
+      atMs: Date.now(),
+      attestSig,
+    });
+  };
 
   const ensureFallback = async (): Promise<NostrFallbackBus | null> => {
     if (left) return null;
@@ -212,30 +256,69 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       try {
         fallback = await startNostrFallback(roomId, password, selfRef.userId, {
           onForum: (event) => {
-            void forumIngest.ingest(event, { liveUserId: event.authorUserId, source: 'live' });
-            touchFallbackPeer(event.authorUserId);
+            // No fake Trystero liveUserId — signature + attested registry only.
+            void forumIngest.ingest(event, { source: 'fallback' }).then((ok) => {
+              if (ok) touchFallbackPeer(event.authorUserId);
+            });
           },
-          onPresence: (userId, state) => {
+          onPresence: (userId, state, attestSig) => {
             if (!isValidPresenceState(state)) return;
-            rememberPresenceKeys(userId, state);
-            touchFallbackPeer(userId);
-            options.onPresenceChange(userId, state, false);
+            void verifyPresenceAttestation(
+              roomId,
+              userId,
+              state.signPubKeySpkiB64,
+              state.encPubKeyRawB64,
+              attestSig
+            ).then((ok) => {
+              if (!ok || left) return;
+              rememberPresenceKeys(userId, state);
+              touchFallbackPeer(userId);
+              options.onPresenceChange(userId, state, false);
+            });
           },
-          onGoodbye: (userId) => {
-            dropFallbackPeer(userId);
+          onGoodbye: (userId, signPubKeySpkiB64, encPubKeyRawB64, attestSig) => {
+            void verifyGoodbyeAttestation(
+              roomId,
+              userId,
+              signPubKeySpkiB64,
+              encPubKeyRawB64,
+              attestSig
+            ).then((ok) => {
+              if (!ok || left) return;
+              const pinned = trustStore.get(userId)?.pinnedKeyB64;
+              if (pinned && pinned !== signPubKeySpkiB64) return;
+              dropFallbackPeer(userId);
+            });
           },
           onDirectMessage: (dm) => {
+            // Transport null: forge still needs Ed25519 of attested fromUserId.
+            if (!dmRateLimiter.allow(dm.fromUserId, MAX_DM_PER_MINUTE)) return;
             void dmIngest.accept(dm, null).then((ok) => {
               if (ok) touchFallbackPeer(dm.fromUserId);
             });
           },
-          onSyncRequest: (fromUserId) => {
+          onSyncRequest: async (fromUserId, reqId) => {
             if (!syncAnswerLimiter.allow(fromUserId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
-              return [];
+              return null;
             }
-            return snapshotForSync(localMessages);
+            const events = snapshotForSync(localMessages);
+            const eventsDigest = await digestSyncEvents(events);
+            const sig = await signSyncRes(
+              signing,
+              roomId,
+              reqId,
+              selfRef.userId,
+              fromUserId,
+              eventsDigest
+            );
+            return {
+              events,
+              fromUserId: selfRef.userId,
+              eventsDigest,
+              sig,
+            };
           },
-          onSyncResponse: (reqId, events) => {
+          onSyncResponse: (reqId, fromUserId, events, eventsDigest, sig) => {
             void (async () => {
               const pending = pendingSync.get(reqId);
               if (syncPayloadTooLarge(events)) {
@@ -247,8 +330,47 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
                 }
                 return;
               }
+              const clamped = clampSyncEvents(events);
+              const digest = await digestSyncEvents(clamped);
+              if (digest !== eventsDigest) {
+                rejectedSyncCount += 1;
+                if (pending) {
+                  window.clearTimeout(pending.timer);
+                  pendingSync.delete(reqId);
+                  pending.resolve(pending.added);
+                }
+                return;
+              }
+              const verifyKey = await registry.get(fromUserId);
+              if (!verifyKey) {
+                rejectedSyncCount += 1;
+                if (pending) {
+                  window.clearTimeout(pending.timer);
+                  pendingSync.delete(reqId);
+                  pending.resolve(pending.added);
+                }
+                return;
+              }
+              const okSig = await verifySyncRes(
+                verifyKey,
+                roomId,
+                reqId,
+                fromUserId,
+                selfRef.userId,
+                eventsDigest,
+                sig
+              );
+              if (!okSig) {
+                rejectedSyncCount += 1;
+                if (pending) {
+                  window.clearTimeout(pending.timer);
+                  pendingSync.delete(reqId);
+                  pending.resolve(pending.added);
+                }
+                return;
+              }
               let added = 0;
-              for (const item of clampSyncEvents(events)) {
+              for (const item of clamped) {
                 const ok = await forumIngest.ingest(item, { liveUserId: null, source: 'sync' });
                 if (ok) added += 1;
               }
@@ -277,13 +399,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
               }
               if (pruned) mergeOnline();
               if (lastPresence && isValidPresenceState(lastPresence)) {
-                void fallback.publish({
-                  v: 2,
-                  t: 'presence',
-                  userId: selfRef.userId,
-                  state: lastPresence,
-                  atMs: Date.now(),
-                });
+                void publishPresenceFallback(lastPresence);
               }
               schedulePresenceBeat();
             }, delay);
@@ -292,13 +408,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         }
 
         if (lastPresence && isValidPresenceState(lastPresence)) {
-          await fallback.publish({
-            v: 2,
-            t: 'presence',
-            userId: selfRef.userId,
-            state: lastPresence,
-            atMs: Date.now(),
-          });
+          await publishPresenceFallback(lastPresence);
         }
       } catch {
         fallback = null;
@@ -309,17 +419,6 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     })();
     await fallbackStarting;
     return fallback;
-  };
-
-  const publishPresenceFallback = async (state: PresenceState) => {
-    if (!fallback || left) return;
-    await fallback.publish({
-      v: 2,
-      t: 'presence',
-      userId: selfRef.userId,
-      state,
-      atMs: Date.now(),
-    });
   };
 
   const requestNostrSync = async (): Promise<number> => {
@@ -352,6 +451,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   unsubs.push(
     directMsg.onMessage((data, { userId }) => {
       if (left) return;
+      if (!dmRateLimiter.allow(userId, MAX_DM_PER_MINUTE)) return;
       void dmIngest.accept(data, userId);
     })
   );
@@ -437,11 +537,21 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       pendingSync.clear();
       if (fallback) {
         try {
+          const goodbyeSig = await signGoodbyeAttestation(
+            signing,
+            roomId,
+            selfRef.userId,
+            signing.publicKeySpkiB64,
+            encIdentity.publicKeyRawB64
+          );
           await fallback.publish({
             v: 2,
             t: 'goodbye',
             userId: selfRef.userId,
             atMs: Date.now(),
+            signPubKeySpkiB64: signing.publicKeySpkiB64,
+            encPubKeyRawB64: encIdentity.publicKeyRawB64,
+            attestSig: goodbyeSig,
           });
         } catch {
           /* ignore */
@@ -451,6 +561,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       }
       rateLimiter.clear();
       syncAnswerLimiter.clear();
+      dmRateLimiter.clear();
       trustStore.clear();
       registry.clear();
       for (const u of unsubs) {
@@ -517,6 +628,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       if (left) throw new P2pActionError('unknown', 'P2P session already closed');
       const trimmed = body.slice(0, MAX_DM_BODY_CHARS);
       if (!trimmed.trim()) throw new P2pActionError('unknown', 'Empty DM body');
+      if (!dmRateLimiter.allow(selfRef.userId, MAX_DM_PER_MINUTE)) {
+        throw new P2pActionError('publish-rate', 'DM rate limited');
+      }
 
       const peerEnc = knownEncPubKeys.get(toUserId) ?? presence.get(toUserId)?.encPubKeyRawB64;
       if (!peerEnc) {

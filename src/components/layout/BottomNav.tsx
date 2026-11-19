@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { DUR, EASE, NAV_INDICATOR, NAV_TAP, TAP_TRANSITION, badgeMelt } from '../../motion/tokens';
 import { MOBILE_NAV_ITEMS, type ActiveTab } from './navItems';
 
 interface BottomNavProps {
@@ -12,6 +12,10 @@ interface BottomNavProps {
   roomsCount?: number;
 }
 
+/**
+ * Mobile destination bar (M3 navigation bar / iOS tab bar).
+ * Active state = pill indicator behind icon (layoutId spring) + weight/color.
+ */
 export function BottomNav({
   activeTab,
   onSelectTab,
@@ -23,17 +27,17 @@ export function BottomNav({
   return (
     <nav
       aria-label={t('navAria')}
-      className="chrome-elev fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface-raised/95 backdrop-blur-sm md:hidden"
+      className="bottom-nav chrome-elev fixed inset-x-0 bottom-0 z-40 md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <ul className="mx-auto flex max-w-[1280px] items-stretch justify-around px-1">
+      <ul className="bottom-nav__list mx-auto flex max-w-[1280px] items-stretch justify-around px-1.5">
         {MOBILE_NAV_ITEMS.map(({ id, labelKey, Icon }) => {
           const active = activeTab === id;
           const badge = id === 'forum' ? forumUnread : id === 'dms' ? dmUnread : 0;
           return (
-            <li key={id} className="flex-1">
+            <li key={id} className="min-w-0 flex-1">
               <motion.button
-                whileTap={TAP}
+                whileTap={NAV_TAP}
                 transition={TAP_TRANSITION}
                 type="button"
                 aria-current={active ? 'page' : undefined}
@@ -43,26 +47,41 @@ export function BottomNav({
                     : t(labelKey)
                 }
                 onClick={() => onSelectTab(id)}
-                className={`relative flex w-full min-h-[48px] flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
+                className={`bottom-nav__item type-label relative flex w-full flex-col items-center justify-center gap-0.5 px-0.5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
                   active ? 'text-ink' : 'text-muted'
                 }`}
               >
-                <span className="relative inline-flex h-7 w-7 items-center justify-center">
-                  <Icon
-                    className={`h-5 w-5 ${active ? 'text-ink' : 'text-faint'}`}
-                    aria-hidden="true"
-                    strokeWidth={1.75}
-                  />
+                <span className="bottom-nav__icon-slot relative inline-flex items-center justify-center">
+                  {active && (
+                    <motion.span
+                      layoutId="bottomnav-active-pill"
+                      className="bottom-nav__indicator"
+                      transition={NAV_INDICATOR}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <motion.span
+                    className="relative z-[1] inline-flex"
+                    animate={{ scale: active ? 1 : 0.96 }}
+                    transition={{ duration: DUR.micro, ease: EASE.outExpo }}
+                  >
+                    <Icon
+                      className={`h-5 w-5 transition-colors duration-[var(--dur-micro)] ${
+                        active ? 'text-ink' : 'text-faint'
+                      }`}
+                      aria-hidden="true"
+                      strokeWidth={active ? 2.25 : 1.75}
+                    />
+                  </motion.span>
                   <AnimateBadge count={badge} />
                 </span>
-                <span className="max-w-full truncate px-0.5 leading-tight">{t(labelKey)}</span>
-                {active && (
-                  <motion.span
-                    layoutId="bottomnav-active-dot"
-                    className="absolute bottom-0.5 h-0.5 w-4 rounded-full bg-accent"
-                    transition={{ duration: DUR.tab, ease: EASE.outExpo }}
-                  />
-                )}
+                <span
+                  className={`bottom-nav__label max-w-full truncate px-0.5 leading-tight ${
+                    active ? 'font-semibold text-ink' : 'font-medium text-muted'
+                  }`}
+                >
+                  {t(labelKey)}
+                </span>
               </motion.button>
             </li>
           );
@@ -78,11 +97,11 @@ function AnimateBadge({ count }: { count: number }) {
       {count > 0 && (
         <motion.span
           key="badge"
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.6, opacity: 0 }}
-          transition={{ duration: DUR.micro }}
-          className="absolute -right-1 -top-0.5 z-[2] flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-on-accent"
+          initial={badgeMelt.initial}
+          animate={badgeMelt.animate}
+          exit={badgeMelt.exit}
+          transition={badgeMelt.transition}
+          className="type-badge bottom-nav__badge absolute z-[2] flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-on-accent"
         >
           {count > 9 ? '9+' : count}
         </motion.span>

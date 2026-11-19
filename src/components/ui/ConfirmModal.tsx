@@ -2,7 +2,7 @@ import { useEffect, useRef, type ComponentType } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION, modalScrim, modalSheet } from '../../motion/tokens';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -48,10 +48,10 @@ export function ConfirmModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: DUR.micro }}
+          initial={modalScrim.initial}
+          animate={modalScrim.animate}
+          exit={modalScrim.exit}
+          transition={modalScrim.transition}
           className="fixed inset-0 z-50 flex items-end justify-center bg-scrim p-4 sm:items-center"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           role="dialog"
@@ -62,10 +62,10 @@ export function ConfirmModal({
           <motion.div
             ref={dialogRef}
             tabIndex={-1}
-            initial={{ opacity: 0, y: 12, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-            transition={{ duration: DUR.modal, ease: EASE.outExpo }}
+            initial={modalSheet.initial}
+            animate={modalSheet.animate}
+            exit={modalSheet.exit}
+            transition={modalSheet.transition}
             className={`shadow-sheet w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised p-5 outline-none sm:p-6 ${
               danger ? 'border-danger-border' : 'border-border'
             }`}
@@ -77,10 +77,10 @@ export function ConfirmModal({
                 aria-hidden="true"
               />
               <div>
-                <h2 id="confirm-title" className="font-display text-lg font-semibold text-ink">
+                <h2 id="confirm-title" className="type-title text-ink">
                   {title}
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+                <p className="type-lede mt-2">{body}</p>
               </div>
             </div>
             <div className="mt-5 flex flex-wrap justify-end gap-2">

@@ -20,7 +20,7 @@ export interface TrustRecord {
   lastSeenMs: number;
 }
 
-/** 256 distinct symbols → 8 bits each; 6 symbols ≈ 48 bits of SAS. */
+/** 256 distinct symbols → 8 bits each; 6 symbols ≈ 48 bits of SAS. Keep unique. */
 const EMOJI_POOL = [
   '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔',
   '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞',
@@ -37,7 +37,7 @@ const EMOJI_POOL = [
   '🍩', '🍪', '🌰', '🥜', '🍯', '🥛', '🍼', '🫖', '☕', '🍵', '🧃', '🥤', '🧋', '🍶', '🍺', '🍻',
   '🥂', '🍷', '🥃', '🍸', '🍹', '🧉', '🍾', '🧊', '🥄', '🍴', '🍽', '🥣', '🥡', '🥢', '🧂', '🔥',
   '💧', '🌊', '⭐', '🌟', '✨', '⚡', '☀️', '🌤', '⛅', '🌦', '☁', '🌧', '⛈', '🌩', '❄', '☃',
-  '⛄', '🌬', '💨', '🌪', '🌫', '🌈', '☂️', '☔', '⚡', '❄', '🔥', '💥', '☄️', '🌍', '🌎', '🌏',
+  '⛄', '🌬', '💨', '🌪', '🌫', '🌈', '☂️', '☔', '🌙', '🪐', '🌋', '💥', '☄️', '🌍', '🌎', '🌏',
 ];
 
 export const SAS_EMOJI_COUNT = 6;
@@ -90,9 +90,10 @@ export class TrustStore {
 
     existing.lastSeenMs = now;
     if (existing.pinnedKeyB64 === keyB64) {
+      // Pinned key reappeared — clear competing current key but keep `changed`
+      // until explicit repin() / re-SAS (no silent auto-heal to trusted).
       if (existing.currentKeyB64) {
         existing.currentKeyB64 = null;
-        if (existing.level === 'changed') existing.level = 'trusted';
         this.emitChange();
       }
       return existing.level;

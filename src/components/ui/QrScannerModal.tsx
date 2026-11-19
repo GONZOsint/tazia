@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { Camera, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Camera, KeyRound, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useQrScanner } from 'cam2qr/react';
 import { useT } from '../../i18n';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION, modalScrim, modalSheet } from '../../motion/tokens';
 import { parseInviteInput, type ParsedInvite } from '../../core/utils/inviteLink';
 
 interface QrScannerModalProps {
@@ -15,31 +15,50 @@ interface QrScannerModalProps {
 export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
+  const [success, setSuccess] = useState(false);
+  const pendingRef = useRef<ParsedInvite | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setSuccess(false);
+      pendingRef.current = null;
+    }
+  }, [open]);
+
+  const finishSuccess = useCallback(() => {
+    const parsed = pendingRef.current;
+    pendingRef.current = null;
+    if (parsed) onScan(parsed);
+    onClose();
+  }, [onScan, onClose]);
 
   const handleDecode = useCallback(
     (result: { text: string }) => {
+      if (success || pendingRef.current) return;
       const parsed = parseInviteInput(result.text);
-      if (parsed) {
-        onScan(parsed);
-        onClose();
-      }
+      if (!parsed) return;
+      pendingRef.current = parsed;
+      setSuccess(true);
+      const wait = reduceMotion ? DUR.micro * 1000 : DUR.ritual * 1000 + 80;
+      window.setTimeout(finishSuccess, wait);
     },
-    [onScan, onClose]
+    [success, reduceMotion, finishSuccess]
   );
 
   const { videoRef, error } = useQrScanner({
     onDecode: handleDecode,
-    enabled: open,
+    enabled: open && !success,
   });
 
   useEffect(() => {
     if (!open) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !success) onClose();
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [open, onClose]);
+  }, [open, onClose, success]);
 
   useEffect(() => {
     if (open) dialogRef.current?.focus();
@@ -49,23 +68,23 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: DUR.micro }}
+          initial={modalScrim.initial}
+          animate={modalScrim.animate}
+          exit={modalScrim.exit}
+          transition={modalScrim.transition}
           className="fixed inset-0 z-50 flex items-center justify-center bg-scrim-strong p-4"
           role="dialog"
           aria-modal="true"
           aria-label={t('roomsInvitePaste')}
-          onClick={onClose}
+          onClick={success ? undefined : onClose}
         >
           <motion.div
             ref={dialogRef}
             tabIndex={-1}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ duration: DUR.modal, ease: EASE.outExpo }}
+            initial={modalSheet.initial}
+            animate={modalSheet.animate}
+            exit={modalSheet.exit}
+            transition={modalSheet.transition}
             className="panel-surface shadow-sheet relative w-full max-w-sm overflow-hidden outline-none"
             onClick={(e) => e.stopPropagation()}
           >
@@ -79,7 +98,8 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
                 transition={TAP_TRANSITION}
                 type="button"
                 onClick={onClose}
-                className="icon-action icon-action--ghost focus-visible:outline-2 focus-visible:outline-accent"
+                disabled={success}
+                className="icon-action icon-action--ghost focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                 aria-label={t('consentCancel')}
               >
                 <X className="h-4 w-4" />
@@ -95,11 +115,34 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
                 autoPlay
               />
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-48 w-48 rounded-[var(--radius-sheet)] border-2 border-accent/60" />
+                <div className="relative h-48 w-48 rounded-[var(--radius-sheet)] border-2 border-accent/60">
+                  {success && (
+                    <>
+                      <span
+                        className="qr-success-ring absolute inset-0 rounded-[var(--radius-sheet)] border-2 border-accent"
+                        aria-hidden="true"
+                      />
+                      <motion.span
+                        className="absolute inset-0 flex items-center justify-center"
+                        initial={{ opacity: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={
+                          reduceMotion
+                            ? { duration: DUR.micro }
+                            : { ...EASE.ritualSpring }
+                        }
+                      >
+                        <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-lg">
+                          <KeyRound className="h-7 w-7" aria-hidden="true" />
+                        </span>
+                      </motion.span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            {error && (
+            {error && !success && (
               <p className="px-4 py-3 text-center text-xs text-danger-ink">{t('qrScanError')}</p>
             )}
 

@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
-import { MessageCircle, Send } from 'lucide-react';
-import { motion } from 'motion/react';
-import { visualFromUserId } from '../../core/crypto/identity';
+import { useEffect, useMemo, useState } from 'react';
+import { MessageCircle } from 'lucide-react';
+import { visualFromUserId, type PeerVisual } from '../../core/crypto/identity';
 import type { DirectMessage, PresenceState } from '../../core/protocol';
-import { useT } from '../../i18n';
+import { useLocale, useT } from '../../i18n';
+import { formatClockTime } from '../../core/utils/inviteLink';
 import { EmptyZoneCta } from '../../components/ui/AccentButton';
 import { Identicon } from '../../components/content/Identicon';
-import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface DmListViewProps {
   selfUserId: string | null;
@@ -28,16 +27,31 @@ export function DmListView({
   onGoToRooms,
 }: DmListViewProps) {
   const t = useT();
-  const [visuals, setVisuals] = useState<
-    Record<string, { identiconMatrix: boolean[] }>
-  >({});
+  const { locale } = useLocale();
+  const [visuals, setVisuals] = useState<Record<string, PeerVisual>>({});
 
-  const peerIds = Array.from(
-    new Set([
-      ...Object.keys(dmMessages),
-      ...onlineUserIds.filter((id) => id !== selfUserId),
-    ]),
-  );
+  const peerIds = useMemo(() => {
+    const ids = Array.from(
+      new Set([
+        ...Object.keys(dmMessages),
+        ...onlineUserIds.filter((id) => id !== selfUserId),
+      ]),
+    );
+    ids.sort((a, b) => {
+      const aLast = dmMessages[a]?.[dmMessages[a].length - 1]?.createdAtMs ?? 0;
+      const bLast = dmMessages[b]?.[dmMessages[b].length - 1]?.createdAtMs ?? 0;
+      if (bLast !== aLast) return bLast - aLast;
+      const aUnread = dmUnread[a] ?? 0;
+      const bUnread = dmUnread[b] ?? 0;
+      if (bUnread !== aUnread) return bUnread - aUnread;
+      const aOnline = onlineUserIds.includes(a) ? 1 : 0;
+      const bOnline = onlineUserIds.includes(b) ? 1 : 0;
+      return bOnline - aOnline;
+    });
+    return ids;
+  }, [dmMessages, dmUnread, onlineUserIds, selfUserId]);
+
+  const hasAnyThread = peerIds.some((id) => (dmMessages[id]?.length ?? 0) > 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +63,9 @@ export function DmListView({
       }
       if (!cancelled) setVisuals(next);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [peerIds.join('|')]);
 
@@ -69,21 +85,24 @@ export function DmListView({
     return (
       <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <MessageCircle className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-        <h1 className="mt-4 font-display text-xl font-semibold text-ink">{t('dmsTitle')}</h1>
-        <p className="mt-2 text-sm text-muted">{t('dmsNoOnline')}</p>
+        <h1 className="type-headline mt-4 text-ink">{t('dmsTitle')}</h1>
+        <p className="type-lede mt-2">{t('dmsNoOnline')}</p>
       </main>
     );
   }
 
   return (
     <main className="mx-auto max-w-[720px] px-4 py-4 sm:px-8 sm:py-6">
-      <h1 className="font-display text-2xl font-bold text-ink">{t('dmsTitle')}</h1>
-      <p className="mt-1 text-sm text-muted">{t('dmsStartChat')}</p>
+      <h1 className="type-headline text-ink">{t('dmsTitle')}</h1>
+      <p className="type-caption mt-1">
+        {hasAnyThread ? t('dmsStartChat') : t('dmsEmpty')}
+      </p>
 
-      <ul className="mt-3 space-y-1.5">
+      <ul className="mt-3 space-y-1.5" role="list">
         {peerIds.map((id) => {
-          const alias = presence[id]?.alias || t('presenceNoAlias');
           const visual = visuals[id];
+          const alias =
+            presence[id]?.alias || visual?.suggestedAlias || t('presenceNoAlias');
           const msgs = dmMessages[id] ?? [];
           const lastMsg = msgs[msgs.length - 1];
           const unread = dmUnread[id] ?? 0;
@@ -94,12 +113,26 @@ export function DmListView({
               <button
                 type="button"
                 onClick={() => onSelectPeer(id)}
-                aria-label={isOnline ? `${alias} — ${t('peerOnline')}` : alias}
-                className="list-row pressable flex w-full min-h-[60px] items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent"
+                aria-label={
+                  unread > 0
+                    ? `${alias} — ${t('dmsUnread', { n: unread })}`
+                    : isOnline
+                      ? `${alias} — ${t('peerOnline')}`
+                      : alias
+                }
+                className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent ${
+                  unread > 0 ? 'ring-1 ring-accent/35' : ''
+                }`}
               >
-                <div className="relative">
+                <div className="relative shrink-0">
                   {visual ? (
-                    <Identicon matrix={visual.identiconMatrix} size={36} label={alias} />
+                    <Identicon
+                      matrix={visual.identiconMatrix}
+                      size={36}
+                      label={alias}
+                      fg={visual.fg}
+                      bg={visual.bg}
+                    />
                   ) : (
                     <div className="h-9 w-9 rounded-[var(--radius-ctrl)] bg-surface" />
                   )}
@@ -112,20 +145,41 @@ export function DmListView({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">{alias}</p>
-                  {lastMsg && (
-                    <p className="mt-0.5 truncate text-[11px] text-muted">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p
+                      className={`min-w-0 truncate text-sm text-ink ${
+                        unread > 0 ? 'font-bold' : 'font-semibold'
+                      }`}
+                    >
+                      {alias}
+                    </p>
+                    {lastMsg && (
+                      <time
+                        className="type-caption shrink-0 tabular-nums"
+                        dateTime={new Date(lastMsg.createdAtMs).toISOString()}
+                      >
+                        {formatClockTime(lastMsg.createdAtMs, locale)}
+                      </time>
+                    )}
+                  </div>
+                  {lastMsg ? (
+                    <p
+                      className={`type-caption mt-0.5 truncate ${
+                        unread > 0 ? 'font-medium text-ink/80' : ''
+                      }`}
+                    >
                       {lastMsg.fromUserId === selfUserId ? `${t('you')}: ` : ''}
                       {lastMsg.body}
                     </p>
+                  ) : (
+                    <p className="type-caption mt-0.5 truncate">{t('dmsStartChat')}</p>
                   )}
                 </div>
                 {unread > 0 && (
-                  <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
-                    {unread}
+                  <span className="type-badge shrink-0 rounded-full bg-accent px-2 py-0.5 text-on-accent">
+                    {unread > 9 ? '9+' : unread}
                   </span>
                 )}
-                <Send className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
               </button>
             </li>
           );

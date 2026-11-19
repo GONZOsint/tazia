@@ -2,22 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import { QrCode, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR, EASE } from '../../motion/tokens';
+import { contentSwitch } from '../../motion/tokens';
 import { useTheme } from '../../theme';
 
 const SCAN_SETTLE_MS = 2800;
 const SECRET_RING_MS = 400;
 
-/** Rest pose — soft desk-lamp angle, not a hard card tilt. */
-const REST = { rotX: 6.5, rotY: -5.5, z: 0, scale: 1 } as const;
+/** Rest pose — soft desk-lamp angle; keep ≤~10° so the QR stays readable. */
+const REST = { rotX: 5.5, rotY: -4.5, z: 0, scale: 1 } as const;
 /** Max extra degrees from rest when the pointer is near. */
-const TILT_RANGE = 8.5;
+const TILT_RANGE = 7;
 /** Lerp factor per frame @60fps — lower = silkier follow. */
-const FOLLOW = 0.11;
+const FOLLOW = 0.12;
 /** Idle return when the pointer is far from the card. */
-const RETURN = 0.07;
+const RETURN = 0.065;
 /** Beyond this normalized distance, ease back toward rest. */
-const IDLE_DIST = 2.4;
+const IDLE_DIST = 2.35;
 
 interface InviteQrProps {
   inviteUrl: string;
@@ -27,8 +27,10 @@ interface InviteQrProps {
 
 type Pose = { rotX: number; rotY: number; z: number; scale: number };
 
-function targetFromPointer(el: HTMLElement, clientX: number, clientY: number): Pose {
-  const r = el.getBoundingClientRect();
+function targetFromPointer(stage: HTMLElement, clientX: number, clientY: number): Pose {
+  // Measure against the flat perspective stage — never the tilting surface
+  // (tilted getBoundingClientRect feeds back into the next frame and jitters).
+  const r = stage.getBoundingClientRect();
   const cx = r.left + r.width / 2;
   const cy = r.top + r.height / 2;
   const nx = (clientX - cx) / (r.width * 0.5);
@@ -39,15 +41,25 @@ function targetFromPointer(el: HTMLElement, clientX: number, clientY: number): P
 
   // Soft falloff past the card edge keeps continuous tracking without snaps.
   const falloff = 1 / (1 + Math.max(0, dist - 0.95) * 1.15);
-  const clampedX = Math.max(-1.1, Math.min(1.1, nx)) * falloff;
-  const clampedY = Math.max(-1.1, Math.min(1.1, ny)) * falloff;
+  const clampedX = Math.max(-1.05, Math.min(1.05, nx)) * falloff;
+  const clampedY = Math.max(-1.05, Math.min(1.05, ny)) * falloff;
   const near = Math.min(1, falloff);
 
   return {
     rotX: REST.rotX - clampedY * TILT_RANGE,
     rotY: REST.rotY + clampedX * TILT_RANGE,
-    z: 6 * near,
-    scale: 1 + 0.014 * near,
+    z: 8 * near,
+    scale: 1 + 0.012 * near,
+  };
+}
+
+function glareFromPointer(stage: HTMLElement, clientX: number, clientY: number) {
+  const r = stage.getBoundingClientRect();
+  const gx = ((clientX - r.left) / Math.max(1, r.width)) * 100;
+  const gy = ((clientY - r.top) / Math.max(1, r.height)) * 100;
+  return {
+    gx: Math.max(6, Math.min(94, gx)),
+    gy: Math.max(6, Math.min(94, gy)),
   };
 }
 
@@ -66,6 +78,18 @@ function poseNearlyEqual(a: Pose, b: Pose) {
 
 function writePose(el: HTMLElement, p: Pose) {
   el.style.transform = `rotateX(${p.rotX.toFixed(3)}deg) rotateY(${p.rotY.toFixed(3)}deg) translateZ(${p.z.toFixed(2)}px) scale(${p.scale.toFixed(4)})`;
+  // Shadow tracks tilt so lift reads as depth, not a sliding sticker.
+  const lift = Math.min(1, Math.max(0, (p.z / 8) * 0.85 + (p.scale - 1) / 0.012 * 0.15));
+  const shadowX = (-p.rotY * 0.55).toFixed(2);
+  const shadowY = (10 + p.rotX * 0.65 + lift * 6).toFixed(2);
+  el.style.setProperty('--qr-shadow-x', `${shadowX}px`);
+  el.style.setProperty('--qr-shadow-y', `${shadowY}px`);
+  el.style.setProperty('--qr-lift', lift.toFixed(3));
+}
+
+function writeGlare(el: HTMLElement, gx: number, gy: number) {
+  el.style.setProperty('--qr-gx', `${gx.toFixed(1)}%`);
+  el.style.setProperty('--qr-gy', `${gy.toFixed(1)}%`);
 }
 
 export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: InviteQrProps) {
@@ -75,6 +99,7 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   const [error, setError] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [secretRing, setSecretRing] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const scanTimer = useRef<number | null>(null);
   const ringTimer = useRef<number | null>(null);
@@ -155,8 +180,9 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   // Depend on qrReady (bool), not dataUrl string — phrase-in-link regenerates the bitmap in place.
   useEffect(() => {
     if (!qrReady) return;
+    const stage = stageRef.current;
     const el = surfaceRef.current;
-    if (!el) return;
+    if (!stage || !el) return;
 
     const reduced =
       window.matchMedia('(hover: none)').matches ||
@@ -168,10 +194,19 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
     const current: Pose = { ...REST };
     let target: Pose = { ...REST };
     let lastTs = performance.now();
+    let glareX = 42;
+    let glareY = 28;
+    let targetGlareX = glareX;
+    let targetGlareY = glareY;
 
     // Own the transform so CSS transition / secret fx never fight the lerp.
     el.style.transition = 'box-shadow var(--dur-medium) var(--ease-out-expo)';
     writePose(el, current);
+    writeGlare(el, glareX, glareY);
+
+    const setTilting = (on: boolean) => {
+      el.classList.toggle('is-tilting', on);
+    };
 
     const tick = (ts: number) => {
       if (!running) return;
@@ -180,41 +215,59 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       const frame = dt / 16.67;
       const towardRest = poseNearlyEqual(target, REST);
       const k = 1 - Math.pow(1 - (towardRest ? RETURN : FOLLOW), frame);
+      const glareK = 1 - Math.pow(1 - 0.16, frame);
 
       current.rotX = lerp(current.rotX, target.rotX, k);
       current.rotY = lerp(current.rotY, target.rotY, k);
       current.z = lerp(current.z, target.z, k);
       current.scale = lerp(current.scale, target.scale, k);
+      glareX = lerp(glareX, targetGlareX, glareK);
+      glareY = lerp(glareY, targetGlareY, glareK);
       writePose(el, current);
+      writeGlare(el, glareX, glareY);
 
-      const settled = poseNearlyEqual(current, target);
+      const settled =
+        poseNearlyEqual(current, target) &&
+        Math.abs(glareX - targetGlareX) < 0.15 &&
+        Math.abs(glareY - targetGlareY) < 0.15;
       if (!settled || !towardRest) {
         raf = requestAnimationFrame(tick);
       } else {
         raf = 0;
         writePose(el, REST);
+        writeGlare(el, 42, 28);
+        setTilting(false);
       }
     };
 
     const kick = () => {
+      setTilting(true);
       if (raf) return;
       lastTs = performance.now();
       raf = requestAnimationFrame(tick);
     };
 
     const onMove = (e: PointerEvent) => {
-      target = targetFromPointer(el, e.clientX, e.clientY);
+      target = targetFromPointer(stage, e.clientX, e.clientY);
+      const g = glareFromPointer(stage, e.clientX, e.clientY);
+      targetGlareX = g.gx;
+      targetGlareY = g.gy;
       kick();
     };
 
     const onLeave = () => {
       target = { ...REST };
+      targetGlareX = 42;
+      targetGlareY = 28;
       kick();
     };
 
     // After click / modal confirm, re-sample pointer so tilt keeps flowing instead of freezing.
     const onPointerUp = (e: PointerEvent) => {
-      target = targetFromPointer(el, e.clientX, e.clientY);
+      target = targetFromPointer(stage, e.clientX, e.clientY);
+      const g = glareFromPointer(stage, e.clientX, e.clientY);
+      targetGlareX = g.gx;
+      targetGlareY = g.gy;
       kick();
     };
 
@@ -230,8 +283,14 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('blur', onLeave);
       document.removeEventListener('mouseleave', onLeave);
+      el.classList.remove('is-tilting');
       el.style.transition = '';
       el.style.transform = '';
+      el.style.removeProperty('--qr-shadow-x');
+      el.style.removeProperty('--qr-shadow-y');
+      el.style.removeProperty('--qr-lift');
+      el.style.removeProperty('--qr-gx');
+      el.style.removeProperty('--qr-gy');
     };
   }, [qrReady]);
 
@@ -246,29 +305,33 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
         style={{ width: size + 20, height: size + 20 }}
         aria-hidden="true"
       >
-        <div className="h-full w-full animate-pulse rounded-[calc(var(--radius-ctrl)-4px)] bg-surface" />
+        <div className="qr-surface-face">
+          <div className="h-full w-full animate-pulse rounded-[calc(var(--radius-ctrl)-4px)] bg-surface" style={{ height: size, width: size }} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex w-full flex-col items-center gap-2">
-      <div className="qr-perspective mx-auto">
+      <div ref={stageRef} className="qr-perspective mx-auto">
         <div
           ref={surfaceRef}
           className={`qr-surface-3d rounded-[var(--radius-ctrl)] p-2.5 ${
             scanning ? 'scanning' : ''
           } ${secretRing ? 'qr-secret-ring' : ''} ${includesSecret ? 'qr-has-secret' : ''}`}
         >
-          <div className="qr-laser-line" aria-hidden="true" />
-          <img
-            src={dataUrl}
-            alt={t('qrAlt')}
-            width={size}
-            height={size}
-            className="block max-w-full rounded-[calc(var(--radius-ctrl)-4px)]"
-            draggable={false}
-          />
+          <div className="qr-surface-face rounded-[calc(var(--radius-ctrl)-4px)]">
+            <div className="qr-laser-line" aria-hidden="true" />
+            <img
+              src={dataUrl}
+              alt={t('qrAlt')}
+              width={size}
+              height={size}
+              className="block max-w-full rounded-[calc(var(--radius-ctrl)-4px)]"
+              draggable={false}
+            />
+          </div>
         </div>
       </div>
       <p className="flex max-w-[16rem] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-muted">
@@ -279,10 +342,10 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
         {includesSecret && (
           <motion.p
             key="secret-warn"
-            initial={{ opacity: 0, y: 6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: DUR.switch, ease: EASE.outExpo }}
+            initial={contentSwitch.initial}
+            animate={contentSwitch.animate}
+            exit={contentSwitch.exit}
+            transition={contentSwitch.transition}
             className="flex max-w-[16rem] items-center justify-center gap-1.5 text-center text-[11px] font-medium text-warn"
             role="status"
           >

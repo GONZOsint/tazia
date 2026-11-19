@@ -48,7 +48,8 @@ const COMMON_WEAK_PHRASES = new Set([
   'prueba',
 ]);
 
-export function generateMemorablePassphrase(wordCount = 4): string {
+/** Default 6 words (~48 bits with 256-word list) — 4 words is too weak for Nostr ciphertext. */
+export function generateMemorablePassphrase(wordCount = 6): string {
   const randomIndices = new Uint8Array(wordCount);
   crypto.getRandomValues(randomIndices);
   return Array.from(randomIndices)
@@ -91,13 +92,15 @@ export function evaluatePassphraseStrength(phrase: string): PassphraseStrengthRe
   const hasSymbol = /[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/.test(trimmed);
   const charVariety = [hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
 
-  if (words.length >= 4 || (trimmed.length >= 16 && charVariety >= 1)) {
+  if (words.length >= 6 || (trimmed.length >= 20 && charVariety >= 2)) {
     return { score: 3, id: 'strong', isAcceptable: true };
   }
 
-  if (words.length >= 3 || trimmed.length >= 12 || (trimmed.length >= 10 && charVariety >= 2)) {
+  // Memorable phrases need ≥6 words; long mixed strings can still score "good".
+  if (words.length >= 6 || trimmed.length >= 16 || (trimmed.length >= 14 && charVariety >= 2)) {
     return { score: 2, id: 'good', isAcceptable: true };
   }
 
-  return { score: 1, id: 'ok', isAcceptable: true };
+  // score 1 ("ok") / 5-word phrases are not acceptable for create/join.
+  return { score: 1, id: 'ok', isAcceptable: false };
 }

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { DUR } from '../motion/tokens';
 
-/** Shared send affordance: plane launch window then spinner if still busy. */
+/** Shared send affordance: Motion plane window then spinner if still busy. */
 export function usePlaneLaunch() {
   const [planeKey, setPlaneKey] = useState(0);
   const [launching, setLaunching] = useState(false);
@@ -11,10 +11,11 @@ export function usePlaneLaunch() {
     setPlaneKey((k) => k + 1);
     setLaunching(true);
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    // Anticipate + launch + settle ≈ plane + tap
     timerRef.current = window.setTimeout(() => {
       setLaunching(false);
       timerRef.current = null;
-    }, DUR.plane * 1000);
+    }, (DUR.plane + DUR.tap) * 1000);
   }, []);
 
   return { planeKey, launching, trigger };

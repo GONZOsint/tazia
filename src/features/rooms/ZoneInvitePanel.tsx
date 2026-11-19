@@ -3,7 +3,7 @@ import { Link2, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { buildInviteUrl } from '../../core/utils/inviteLink';
 import { useT } from '../../i18n';
-import { DUR, EASE, disclosure } from '../../motion/tokens';
+import { contentSwitch, disclosure } from '../../motion/tokens';
 import { InviteQr } from '../../components/session/InviteQr';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { CopyButton } from '../../components/ui/CopyButton';
@@ -59,9 +59,9 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
 
         {phrase && (
           <motion.label
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.18, duration: DUR.tab, ease: EASE.outExpo }}
+            initial={contentSwitch.initial}
+            animate={contentSwitch.animate}
+            transition={{ ...contentSwitch.transition, delay: 0.12 }}
             className="invite-opt mt-2.5 flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
           >
             <span className="relative inline-flex">

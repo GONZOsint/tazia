@@ -17,7 +17,7 @@ async function deriveMasterBits(roomId: string, password: string): Promise<Array
   return crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt: te.encode(`tazia.fallback.v2:${roomId}`),
+      salt: te.encode(`tazep.fallback.v2:${roomId}`),
       iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },
@@ -51,8 +51,8 @@ export async function deriveSessionMaterial(
 ): Promise<{ roomKey: CryptoKey; topicId: string }> {
   const master = await deriveMasterBits(roomId, phrase);
   const [keyBits, topicBits] = await Promise.all([
-    hkdfExpand(master, 'tazia.app/room-key', 256),
-    hkdfExpand(master, 'tazia.app/topic', 256),
+    hkdfExpand(master, 'tazep/room-key', 256),
+    hkdfExpand(master, 'tazep/topic', 256),
   ]);
   const roomKey = await crypto.subtle.importKey(
     'raw',
@@ -83,7 +83,7 @@ function unpadPlaintext(padded: Uint8Array): Uint8Array {
 }
 
 function aadBytes(roomId: string): Uint8Array {
-  return te.encode(`tazia.fallback.aad.v3:${roomId}`);
+  return te.encode(`tazep.fallback.aad.v3:${roomId}`);
 }
 
 export async function encryptJson(

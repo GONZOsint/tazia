@@ -71,8 +71,8 @@ export function EmptyZoneCta({ icon, title, body, actionLabel, onAction }: Empty
   return (
     <div className="flex flex-col items-center px-4 py-16 text-center">
       <div className="mb-4 text-muted">{icon}</div>
-      <h2 className="font-display text-xl font-bold text-ink">{title}</h2>
-      <p className="mt-2 max-w-sm text-sm text-muted">{body}</p>
+      <h2 className="type-title text-ink">{title}</h2>
+      <p className="type-lede mt-2 max-w-sm">{body}</p>
       <AccentButton className="mt-6" onClick={onAction}>
         {actionLabel}
       </AccentButton>

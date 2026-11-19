@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
-import { DUR, EASE, TAP, TAP_TRANSITION, contentSwitch } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION, contentSwitch, drawerPanel, modalScrim } from '../../motion/tokens';
 import { RoomSidebar, type ThreadGroup } from './RoomSidebar';
 import { ThreadComposer } from './ThreadComposer';
 import { ThreadReader, type AuthorVisualCache } from './ThreadReader';
@@ -168,10 +168,10 @@ export function ForumWorkspace({
               type="button"
               className="fixed inset-0 z-50 bg-scrim lg:hidden"
               aria-label={t('sidebarCloseTopics')}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: DUR.tab }}
+              initial={modalScrim.initial}
+              animate={modalScrim.animate}
+              exit={modalScrim.exit}
+              transition={modalScrim.transition}
               onClick={() => setTopicsOpen(false)}
             />
           )}
@@ -180,10 +180,10 @@ export function ForumWorkspace({
           {topicsOpen && (
             <motion.div
               key="topics-panel"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={EASE.spring}
+              initial={drawerPanel.initial}
+              animate={drawerPanel.animate}
+              exit={drawerPanel.exit}
+              transition={drawerPanel.transition}
               className="shadow-sheet fixed inset-y-0 left-0 z-50 w-[min(100%,360px)] overflow-y-auto border-r border-border bg-bg p-4 lg:hidden"
               style={{
                 paddingTop: 'max(1rem, env(safe-area-inset-top))',
@@ -258,15 +258,15 @@ export function ForumWorkspace({
                 ) : (
                   <div className="panel-surface p-8 text-center sm:p-10">
                     <MessageSquare className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-                    <h2 className="mt-4 font-display text-lg font-semibold text-ink">
+                    <h2 className="type-title mt-4 text-ink">
                       {hasAnyThreads && searchQuery.trim() ? t('forumNoResults') : t('forumEmptyThreads')}
                     </h2>
                     {hasAnyThreads && searchQuery.trim() ? (
-                      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+                      <p className="type-lede mx-auto mt-2 max-w-md">
                         {t('forumNoResultsHint', { q: searchQuery.trim() })}
                       </p>
                     ) : (
-                      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+                      <p className="type-lede mx-auto mt-2 max-w-md">
                         {t('forumEmptyHint')}
                       </p>
                     )}

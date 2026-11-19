@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { FileText, Loader2, Send, X } from 'lucide-react';
+import { FileText, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import { MAX_BODY_CHARS, MAX_TITLE_CHARS } from '../../core/protocol';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
+import { PlaneSendIcon } from '../../components/ui/PlaneSendIcon';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface ThreadComposerProps {
@@ -44,7 +45,7 @@ export function ThreadComposer({
     <div className="panel-surface p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
         <div>
-          <h2 className="inline-flex items-center gap-2 font-display text-lg font-semibold text-ink">
+          <h2 className="type-title inline-flex items-center gap-2 text-ink">
             <FileText className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('composerTitle')}
           </h2>
@@ -99,13 +100,11 @@ export function ThreadComposer({
           disabled={overLimit || isBusy}
           className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          {isBusy && !planeLaunching ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <span key={planeKey} className={planeKey > 0 ? 'plane-launching' : 'inline-flex'}>
-              <Send className="h-4 w-4" aria-hidden="true" />
-            </span>
-          )}
+          <PlaneSendIcon
+            planeKey={planeKey}
+            launching={planeLaunching}
+            busy={isBusy}
+          />
           {isBusy && !planeLaunching ? t('composerPublishing') : t('composerPublish')}
         </motion.button>
       </form>

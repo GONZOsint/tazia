@@ -54,7 +54,7 @@ export const es: Messages = {
   phraseHide: 'Ocultar frase',
   roomsGeneratePhrase: 'Generar',
   roomsAliasLabel: 'Alias',
-  roomsAliasPlaceholder: 'Opcional',
+  roomsAliasPlaceholder: 'Vacío = nombre sugerido (ej. Serena Marea)',
   roomsInviteTitle: 'Invitar',
   roomsCopyLink: 'Copiar enlace',
   roomsCopyPhrase: 'Copiar frase',
@@ -186,7 +186,7 @@ export const es: Messages = {
   helpMore: 'Detalle técnico',
   helpMoreHide: 'Ocultar detalle técnico',
   helpMoreBody:
-    '• Mesh P2P con WebRTC vía Trystero\n• Si falla ICE: fallback de datos cifrado por relés Nostr (solo ciphertext; no es P2P puro)\n• Protocolo agora-forum-v2 con Ed25519 + Susurros solo sellados (X25519)\n• TURN opcional (coturn) para rescate ICE u ocultar IP\n• Confianza TOFU + código de 6 emojis ligado a roomId (SAS ~48 bits)\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md, docs/papers/',
+    '• Mesh P2P con WebRTC vía Trystero\n• Si falla ICE: fallback de datos cifrado por relés Nostr (solo ciphertext; no es P2P puro)\n• Protocolo TAZEP (tazep-v2) con Ed25519 + Susurros solo sellados (X25519)\n• TURN opcional (coturn) para rescate ICE u ocultar IP\n• Confianza TOFU + código de 6 emojis ligado a roomId (SAS ~48 bits)\n• Docs: docs/SECURITY.es.md, docs/PROTOCOL.es.md, docs/TURN.es.md, docs/papers/',
   helpForgetDevice: 'Olvidar este dispositivo',
   helpForgetDone: 'Aviso de dirección borrado en este navegador.',
   helpForgetHint: 'Volverá a pedir el aviso de dirección la próxima vez que entres a una zona.',
@@ -209,6 +209,9 @@ export const es: Messages = {
     'Abre el sitio con una dirección que empiece por https:// (la versión sin candado no sirve).',
 
   errMissingFields: 'Faltan el código de zona o la frase.',
+  errWeakPhrase: 'Esa frase es demasiado débil — usa al menos seis palabras memorables.',
+  errPhraseMismatch:
+    'Ya estás en esta zona con otra frase. Sal primero y vuelve a entrar.',
   errJoinFailed: 'No se pudo entrar a la zona.',
   errDecrypt: 'La frase no coincide. Compruébala con el grupo.',
   errRoomFull: 'La zona está llena.',
@@ -221,6 +224,7 @@ export const es: Messages = {
   errRelay: 'No se pudo contactar con los servicios que os ayudan a encontraros. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes. Espera un momento.',
   errPublish: 'No se pudo enviar.',
+  errDmSend: 'No se pudo enviar este susurro.',
   errSync: 'No se pudieron actualizar los mensajes.',
   errGeneric: 'Problema de red ({code}).',
   errMaxRooms: 'Límite de zonas alcanzado (máx. {n}).',
@@ -278,6 +282,8 @@ export const es: Messages = {
   navDms: 'Susurros',
   dmsTitle: 'Susurros',
   dmsEmpty: 'Sin susurros aún. Toca a alguien de la tribu para empezar.',
+  dmsThreadEmpty: 'Di hola — este susurro va sellado entre pares (X25519 + AAD de zona).',
+  dmsSealedHint: 'Sellado entre pares en esta zona (no es E2E de transporte)',
   dmsStartChat: 'Susurro',
   dmsSend: 'Enviar',
   dmsPlaceholder: 'Susurro…',
@@ -293,10 +299,13 @@ export const es: Messages = {
   turnForceRelay: 'Ocultar mi dirección de internet',
   turnForceRelayHint:
     'Todo pasa por el servidor de apoyo. Sin un servidor que funcione, no podréis conectar.',
+  turnRememberDevice: 'Recordar en este dispositivo',
+  turnRememberDeviceHint:
+    'Por defecto off: la config TURN vive solo en esta pestaña. On la guarda en el navegador hasta que borres datos del sitio.',
   turnServerUrl: 'Dirección del servidor',
   turnUsername: 'Usuario',
   turnCredential: 'Contraseña',
   turnFixCta: 'Arreglar',
   turnTechNote:
-    'Campos TURN/ICE (coturn u otro). URL típica: turn:host:3478 o turns:… . Activar «relay only» fuerza iceTransportPolicy=relay. Ambos lados deben usar el mismo servidor. Guía: TURN.md.',
+    'Campos TURN/ICE (coturn u otro). URL típica: turn:host:3478 o turns:… . Activar «relay only» fuerza iceTransportPolicy=relay. Ambos lados deben usar el mismo servidor. Guía: docs/TURN.es.md.',
 };

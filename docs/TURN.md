@@ -1,5 +1,7 @@
 # Self-hosted TURN for TAZIA
 
+English · [Español](TURN.es.md)
+
 By default, TAZIA peers connect directly (STUN-assisted P2P). Many home NATs
 (especially CGNAT) **cannot** complete ICE with STUN alone — Firefox shows
 `WebRTC: ICE failed, add a TURN server`.
@@ -51,7 +53,7 @@ docker run -d \
 5. Optional: enable **Force relay only** to hide your IP (requires working TURN).
 6. Create or join a zone — **both** peers need the same TURN settings, then rejoin.
 
-Credentials stay in this browser’s `localStorage`; they are not sent to TAZIA hosting.
+Credentials stay in this browser’s **`sessionStorage` by default** (leave with the tab). Opt-in **Remember on this device** stores them in `localStorage`. They are not sent to TAZIA hosting.
 
 ## Verify relay-only mode
 
@@ -94,4 +96,5 @@ References: [Chrome LNA](https://developer.chrome.com/blog/local-network-access)
 - TURN hides your IP from peers, but the TURN operator sees your IP. Use a server you trust (ideally one you run).
 - App messages are Ed25519-signed. TURN cannot forge signatures; it can see encrypted WebRTC traffic.
 - TAZIA does **not** ship a third-party TURN; self-host or use a TURN you control.
+- **Burn session** clears `sessionStorage` (default TURN). Opted-in **Remember on this device** (`localStorage`) survives burn until you clear site data or uncheck remember.
 - See also [`SECURITY.md`](SECURITY.md) (threat model) and the encrypted Nostr data-plane fallback when ICE fails.
