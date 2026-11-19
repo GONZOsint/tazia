@@ -631,6 +631,43 @@ html.dark {
     color: var(--color-on-accent);
   }
 
+  /* Compact chat composer — single-line feel, grows with content */
+  .dm-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    border-radius: calc(var(--radius-panel) + 2px);
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface-raised) 92%, var(--color-bg));
+    padding: 0.4rem 0.4rem 0.4rem 0.65rem;
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
+  }
+  .dm-composer__field {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 2.5rem;
+    max-height: 7.5rem;
+    resize: none;
+    border: 0;
+    background: transparent;
+    padding: 0.55rem 0.25rem;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--color-ink);
+    outline: none;
+    field-sizing: content;
+  }
+  .dm-composer__field::placeholder {
+    color: var(--color-faint);
+  }
+  .dm-composer__field:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  .dm-composer__send {
+    flex-shrink: 0;
+  }
+
   .thread-quote {
     display: flex;
     align-items: flex-start;
@@ -722,14 +759,19 @@ html.dark {
     inset: 0;
     background:
       radial-gradient(
-        ellipse at 28% 12%,
-        color-mix(in oklab, var(--color-accent) 22%, transparent),
-        transparent 52%
+        ellipse at 50% 18%,
+        color-mix(in oklab, var(--color-accent) 26%, transparent),
+        transparent 48%
       ),
       radial-gradient(
-        ellipse at 78% 88%,
-        color-mix(in oklab, var(--color-accent) 10%, transparent),
-        transparent 48%
+        ellipse at 18% 78%,
+        color-mix(in oklab, var(--color-accent) 12%, transparent),
+        transparent 42%
+      ),
+      radial-gradient(
+        ellipse at 88% 72%,
+        color-mix(in oklab, var(--color-accent) 8%, transparent),
+        transparent 40%
       );
   }
   .hero-landing {
@@ -746,9 +788,75 @@ html.dark {
       );
   }
   .hero-landing-mark {
+    position: relative;
     box-shadow:
       0 0 0 1px color-mix(in oklab, var(--color-accent) 28%, transparent),
-      0 12px 28px color-mix(in oklab, var(--color-accent) 14%, transparent);
+      0 14px 32px color-mix(in oklab, var(--color-accent) 16%, transparent),
+      0 0 48px color-mix(in oklab, var(--color-accent) 10%, transparent);
+  }
+  .hero-landing-mark-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+  .hero-landing-mark-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -18%;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--color-accent) 28%, transparent),
+      transparent 68%
+    );
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-landing-mark-wrap::before {
+      animation: hero-ember-pulse 3.2s var(--ease-out-expo) infinite;
+    }
+    .hero-landing-mark {
+      animation: hero-mark-breathe 4.5s var(--ease-in-out-quart) infinite;
+    }
+  }
+  .hero-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 22%, var(--color-border));
+    background: color-mix(in oklab, var(--color-bg) 55%, transparent);
+    padding: 0.35rem 0.7rem;
+    font-size: var(--type-caption);
+    font-weight: 600;
+    letter-spacing: var(--tracking-caption);
+    color: var(--color-muted);
+  }
+  .hero-step__dot {
+    height: 0.4rem;
+    width: 0.4rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    box-shadow: 0 0 8px color-mix(in oklab, var(--color-accent) 55%, transparent);
+  }
+  .hero-cta-primary {
+    min-height: 3.25rem;
+  }
+  .hero-cta-secondary {
+    min-height: 3.25rem;
+    transition:
+      border-color var(--dur-tap) var(--ease-out-expo),
+      background-color var(--dur-tap) var(--ease-out-expo),
+      color var(--dur-tap) var(--ease-out-expo),
+      transform var(--dur-tap) var(--ease-out-expo);
+  }
+  @media (hover: hover) {
+    .hero-cta-secondary:hover:not(:disabled) {
+      border-color: color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+      background: color-mix(in oklab, var(--color-accent) 8%, var(--color-bg));
+      color: var(--color-ink);
+    }
   }
 
   /* Accent CTA: expand rings on hover (behind control; no orbiting dots) */
@@ -826,17 +934,21 @@ html.dark {
 
   .burn-heat {
     position: relative;
-    overflow: hidden;
+    /* Visible so the gooey plume can rise above the chip */
+    overflow: visible;
     isolation: isolate;
     transition:
       border-color var(--dur-micro) var(--ease-out-expo),
       box-shadow var(--dur-medium) var(--ease-out-expo),
       color var(--dur-micro) var(--ease-out-expo),
-      background-color var(--dur-micro) var(--ease-out-expo);
+      background-color var(--dur-micro) var(--ease-out-expo),
+      filter var(--dur-micro) ease;
   }
   .burn-heat .burn-ignition-bar {
     position: absolute;
     inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
     background:
       linear-gradient(
         105deg,
@@ -846,9 +958,9 @@ html.dark {
       ),
       linear-gradient(
         90deg,
-        color-mix(in oklab, var(--fire-edge) 60%, var(--color-danger)) 0%,
-        var(--fire-mid) 48%,
-        var(--fire-core) 100%
+        color-mix(in oklab, var(--fire-edge) 55%, var(--color-danger)) 0%,
+        var(--fire-mid) 42%,
+        color-mix(in oklab, var(--color-accent) 35%, var(--fire-core)) 100%
       );
     background-size: 180% 100%, 100% 100%;
     opacity: 0.5;
@@ -858,89 +970,122 @@ html.dark {
     will-change: transform;
     transition: transform var(--dur-burn-ignition) linear, opacity var(--dur-micro) ease;
   }
-  /* Gooey rising embers — CodePen burning-button technique, TAZIA palette. */
+
+  /*
+   * Gooey rising fire — CodePen ExpozyR technique, TAZIA palette.
+   * Blobs + SVG #tazia-fire-goo metaball; hover = slow plume, heating = fast.
+   */
   .burn-embers {
     position: absolute;
-    inset: -18% 0 0;
+    /* Anchor over the flame icon (left on wide chip; centered on icon-only) */
+    left: 50%;
+    bottom: 32%;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-left: -1.25rem;
     pointer-events: none;
     z-index: 2;
     filter: url(#tazia-fire-goo);
     opacity: 0;
     transition: opacity var(--dur-micro) ease;
-    overflow: hidden;
   }
-  .burn-embers span {
+  @media (min-width: 640px) {
+    .burn-embers {
+      left: 1.35rem;
+      margin-left: 0;
+    }
+  }
+  .burn-embers__p {
     position: absolute;
-    bottom: 14%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
+    width: 0.42rem;
+    height: 0.42rem;
     border-radius: 50%;
-    background: var(--fire-core);
-    box-shadow: 0 0 6px color-mix(in oklab, var(--fire-core) 55%, transparent);
-    transform: translate(-50%, 0) scale(0.35);
-    opacity: 0;
+    background: var(--fire-mid);
+    pointer-events: none;
+    animation-duration: 1s;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
+    animation-play-state: paused;
   }
-  .burn-embers span:nth-child(1)  { left: 16%; width: 4px; height: 4px; background: var(--fire-mid); }
-  .burn-embers span:nth-child(2)  { left: 24%; width: 5.5px; height: 5.5px; }
-  .burn-embers span:nth-child(3)  { left: 33%; width: 3.5px; height: 3.5px; background: var(--fire-edge); }
-  .burn-embers span:nth-child(4)  { left: 41%; width: 4.5px; height: 4.5px; }
-  .burn-embers span:nth-child(5)  { left: 50%; width: 6px; height: 6px; background: var(--fire-core); }
-  .burn-embers span:nth-child(6)  { left: 58%; width: 4px; height: 4px; background: var(--fire-mid); }
-  .burn-embers span:nth-child(7)  { left: 66%; width: 3.5px; height: 3.5px; }
-  .burn-embers span:nth-child(8)  { left: 74%; width: 5px; height: 5px; background: var(--fire-edge); }
-  .burn-embers span:nth-child(9)  { left: 28%; width: 3px; height: 3px; background: var(--fire-core); }
-  .burn-embers span:nth-child(10) { left: 46%; width: 4.5px; height: 4.5px; background: var(--fire-mid); }
-  .burn-embers span:nth-child(11) { left: 62%; width: 3.5px; height: 3.5px; }
-  .burn-embers span:nth-child(12) { left: 80%; width: 5px; height: 5px; background: var(--fire-core); }
+  /* Arc of seed blobs across the chip — rises into a continuous flame via goo */
+  .burn-embers__p:nth-child(1)  { top: calc(50% - 0.39rem); left: 0.08rem; background: var(--fire-edge); animation-name: burn-rise-1;  animation-delay: -0.43s; }
+  .burn-embers__p:nth-child(2)  { top: calc(50% - 0.53rem); left: 0.2rem;  background: var(--fire-mid);  animation-name: burn-rise-2;  animation-delay: -0.65s; }
+  .burn-embers__p:nth-child(3)  { top: calc(50% - 0.66rem); left: 0.32rem; background: var(--fire-core); animation-name: burn-rise-3;  animation-delay: 0s; }
+  .burn-embers__p:nth-child(4)  { top: calc(50% - 0.78rem); left: 0.44rem; background: var(--fire-mid);  animation-name: burn-rise-4;  animation-delay: -0.9s; }
+  .burn-embers__p:nth-child(5)  { top: calc(50% - 0.89rem); left: 0.56rem; background: color-mix(in oklab, var(--color-accent) 55%, var(--fire-core)); animation-name: burn-rise-5;  animation-delay: -0.3s; }
+  .burn-embers__p:nth-child(6)  { top: calc(50% - 0.98rem); left: 0.68rem; background: var(--fire-core); animation-name: burn-rise-6;  animation-delay: 0s; }
+  .burn-embers__p:nth-child(7)  { top: calc(50% - 1.05rem); left: 0.8rem;  background: var(--fire-mid);  animation-name: burn-rise-7;  animation-delay: -0.84s; }
+  .burn-embers__p:nth-child(8)  { top: calc(50% - 1.11rem); left: 0.92rem; background: var(--fire-edge); animation-name: burn-rise-8;  animation-delay: -0.36s; }
+  .burn-embers__p:nth-child(9)  { top: calc(50% - 1.14rem); left: 1.04rem; background: var(--fire-core); animation-name: burn-rise-9;  animation-delay: -0.33s; }
+  .burn-embers__p:nth-child(10) { top: calc(50% - 1.15rem); left: 1.16rem; background: color-mix(in oklab, var(--color-accent) 40%, var(--fire-core)); animation-name: burn-rise-10; animation-delay: -0.96s; }
+  .burn-embers__p:nth-child(11) { top: calc(50% - 1.14rem); left: 1.28rem; background: var(--fire-mid);  animation-name: burn-rise-11; animation-delay: -0.67s; }
+  .burn-embers__p:nth-child(12) { top: calc(50% - 1.11rem); left: 1.4rem;  background: var(--fire-core); animation-name: burn-rise-12; animation-delay: -0.36s; }
+  .burn-embers__p:nth-child(13) { top: calc(50% - 1.05rem); left: 1.52rem; background: var(--fire-edge); animation-name: burn-rise-13; animation-delay: -0.96s; }
+  .burn-embers__p:nth-child(14) { top: calc(50% - 0.98rem); left: 1.64rem; background: var(--fire-mid);  animation-name: burn-rise-14; animation-delay: -0.98s; }
+  .burn-embers__p:nth-child(15) { top: calc(50% - 0.89rem); left: 1.76rem; background: color-mix(in oklab, var(--color-accent) 50%, var(--fire-mid)); animation-name: burn-rise-15; animation-delay: -0.93s; }
+  .burn-embers__p:nth-child(16) { top: calc(50% - 0.78rem); left: 1.88rem; background: var(--fire-core); animation-name: burn-rise-16; animation-delay: -0.44s; }
+  .burn-embers__p:nth-child(17) { top: calc(50% - 0.66rem); left: 2rem;    background: var(--fire-mid);  animation-name: burn-rise-17; animation-delay: -0.86s; }
+  .burn-embers__p:nth-child(18) { top: calc(50% - 0.53rem); left: 2.12rem; background: var(--fire-edge); animation-name: burn-rise-18; animation-delay: -0.49s; }
+  .burn-embers__p:nth-child(19) { top: calc(50% - 0.39rem); left: 2.24rem; background: var(--fire-core); animation-name: burn-rise-19; animation-delay: -0.28s; }
+  .burn-embers__p:nth-child(20) { top: calc(50% - 0.25rem); left: 2.36rem; background: var(--fire-mid);  animation-name: burn-rise-20; animation-delay: -0.11s; }
 
-  /* Organic rise paths with horizontal drift (taller CodePen-style plume). */
-  @keyframes burn-ember-rise-a {
-    0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.35); }
-    12%  { opacity: 1; }
-    45%  { opacity: 0.9; transform: translate(calc(-50% - 4px), -18px) scale(0.85); }
-    100% { opacity: 0; transform: translate(calc(-50% - 12px), -42px) scale(0.05); }
-  }
-  @keyframes burn-ember-rise-b {
-    0%   { opacity: 0; transform: translate(-50%, 7px) scale(0.3); }
-    14%  { opacity: 1; }
-    48%  { opacity: 0.92; transform: translate(calc(-50% + 5px), -16px) scale(0.9); }
-    100% { opacity: 0; transform: translate(calc(-50% + 14px), -38px) scale(0.08); }
-  }
-  @keyframes burn-ember-rise-c {
-    0%   { opacity: 0; transform: translate(-50%, 5px) scale(0.4); }
-    16%  { opacity: 0.95; }
-    55%  { opacity: 0.8; transform: translate(calc(-50% - 1px), -22px) scale(0.7); }
-    100% { opacity: 0; transform: translate(calc(-50% - 3px), -48px) scale(0.04); }
-  }
+  @keyframes burn-rise-1  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -1.05em) scale(1); } to { transform: translate(-0.25em, -2.1em) scale(0); } }
+  @keyframes burn-rise-2  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.08em, -1.35em) scale(1); } to { transform: translate(-0.18em, -2.7em) scale(0); } }
+  @keyframes burn-rise-3  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.05em, -0.67em) scale(1); } to { transform: translate(-0.1em, -1.34em) scale(0); } }
+  @keyframes burn-rise-4  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.02em, -0.72em) scale(1); } to { transform: translate(-0.04em, -1.44em) scale(0); } }
+  @keyframes burn-rise-5  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.08em, -1.27em) scale(1); } to { transform: translate(-0.14em, -2.54em) scale(0); } }
+  @keyframes burn-rise-6  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.09em, -0.88em) scale(1); } to { transform: translate(-0.09em, -1.76em) scale(0); } }
+  @keyframes burn-rise-7  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.04em, -0.83em) scale(1); } to { transform: translate(0.1em, -1.66em) scale(0); } }
+  @keyframes burn-rise-8  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.59em) scale(1); } to { transform: translate(0.01em, -1.18em) scale(0); } }
+  @keyframes burn-rise-9  { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.07em, -0.64em) scale(1); } to { transform: translate(-0.22em, -1.28em) scale(0); } }
+  @keyframes burn-rise-10 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.06em, -0.53em) scale(1); } to { transform: translate(-0.05em, -1.06em) scale(0); } }
+  @keyframes burn-rise-11 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.77em) scale(1); } to { transform: translate(-0.19em, -1.54em) scale(0); } }
+  @keyframes burn-rise-12 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.04em, -0.97em) scale(1); } to { transform: translate(0.07em, -1.94em) scale(0); } }
+  @keyframes burn-rise-13 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.01em, -0.81em) scale(1); } to { transform: translate(0.12em, -1.62em) scale(0); } }
+  @keyframes burn-rise-14 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.61em) scale(1); } to { transform: translate(0.18em, -1.22em) scale(0); } }
+  @keyframes burn-rise-15 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.09em, -1.22em) scale(1); } to { transform: translate(0.22em, -2.44em) scale(0); } }
+  @keyframes burn-rise-16 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(0.07em, -1.1em) scale(1); } to { transform: translate(-0.18em, -2.2em) scale(0); } }
+  @keyframes burn-rise-17 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.08em, -0.94em) scale(1); } to { transform: translate(0.03em, -1.88em) scale(0); } }
+  @keyframes burn-rise-18 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.02em, -0.5em) scale(1); } to { transform: translate(0.12em, -1em) scale(0); } }
+  @keyframes burn-rise-19 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.1em, -0.8em) scale(1); } to { transform: translate(0.08em, -1.6em) scale(0); } }
+  @keyframes burn-rise-20 { from { transform: translate(0, 0) scale(1); } 50% { transform: translate(-0.09em, -1.08em) scale(1); } to { transform: translate(0.12em, -2.16em) scale(0); } }
 
-  /* Hover = static heat tint only. Embers/flicker reserved for .is-heating (ritual). */
-  @media (hover: hover) {
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .burn-heat:hover:not(.is-heating) {
       border-color: color-mix(in srgb, var(--fire-mid) 60%, var(--color-danger-border));
-      background-color: color-mix(in oklab, var(--color-danger-bg) 70%, var(--fire-mid));
+      background-color: color-mix(in oklab, var(--color-danger-bg) 65%, var(--fire-mid));
       box-shadow:
         0 0 0 1px color-mix(in srgb, var(--fire-mid) 28%, transparent),
-        0 0 14px color-mix(in srgb, var(--fire-mid) 18%, transparent);
+        0 0 16px color-mix(in srgb, var(--fire-mid) 22%, transparent);
     }
     .burn-heat:hover:not(.is-heating) .burn-flame-icon {
       color: var(--fire-mid);
       transform: scale(1.06);
     }
+    .burn-heat:hover:not(.is-heating) .burn-embers {
+      opacity: 1;
+    }
+    .burn-heat:hover:not(.is-heating) .burn-embers__p {
+      animation-play-state: running;
+      animation-duration: 1s;
+    }
   }
   .burn-heat.is-heating {
     animation: thermal-tremor 0.1s linear infinite;
     border-color: var(--fire-mid) !important;
-    color: color-mix(in oklab, var(--color-danger-ink) 55%, var(--fire-core)) !important;
+    color: color-mix(in oklab, var(--color-danger-ink) 45%, var(--fire-core)) !important;
+    background-color: color-mix(in oklab, var(--color-danger-bg) 40%, var(--fire-edge)) !important;
     box-shadow:
-      0 0 26px color-mix(in oklab, var(--fire-mid) 48%, transparent),
-      0 0 48px color-mix(in oklab, var(--fire-edge) 22%, transparent),
+      0 0 28px color-mix(in oklab, var(--fire-mid) 52%, transparent),
+      0 0 52px color-mix(in oklab, var(--color-accent) 18%, transparent),
       inset 0 0 14px color-mix(in oklab, var(--fire-edge) 24%, transparent) !important;
   }
   .burn-heat.is-heating .burn-embers {
     opacity: 1;
+  }
+  .burn-heat.is-heating .burn-embers__p {
+    animation-play-state: running;
+    animation-duration: 0.48s;
   }
   .burn-heat.is-heating .burn-ignition-bar {
     opacity: 0.72;
@@ -949,17 +1094,6 @@ html.dark {
   .burn-heat.is-heating .burn-flame-icon {
     color: var(--fire-core);
     filter: drop-shadow(0 0 6px color-mix(in oklab, var(--fire-core) 55%, transparent));
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .burn-heat.is-heating .burn-embers span:nth-child(3n+1) {
-      animation: burn-ember-rise-a 0.42s linear infinite;
-    }
-    .burn-heat.is-heating .burn-embers span:nth-child(3n+2) {
-      animation: burn-ember-rise-b 0.36s linear infinite;
-    }
-    .burn-heat.is-heating .burn-embers span:nth-child(3n) {
-      animation: burn-ember-rise-c 0.48s linear infinite;
-    }
   }
 
   .session-burn-target {
@@ -1318,6 +1452,15 @@ html.dark {
   100% { opacity: 0.7; letter-spacing: 0.02em; }
 }
 
+@keyframes hero-ember-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.92); }
+  50% { opacity: 0.7; transform: scale(1.06); }
+}
+@keyframes hero-mark-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
 @keyframes tab-panel-show {
   from {
     opacity: 0.88;
@@ -1335,8 +1478,6 @@ html.dark {
 
 .tab-panel[data-active='true'] {
   display: block;
-  transform: translateX(var(--tab-drag, 0px));
-  will-change: transform;
 }
 
 /* Plaza (in-zone): fill the shell and scroll inside the workspace. */
@@ -1353,14 +1494,15 @@ html.dark {
     animation: tab-panel-show var(--dur-tab) var(--ease-out-expo);
   }
 
-  /* Follow finger; snap back when released without commit. */
+  /*
+   * Only apply transform while swiping — a permanent translateX(0)
+   * creates a containing block that traps position:fixed modals under the header.
+   */
   [data-swiping='true'] .tab-panel[data-active='true'] {
     animation: none;
     transition: none;
-  }
-
-  [data-swiping='false'] .tab-panel[data-active='true'] {
-    transition: transform var(--dur-tab) var(--ease-out-expo);
+    transform: translateX(var(--tab-drag, 0px));
+    will-change: transform;
   }
 }
 
@@ -1573,15 +1715,13 @@ html.dark {
   100% { top: 90%; opacity: 0; transform: scaleX(0.96); }
 }
 
-/* --- Verify emoji tiles: Tazia palette chrome + 3D stage (glyphs stay Unicode) --- */
+/* --- Verify emoji tiles: per-cell 3D (no shared grid tilt) --- */
 .verify-emoji-stage {
-  perspective: 920px;
-  perspective-origin: 50% 42%;
+  perspective: 1100px;
+  perspective-origin: 50% 45%;
 }
 .verify-emoji-grid {
   transform-style: preserve-3d;
-  transform: rotateX(7deg) rotateY(-5deg);
-  will-change: transform;
 }
 .verify-emoji-cell {
   position: relative;
@@ -1605,6 +1745,8 @@ html.dark {
   transform-style: preserve-3d;
   transform: translateZ(0);
   overflow: hidden;
+  will-change: transform;
+  cursor: default;
 }
 .verify-emoji-cell::before {
   content: '';
@@ -1653,10 +1795,14 @@ html.dark {
   .zone-join-pulse,
   .passphrase-douse,
   .qr-success-ring,
+  .hero-landing-mark-wrap::before,
+  .hero-landing-mark {
+    animation: none !important;
+  }
   .cta-ignite-spark,
   .burn-heat.is-heating,
   .burn-heat.is-heating .burn-ignition-bar,
-  .burn-heat.is-heating .burn-embers span,
+  .burn-heat.is-heating .burn-embers__p,
   .session-burn-target.burning-front,
   .session-ignite-target.igniting-front::after,
   .mesh-radar-dot.is-birthing::before,
@@ -1729,7 +1875,8 @@ html.dark {
       color-mix(in oklab, #000 8%, transparent)
     );
   }
-  .verify-emoji-grid {
+  .verify-emoji-grid,
+  .verify-emoji-cell {
     transform: none !important;
   }
   .verify-emoji-glyph {

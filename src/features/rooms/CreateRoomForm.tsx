@@ -82,29 +82,39 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
         });
       }}
     >
-      <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-stretch lg:gap-5">
-        <div className="order-1 flex h-full flex-col gap-4 lg:order-1">
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start lg:gap-5">
+        <div className="order-1 flex flex-col gap-3 lg:order-1">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
                 {t('roomsPhraseLabel')}
               </label>
-              <motion.button
-                whileTap={TAP}
-                transition={TAP_TRANSITION}
-                type="button"
-                onClick={() => {
-                  setCreatePhrase(generateMemorablePassphrase(6));
-                  setShowCreatePhrase(true);
-                  setDiceSpinKey((k) => k + 1);
-                }}
-                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2 text-xs font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <span key={diceSpinKey} className="dice-rolling">
-                  <Dices className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
-                </span>
-                {t('roomsGeneratePhrase')}
-              </motion.button>
+              <div className="flex items-center gap-1.5">
+                <CopyButton
+                  text={createPhrase}
+                  label={t('roomsCopyPhrase')}
+                  copiedLabel={t('copiedDefault')}
+                  icon={KeyRound}
+                  iconOnly
+                  className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                />
+                <motion.button
+                  whileTap={TAP}
+                  transition={TAP_TRANSITION}
+                  type="button"
+                  onClick={() => {
+                    setCreatePhrase(generateMemorablePassphrase(6));
+                    setShowCreatePhrase(true);
+                    setDiceSpinKey((k) => k + 1);
+                  }}
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2 text-xs font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  <span key={diceSpinKey} className="dice-rolling">
+                    <Dices className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
+                  </span>
+                  {t('roomsGeneratePhrase')}
+                </motion.button>
+              </div>
             </div>
             <div className="mt-2">
               <SecretPhraseInput
@@ -120,16 +130,6 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
               score={createStrength.score}
               douseKey={douseKey}
             />
-            <div className="mt-2">
-              <CopyButton
-                text={createPhrase}
-                label={t('roomsCopyPhrase')}
-                copiedLabel={t('copiedDefault')}
-                icon={KeyRound}
-                iconOnly
-                className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
-              />
-            </div>
           </div>
 
           <div>
@@ -137,7 +137,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
               type="button"
               aria-expanded={customizeOpen}
               onClick={() => setCustomizeOpen((v) => !v)}
-              className="flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex min-h-[40px] items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
             >
               <ChevronDown
                 className={`chevron-spin h-3.5 w-3.5 ${customizeOpen ? 'is-open' : ''}`}
@@ -154,7 +154,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
                   transition={disclosure.transition}
                   className="overflow-hidden"
                 >
-                  <div className="pt-2">
+                  <div className="pt-1.5">
                     <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
                       {t('roomsAliasLabel')}
                     </label>
@@ -176,7 +176,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
             transition={TAP_TRANSITION}
             type="submit"
             disabled={!createStrength.isAcceptable || isJoining}
-            className={`btn-accent-sheen btn-ring-hover relative mt-auto inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${spark ? 'cta-ignite-spark' : ''}`}
+            className={`btn-accent-sheen btn-ring-hover relative inline-flex min-h-[44px] w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${spark ? 'cta-ignite-spark' : ''}`}
           >
             {spark && !reduceMotion && (
               <motion.span
@@ -202,7 +202,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
           </motion.button>
         </div>
 
-        <div className="invite-panel order-2 flex h-full flex-col lg:order-2">
+        <div className="invite-panel order-2 flex flex-col gap-3 lg:order-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold text-ink">{t('roomsInviteTitle')}</p>
             <CopyButton
@@ -215,7 +215,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
             />
           </div>
 
-          <div className="mt-2 flex items-start justify-center">
+          <div className="flex items-start justify-center">
             <InviteQr inviteUrl={inviteUrl} size={200} includesSecret={Boolean(phraseForLink)} />
           </div>
 
@@ -223,7 +223,7 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
             initial={contentSwitch.initial}
             animate={contentSwitch.animate}
             transition={{ ...contentSwitch.transition, delay: 0.12 }}
-            className="invite-opt mt-auto flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
+            className="invite-opt flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
           >
             <span className="relative inline-flex">
               <input

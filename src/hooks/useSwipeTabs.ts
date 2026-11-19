@@ -29,15 +29,10 @@ export function useSwipeTabs<T extends string>(
     let startY = 0;
     let tracking = false;
     let axis: 'undecided' | 'h' | 'v' = 'undecided';
-    let lastDx = 0;
 
-    const clearDrag = (snap = false) => {
-      el.dataset.swiping = 'false';
-      if (snap) {
-        el.style.setProperty('--tab-drag', '0px');
-      } else {
-        el.style.removeProperty('--tab-drag');
-      }
+    const clearDrag = () => {
+      delete el.dataset.swiping;
+      el.style.removeProperty('--tab-drag');
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -57,7 +52,6 @@ export function useSwipeTabs<T extends string>(
       startY = touch.clientY;
       tracking = true;
       axis = 'undecided';
-      lastDx = 0;
       el.dataset.swiping = 'true';
       el.style.setProperty('--tab-drag', '0px');
     };
@@ -96,20 +90,19 @@ export function useSwipeTabs<T extends string>(
       } else {
         damped = dx * 0.55;
       }
-      lastDx = damped;
       el.style.setProperty('--tab-drag', `${damped}px`);
     };
 
     const onTouchEnd = (e: TouchEvent) => {
       if (!tracking || optsRef.current.disabled) {
-        clearDrag(true);
+        clearDrag();
         tracking = false;
         return;
       }
       tracking = false;
       const touch = e.changedTouches[0];
       if (!touch || axis !== 'h') {
-        clearDrag(true);
+        clearDrag();
         return;
       }
 
@@ -126,18 +119,11 @@ export function useSwipeTabs<T extends string>(
         ((dx < 0 && idx < tabs.length - 1) || (dx > 0 && idx > 0));
 
       if (commit) {
-        // Brief exit drift then hand off to tab switch.
-        el.style.setProperty(
-          '--tab-drag',
-          `${dx < 0 ? Math.min(lastDx, -24) : Math.max(lastDx, 24)}px`
-        );
         const next = dx < 0 ? tabs[idx + 1]! : tabs[idx - 1]!;
-        window.requestAnimationFrame(() => {
-          onSwipe(next);
-          clearDrag(true);
-        });
+        clearDrag();
+        onSwipe(next);
       } else {
-        clearDrag(true);
+        clearDrag();
       }
       axis = 'undecided';
     };
@@ -145,7 +131,7 @@ export function useSwipeTabs<T extends string>(
     const onTouchCancel = () => {
       tracking = false;
       axis = 'undecided';
-      clearDrag(true);
+      clearDrag();
     };
 
     el.addEventListener('touchstart', onTouchStart, { passive: true });

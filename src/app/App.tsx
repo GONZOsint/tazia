@@ -289,15 +289,15 @@ export default function App() {
         ref={mainRef}
         className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-0"
       >
-        {/* Gooey metaball fire (CodePen burning-button) — CSS url(#tazia-fire-goo) */}
-        <svg width="0" height="0" className="absolute" aria-hidden="true" focusable="false">
+        {/* Gooey fire filter (CodePen ExpozyR technique) — CSS url(#tazia-fire-goo) */}
+        <svg width="0" height="0" className="pointer-events-none absolute" aria-hidden="true" focusable="false">
           <defs>
-            <filter id="tazia-fire-goo">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="4.2" result="blur" />
+            <filter id="tazia-fire-goo" x="-50%" y="-80%" width="200%" height="220%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
               <feColorMatrix
                 in="blur"
                 mode="matrix"
-                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
                 result="goo"
               />
               <feBlend in="SourceGraphic" in2="goo" />
@@ -558,6 +558,7 @@ export default function App() {
                           cachedPeerVisual(dmPeerId)?.suggestedAlias ||
                           t('presenceNoAlias')
                         }
+                        trustStore={trustStore}
                         messages={dmMessages[dmPeerId] ?? []}
                         onSend={async (body) => {
                           const ok = await sendDm(dmPeerId, body);
@@ -584,6 +585,7 @@ export default function App() {
                         onlineUserIds={onlineUserIds}
                         dmMessages={dmMessages}
                         dmUnread={dmUnread}
+                        trustStore={trustStore}
                         onGoToRooms={() => selectTab('rooms')}
                         onSelectPeer={(peerId) => {
                           clearDmUnread(peerId);

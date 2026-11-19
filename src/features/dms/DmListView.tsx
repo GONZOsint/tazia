@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, ShieldCheck } from 'lucide-react';
 import { visualFromUserId, type PeerVisual } from '../../core/crypto/identity';
 import type { DirectMessage, PresenceState } from '../../core/protocol';
+import type { TrustStore } from '../../core/trust/trustStore';
 import { useLocale, useT } from '../../i18n';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { EmptyZoneCta } from '../../components/ui/AccentButton';
@@ -13,6 +14,7 @@ interface DmListViewProps {
   onlineUserIds: string[];
   dmMessages: Record<string, DirectMessage[]>;
   dmUnread: Record<string, number>;
+  trustStore?: TrustStore | null;
   onSelectPeer: (peerId: string) => void;
   onGoToRooms?: () => void;
 }
@@ -23,12 +25,19 @@ export function DmListView({
   onlineUserIds,
   dmMessages,
   dmUnread,
+  trustStore = null,
   onSelectPeer,
   onGoToRooms,
 }: DmListViewProps) {
   const t = useT();
   const { locale } = useLocale();
   const [visuals, setVisuals] = useState<Record<string, PeerVisual>>({});
+  const [trustTick, setTrustTick] = useState(0);
+
+  useEffect(() => {
+    if (!trustStore) return;
+    return trustStore.onChange(() => setTrustTick((n) => n + 1));
+  }, [trustStore]);
 
   const peerIds = useMemo(() => {
     const ids = Array.from(
@@ -107,6 +116,7 @@ export function DmListView({
           const lastMsg = msgs[msgs.length - 1];
           const unread = dmUnread[id] ?? 0;
           const isOnline = onlineUserIds.includes(id);
+          const verified = trustTick >= 0 && trustStore?.getLevel(id) === 'verified';
 
           return (
             <li key={id}>
@@ -147,11 +157,18 @@ export function DmListView({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <p
-                      className={`min-w-0 truncate text-sm text-ink ${
+                      className={`inline-flex min-w-0 max-w-full items-center gap-1 text-sm text-ink ${
                         unread > 0 ? 'font-bold' : 'font-semibold'
                       }`}
                     >
-                      {alias}
+                      <span className="truncate">{alias}</span>
+                      {verified && (
+                        <ShieldCheck
+                          className="h-3.5 w-3.5 shrink-0 text-ok"
+                          aria-label={t('trustVerified')}
+                          strokeWidth={2.25}
+                        />
+                      )}
                     </p>
                     {lastMsg && (
                       <time

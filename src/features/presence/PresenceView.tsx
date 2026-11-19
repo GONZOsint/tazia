@@ -67,6 +67,8 @@ export function PresenceView({
   const [trustTick, setTrustTick] = useState(0);
   const [justJoinedIds, setJustJoinedIds] = useState<Set<string>>(() => new Set());
   const prevOnlineRef = useRef<Set<string>>(new Set());
+  /** Skip join rituals on first paint — everyone already online isn't "new". */
+  const onlineSeededRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,11 +87,17 @@ export function PresenceView({
   }, [onlineUserIds.join('|')]);
 
   useEffect(() => {
-    const prev = prevOnlineRef.current;
     const next = new Set(onlineUserIds);
+    if (!onlineSeededRef.current) {
+      onlineSeededRef.current = true;
+      prevOnlineRef.current = next;
+      return;
+    }
+    const prev = prevOnlineRef.current;
     const joined: string[] = [];
     for (const id of next) {
-      if (!prev.has(id)) joined.push(id);
+      // Self is always "here" — never play the join bubble on the local user.
+      if (!prev.has(id) && id !== selfUserId) joined.push(id);
     }
     prevOnlineRef.current = next;
     if (joined.length === 0) return;
@@ -106,7 +114,7 @@ export function PresenceView({
       });
     }, 420);
     return () => window.clearTimeout(timer);
-  }, [onlineUserIds]);
+  }, [onlineUserIds, selfUserId]);
 
   if (!selfUserId) {
     return (
@@ -189,8 +197,8 @@ export function PresenceView({
           return (
             <motion.li
               key={id}
-              layout
-              initial={listRowEnter.initial}
+              layout={false}
+              initial={justJoined ? listRowEnter.initial : false}
               animate={listRowEnter.animate}
               exit={peerRowExit}
               className="list-row px-3 py-2"

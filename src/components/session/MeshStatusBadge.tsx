@@ -21,17 +21,25 @@ export function MeshStatusBadge({
   relayActive = false,
 }: MeshStatusBadgeProps) {
   const t = useT();
-  const prevStatus = useRef<MeshStatus | null>(null);
+  /** Seed to current status so remount / first paint never fakes a mesh birth. */
+  const prevStatus = useRef<MeshStatus>(status);
   const prevRelay = useRef(relayActive);
+  const statusSeeded = useRef(false);
+  const relaySeeded = useRef(false);
   const [birthing, setBirthing] = useState(false);
   /** When true, dots animate 0 → 0.8 (must start false on birth frame). */
   const [dotsLit, setDotsLit] = useState(true);
   const [relayFlash, setRelayFlash] = useState(false);
 
   useEffect(() => {
+    if (!statusSeeded.current) {
+      statusSeeded.current = true;
+      prevStatus.current = status;
+      return;
+    }
     const prev = prevStatus.current;
     prevStatus.current = status;
-    if (prev !== null && prev !== 'mesh' && status === 'mesh') {
+    if (prev !== 'mesh' && status === 'mesh') {
       setBirthing(true);
       setDotsLit(false);
       haptic(HAPTIC_TAP);
@@ -45,6 +53,11 @@ export function MeshStatusBadge({
   }, [status]);
 
   useEffect(() => {
+    if (!relaySeeded.current) {
+      relaySeeded.current = true;
+      prevRelay.current = relayActive;
+      return;
+    }
     if (prevRelay.current === relayActive) return;
     prevRelay.current = relayActive;
     if (relayActive) {

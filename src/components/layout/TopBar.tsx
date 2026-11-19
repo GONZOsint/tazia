@@ -63,14 +63,15 @@ export function TopBar({
 
   return (
     <header
-      className="z-30 shrink-0 border-b border-border bg-surface-raised/95 backdrop-blur-sm"
+      className="z-30 shrink-0 overflow-visible border-b border-border bg-surface-raised/95 backdrop-blur-sm"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       {/*
         3-column grid keeps the center nav fixed when left/right chrome
         grows (zone chip, burn button, unread badges) — avoids justify-between shift.
+        overflow-visible so the burn goo plume can rise past the bar.
       */}
-      <div className="mx-auto grid h-12 max-w-[1280px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 sm:h-14 sm:gap-4 sm:px-8">
+      <div className="mx-auto grid h-12 max-w-[1280px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 overflow-visible px-4 sm:h-14 sm:gap-4 sm:px-8">
         <div className="col-start-1 flex min-w-0 items-center justify-start gap-2 sm:gap-3">
           <motion.button
             whileTap={TAP}
@@ -196,7 +197,7 @@ export function TopBar({
           })}
         </nav>
 
-        <div className="col-start-3 flex h-11 min-w-0 items-center justify-end gap-1.5 sm:gap-2">
+        <div className="col-start-3 flex h-11 min-w-0 items-center justify-end gap-1.5 overflow-visible sm:gap-2">
           <ThemeToggle />
           {/* Keep lang toggle in layout on sm+; only collapse on narrow + zone to free space */}
           <span className={activeZone ? 'hidden sm:inline-flex' : 'inline-flex'}>
@@ -224,9 +225,11 @@ export function TopBar({
                 }
                 aria-hidden="true"
               />
+              {/* Gooey rising blobs — CodePen-style plume (palette via CSS) */}
               <span className="burn-embers" aria-hidden="true">
-                <span /><span /><span /><span /><span /><span />
-                <span /><span /><span /><span /><span /><span />
+                {Array.from({ length: 20 }, (_, i) => (
+                  <span key={i} className="burn-embers__p" />
+                ))}
               </span>
               {burnHeating ? (
                 <span className="relative z-10 inline-flex h-4 w-4 shrink-0" aria-hidden="true" />

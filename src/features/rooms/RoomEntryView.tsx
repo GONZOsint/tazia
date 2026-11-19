@@ -155,21 +155,27 @@ export function RoomEntryView({
       )}
 
       {!hasZones && (
-        <section className="hero-landing px-5 py-12 sm:px-10 sm:py-16">
+        <section className="hero-landing px-5 py-14 sm:px-10 sm:py-20">
           <div className="hero-glow" aria-hidden="true" />
-          <div className="relative mx-auto flex max-w-lg flex-col items-center text-center">
+          <div className="relative mx-auto flex max-w-md flex-col items-center text-center">
             <motion.div
               initial={{ opacity: 0, y: enterY, scale: enterScale }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              {...staggerChild(0, stagger)}
+              transition={
+                reduceMotion
+                  ? { duration: DUR.micro }
+                  : { ...EASE.ritualSpring, delay: 0 }
+              }
+              whileHover={reduceMotion || browserBlocked ? undefined : { scale: 1.04 }}
+              className="hero-landing-mark-wrap"
             >
-              <TaziaLogo size={80} className="hero-landing-mark" />
+              <TaziaLogo size={88} className="hero-landing-mark relative z-[1]" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
               {...staggerChild(1, stagger)}
-              className="type-display mt-5 text-ink"
+              className="type-display mt-6 text-ink"
             >
               {t('brand')}
             </motion.h1>
@@ -177,7 +183,7 @@ export function RoomEntryView({
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
               {...staggerChild(2, stagger)}
-              className="type-subtitle mt-3 text-ink"
+              className="type-subtitle mt-2.5 text-ink"
             >
               {t('roomsHeroTitle')}
             </motion.p>
@@ -185,46 +191,83 @@ export function RoomEntryView({
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
               {...staggerChild(3, stagger)}
-              className="type-lede mt-2 max-w-md"
+              className="type-lede mt-3 max-w-sm text-balance"
             >
               {t('roomsHeroBody')}
             </motion.p>
 
-            <motion.div
+            <motion.ul
               initial={{ opacity: 0, y: enterY }}
               animate={{ opacity: 1, y: 0 }}
               {...staggerChild(4, stagger)}
+              className="mt-6 flex flex-wrap items-center justify-center gap-2"
+              aria-label={t('roomsHowTitle')}
+            >
+              {(
+                [
+                  ['roomsHeroStepPhrase', 0] as const,
+                  ['roomsHeroStepTalk', 1] as const,
+                  ['roomsHeroStepBurn', 2] as const,
+                ]
+              ).map(([key, i]) => (
+                <motion.li
+                  key={key}
+                  initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    delay: reduceMotion ? 0 : 0.28 + i * 0.08,
+                    duration: DUR.switch,
+                    ease: EASE.outExpo,
+                  }}
+                  className="hero-step"
+                >
+                  <span className="hero-step__dot" aria-hidden="true" />
+                  {t(key)}
+                </motion.li>
+              ))}
+            </motion.ul>
+
+            <motion.div
+              initial={{ opacity: 0, y: enterY }}
+              animate={{ opacity: 1, y: 0 }}
+              {...staggerChild(5, stagger)}
               className="mt-9 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
             >
               <motion.button
+                whileHover={browserBlocked || reduceMotion ? undefined : { y: -1 }}
                 whileTap={browserBlocked ? undefined : TAP}
                 transition={TAP_TRANSITION}
                 type="button"
                 disabled={browserBlocked}
-                onClick={() => openEntry('create')}
-                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
-                  entryTab === 'join'
-                    ? 'border border-border bg-bg/80 text-ink hover:border-ink/30 hover:bg-surface'
-                    : 'btn-accent-sheen btn-ring-hover bg-accent text-on-accent hover:bg-accent-hover'
+                onClick={() => {
+                  haptic(HAPTIC_TAP);
+                  openEntry('create');
+                }}
+                className={`hero-cta-primary btn-accent-sheen btn-ring-hover inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold bg-accent text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
+                  entryTab === 'join' ? 'sm:opacity-90' : ''
                 }`}
               >
-                <PlusCircle className="h-5 w-5" aria-hidden="true" />
-                {t('roomsCreate')}
+                <PlusCircle className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
+                {t('roomsHeroCreate')}
               </motion.button>
               <motion.button
+                whileHover={browserBlocked || reduceMotion ? undefined : { y: -1 }}
                 whileTap={browserBlocked ? undefined : TAP}
                 transition={TAP_TRANSITION}
                 type="button"
                 disabled={browserBlocked}
-                onClick={() => openEntry('join')}
-                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
+                onClick={() => {
+                  haptic(HAPTIC_TAP);
+                  openEntry('join');
+                }}
+                className={`hero-cta-secondary inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-bg/80 px-4 text-sm font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
                   entryTab === 'join'
-                    ? 'bg-accent text-on-accent hover:bg-accent-hover'
-                    : 'border border-border bg-bg/80 text-ink hover:border-ink/30 hover:bg-surface'
+                    ? 'border-accent/50 bg-accent text-on-accent hover:bg-accent-hover'
+                    : ''
                 }`}
               >
-                <KeyRound className="h-5 w-5" aria-hidden="true" />
-                {t('roomsJoin')}
+                <KeyRound className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
+                {t('roomsHeroJoin')}
               </motion.button>
             </motion.div>
           </div>

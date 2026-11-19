@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Lock } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { MAX_DM_BODY_CHARS, type DirectMessage } from '../../core/protocol';
+import type { TrustStore } from '../../core/trust/trustStore';
 import { useLocale, useT } from '../../i18n';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
@@ -23,15 +24,17 @@ interface DmConversationViewProps {
   peerId: string;
   peerAlias: string;
   messages: DirectMessage[];
+  trustStore?: TrustStore | null;
   onSend: (body: string) => Promise<boolean>;
   onBack: () => void;
 }
 
 export function DmConversationView({
   selfUserId,
-  peerId: _peerId,
+  peerId,
   peerAlias,
   messages,
+  trustStore = null,
   onSend,
   onBack,
 }: DmConversationViewProps) {
@@ -40,6 +43,7 @@ export function DmConversationView({
   const reduceMotion = useReducedMotion();
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [trustTick, setTrustTick] = useState(0);
   const { planeKey, launching: planeLaunching, trigger: triggerPlane } = usePlaneLaunch();
   const logRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -49,7 +53,6 @@ export function DmConversationView({
   const enterReadyRef = useRef(false);
   const knownIdsRef = useRef<Set<string>>(new Set());
   const seededRef = useRef(false);
-  /** Self bubbles that should land after plane launch. */
   const fromSendIdsRef = useRef<Set<string>>(new Set());
   const pendingSendLandsRef = useRef(0);
   const firstContentIdsRef = useRef<Set<string>>(new Set());
@@ -58,6 +61,24 @@ export function DmConversationView({
   useEffect(() => {
     enterReadyRef.current = true;
   }, []);
+
+  useEffect(() => {
+    if (!trustStore) return;
+    return trustStore.onChange(() => setTrustTick((n) => n + 1));
+  }, [trustStore]);
+  // trustTick forces re-read of getLevel after verify.
+  const peerVerified = trustTick >= 0 && trustStore?.getLevel(peerId) === 'verified';
+
+  const resizeComposer = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    resizeComposer();
+  }, [body, resizeComposer]);
 
   const freshIds = useMemo(() => {
     const fresh = new Set<string>();
@@ -118,7 +139,10 @@ export function DmConversationView({
       if (ok) {
         haptic(HAPTIC_TAP);
         setBody('');
-        window.requestAnimationFrame(() => inputRef.current?.focus());
+        window.requestAnimationFrame(() => {
+          inputRef.current?.focus();
+          resizeComposer();
+        });
       } else {
         pendingSendLandsRef.current = Math.max(0, pendingSendLandsRef.current - 1);
       }
@@ -153,12 +177,21 @@ export function DmConversationView({
           >
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </motion.button>
-          <h1 className="type-title truncate text-ink">{peerAlias}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="type-title flex min-w-0 items-center gap-1.5 text-ink">
+              <span className="truncate">{peerAlias}</span>
+              {peerVerified && (
+                <span
+                  className="inline-flex shrink-0 text-ok"
+                  title={t('trustVerified')}
+                  aria-label={t('trustVerified')}
+                >
+                  <ShieldCheck className="h-4 w-4" aria-hidden="true" strokeWidth={2.25} />
+                </span>
+              )}
+            </h1>
+          </div>
         </div>
-        <p className="type-caption mt-2 inline-flex items-center gap-1.5 text-muted">
-          <Lock className="h-3 w-3 shrink-0" aria-hidden="true" strokeWidth={2.25} />
-          {t('dmsSealedHint')}
-        </p>
       </header>
 
       <div
@@ -167,7 +200,7 @@ export function DmConversationView({
         aria-relevant="additions"
         aria-label={peerAlias}
         onScroll={updateStick}
-        className="relative mt-3 min-h-0 flex-1 space-y-2 overflow-x-clip overflow-y-auto overscroll-contain max-md:pb-24 md:pb-4"
+        className="relative mt-3 min-h-0 flex-1 space-y-2 overflow-x-clip overflow-y-auto overscroll-contain max-md:pb-28 md:pb-4"
       >
         {messages.length === 0 && (
           <p className="py-10 text-center text-sm text-muted">{t('dmsThreadEmpty')}</p>
@@ -232,37 +265,39 @@ export function DmConversationView({
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
-        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 flex gap-2 border-t border-border bg-surface-raised/95 p-3 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-4 md:rounded-[var(--radius-panel)] md:border md:p-3"
+        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2.5 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-4 md:rounded-[var(--radius-panel)] md:border md:p-3"
       >
-        <label className="sr-only" htmlFor="dm-body">
-          {t('dmsSend')}
-        </label>
-        <textarea
-          ref={inputRef}
-          id="dm-body"
-          value={body}
-          maxLength={MAX_DM_BODY_CHARS}
-          rows={2}
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={onComposerKeyDown}
-          placeholder={t('dmsPlaceholder')}
-          className="input-base max-h-32 flex-1 resize-none"
-          enterKeyHint="send"
-        />
-        <motion.button
-          whileTap={body.trim() && !sending ? TAP : undefined}
-          transition={TAP_TRANSITION}
-          type="submit"
-          disabled={!body.trim() || sending}
-          aria-label={sending ? t('dmsSending') : t('dmsSend')}
-          className="btn-accent-sheen inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-end rounded-[var(--radius-ctrl)] bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          <PlaneSendIcon
-            planeKey={planeKey}
-            launching={planeLaunching}
-            busy={sending}
+        <div className="dm-composer mx-auto w-full max-w-[720px]">
+          <label className="sr-only" htmlFor="dm-body">
+            {t('dmsSend')}
+          </label>
+          <textarea
+            ref={inputRef}
+            id="dm-body"
+            value={body}
+            maxLength={MAX_DM_BODY_CHARS}
+            rows={1}
+            onChange={(e) => setBody(e.target.value)}
+            onKeyDown={onComposerKeyDown}
+            placeholder={t('dmsPlaceholder')}
+            className="dm-composer__field"
+            enterKeyHint="send"
           />
-        </motion.button>
+          <motion.button
+            whileTap={body.trim() && !sending ? TAP : undefined}
+            transition={TAP_TRANSITION}
+            type="submit"
+            disabled={!body.trim() || sending}
+            aria-label={sending ? t('dmsSending') : t('dmsSend')}
+            className="btn-accent-sheen dm-composer__send inline-flex h-10 w-10 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <PlaneSendIcon
+              planeKey={planeKey}
+              launching={planeLaunching}
+              busy={sending}
+            />
+          </motion.button>
+        </div>
       </form>
     </main>
   );
