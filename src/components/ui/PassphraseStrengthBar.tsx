@@ -39,7 +39,7 @@ interface PassphraseStrengthBarProps {
 export function PassphraseStrengthBar({
   id,
   score,
-  className = '',
+  className = 'mt-2',
   douseKey = 0,
 }: PassphraseStrengthBarProps) {
   const t = useT();
@@ -76,7 +76,7 @@ export function PassphraseStrengthBar({
 
   return (
     <div
-      className={`mt-2 ${tremor ? 'strength-accept-tremor' : ''} ${douse ? 'passphrase-douse' : ''} ${className}`}
+      className={`${tremor ? 'strength-accept-tremor' : ''} ${douse ? 'passphrase-douse' : ''} ${className}`}
       title={title}
       role="status"
       aria-label={title}

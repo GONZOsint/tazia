@@ -1,6 +1,6 @@
 /**
  * Presence / goodbye attestation for Nostr fallback (TAZEP).
- * Binds claimed userId to sign/enc keys (TOFU first-writer; not Trystero handshake binding).
+ * Binds claimed userId to sign/enc keys + alias + atMs (TOFU first-writer; not Trystero handshake binding).
  */
 import {
   importVerifyKey,
@@ -8,15 +8,26 @@ import {
 } from './messageSigning';
 import { b64ToBytes, bytesToB64, toArrayBuffer } from './bytes';
 import * as ed from '@noble/ed25519';
+import { LIVE_CLOCK_SKEW_MS } from '../protocol';
 
 export function canonicalPresenceAttestPayload(
   roomId: string,
   userId: string,
   signPubKeySpkiB64: string,
-  encPubKeyRawB64: string
+  encPubKeyRawB64: string,
+  atMs: number,
+  alias: string
 ): Uint8Array {
   return new TextEncoder().encode(
-    JSON.stringify(['tazep.presence.v1', roomId, userId, signPubKeySpkiB64, encPubKeyRawB64])
+    JSON.stringify([
+      'tazep.presence.v3',
+      roomId,
+      userId,
+      signPubKeySpkiB64,
+      encPubKeyRawB64,
+      atMs,
+      alias,
+    ])
   );
 }
 
@@ -24,10 +35,18 @@ export function canonicalGoodbyeAttestPayload(
   roomId: string,
   userId: string,
   signPubKeySpkiB64: string,
-  encPubKeyRawB64: string
+  encPubKeyRawB64: string,
+  atMs: number
 ): Uint8Array {
   return new TextEncoder().encode(
-    JSON.stringify(['tazep.goodbye.v1', roomId, userId, signPubKeySpkiB64, encPubKeyRawB64])
+    JSON.stringify([
+      'tazep.goodbye.v3',
+      roomId,
+      userId,
+      signPubKeySpkiB64,
+      encPubKeyRawB64,
+      atMs,
+    ])
   );
 }
 
@@ -60,18 +79,26 @@ async function verifyRaw(
   }
 }
 
+export function isAttestAtMsFresh(atMs: number, nowMs = Date.now()): boolean {
+  return typeof atMs === 'number' && Number.isFinite(atMs) && Math.abs(nowMs - atMs) <= LIVE_CLOCK_SKEW_MS;
+}
+
 export async function signPresenceAttestation(
   identity: SigningIdentity,
   roomId: string,
   userId: string,
   signPubKeySpkiB64: string,
-  encPubKeyRawB64: string
+  encPubKeyRawB64: string,
+  atMs: number,
+  alias: string
 ): Promise<string> {
   const payload = canonicalPresenceAttestPayload(
     roomId,
     userId,
     signPubKeySpkiB64,
-    encPubKeyRawB64
+    encPubKeyRawB64,
+    atMs,
+    alias
   );
   const sig = await signRaw(identity, payload);
   return bytesToB64(sig);
@@ -82,12 +109,22 @@ export async function verifyPresenceAttestation(
   userId: string,
   signPubKeySpkiB64: string,
   encPubKeyRawB64: string,
-  attestSigB64: string
+  atMs: number,
+  attestSigB64: string,
+  alias: string
 ): Promise<boolean> {
+  if (!isAttestAtMsFresh(atMs)) return false;
   return verifyRaw(
     signPubKeySpkiB64,
     attestSigB64,
-    canonicalPresenceAttestPayload(roomId, userId, signPubKeySpkiB64, encPubKeyRawB64)
+    canonicalPresenceAttestPayload(
+      roomId,
+      userId,
+      signPubKeySpkiB64,
+      encPubKeyRawB64,
+      atMs,
+      alias
+    )
   );
 }
 
@@ -96,13 +133,15 @@ export async function signGoodbyeAttestation(
   roomId: string,
   userId: string,
   signPubKeySpkiB64: string,
-  encPubKeyRawB64: string
+  encPubKeyRawB64: string,
+  atMs: number
 ): Promise<string> {
   const payload = canonicalGoodbyeAttestPayload(
     roomId,
     userId,
     signPubKeySpkiB64,
-    encPubKeyRawB64
+    encPubKeyRawB64,
+    atMs
   );
   const sig = await signRaw(identity, payload);
   return bytesToB64(sig);
@@ -113,11 +152,13 @@ export async function verifyGoodbyeAttestation(
   userId: string,
   signPubKeySpkiB64: string,
   encPubKeyRawB64: string,
+  atMs: number,
   attestSigB64: string
 ): Promise<boolean> {
+  if (!isAttestAtMsFresh(atMs)) return false;
   return verifyRaw(
     signPubKeySpkiB64,
     attestSigB64,
-    canonicalGoodbyeAttestPayload(roomId, userId, signPubKeySpkiB64, encPubKeyRawB64)
+    canonicalGoodbyeAttestPayload(roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs)
   );
 }

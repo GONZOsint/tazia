@@ -453,16 +453,20 @@ export function useRoomManager(
     joinTokensRef.current.clear();
     pendingJoinRef.current = null;
     isJoiningRef.current = false;
-    // Tear down meshes via refs only — React setState before reload remounts
-    // empty chrome under the burn veil and causes a visible flicker.
-    for (const room of roomsRef.current.values()) {
-      try {
-        await room.session.leave();
-      } catch {
-        /* ignore */
-      }
-    }
+
+    const leaveAll = Promise.allSettled(
+      [...roomsRef.current.values()].map((room) => room.session.leave())
+    );
+    await Promise.race([
+      leaveAll,
+      new Promise<void>((resolve) => window.setTimeout(resolve, 2_000)),
+    ]);
+
     roomsRef.current = new Map();
+    // Clear React room state before reload so phrases/messages do not linger if reload is blocked.
+    setRooms(new Map());
+    setActiveRoomId(null);
+    setIsJoining(false);
     try {
       sessionStorage.clear();
     } catch {

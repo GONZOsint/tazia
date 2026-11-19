@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Dices, KeyRound, Link2, Loader2, Radio, ShieldAlert } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { Dices, KeyRound, Link2, Loader2, Radio, ShieldAlert } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   EASE,
   IGNITE,
   TAP,
   TAP_TRANSITION,
   contentSwitch,
-  disclosure,
   panelEnter,
 } from '../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
@@ -42,7 +41,6 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
   const [createAlias, setCreateAlias] = useState('');
   const [includePhraseInLink, setIncludePhraseInLink] = useState(false);
   const [diceSpinKey, setDiceSpinKey] = useState(0);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [spark, setSpark] = useState(false);
 
@@ -83,92 +81,63 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
       }}
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start lg:gap-5">
-        <div className="order-1 flex flex-col gap-3 lg:order-1">
-          <div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
-                {t('roomsPhraseLabel')}
-              </label>
-              <div className="flex items-center gap-1.5">
-                <CopyButton
-                  text={createPhrase}
-                  label={t('roomsCopyPhrase')}
-                  copiedLabel={t('copiedDefault')}
-                  icon={KeyRound}
-                  iconOnly
-                  className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
-                />
-                <motion.button
-                  whileTap={TAP}
-                  transition={TAP_TRANSITION}
-                  type="button"
-                  onClick={() => {
-                    setCreatePhrase(generateMemorablePassphrase(6));
-                    setShowCreatePhrase(true);
-                    setDiceSpinKey((k) => k + 1);
-                  }}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2 text-xs font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-                >
-                  <span key={diceSpinKey} className="dice-rolling">
-                    <Dices className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
-                  </span>
-                  {t('roomsGeneratePhrase')}
-                </motion.button>
-              </div>
-            </div>
-            <div className="mt-2">
-              <SecretPhraseInput
-                id="create-phrase"
-                value={createPhrase}
-                onChange={setCreatePhrase}
-                visible={showCreatePhrase}
-                onToggleVisible={() => setShowCreatePhrase((v) => !v)}
-              />
-            </div>
+        <div className="order-1 flex flex-col gap-4 lg:order-1">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="create-phrase" className="text-xs font-semibold text-ink">
+              {t('roomsPhraseLabel')}
+            </label>
+            <SecretPhraseInput
+              id="create-phrase"
+              value={createPhrase}
+              onChange={setCreatePhrase}
+              visible={showCreatePhrase}
+              onToggleVisible={() => setShowCreatePhrase((v) => !v)}
+            />
             <PassphraseStrengthBar
               id={createStrength.id}
               score={createStrength.score}
               douseKey={douseKey}
+              className="mt-0"
             />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <CopyButton
+                text={createPhrase}
+                label={t('roomsCopyPhrase')}
+                copiedLabel={t('copiedDefault')}
+                icon={KeyRound}
+                iconOnly
+                className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              />
+              <motion.button
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
+                type="button"
+                onClick={() => {
+                  setCreatePhrase(generateMemorablePassphrase(6));
+                  setShowCreatePhrase(true);
+                  setDiceSpinKey((k) => k + 1);
+                }}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2 text-xs font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <span key={diceSpinKey} className="dice-rolling">
+                  <Dices className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
+                </span>
+                {t('roomsGeneratePhrase')}
+              </motion.button>
+            </div>
           </div>
 
           <div>
-            <button
-              type="button"
-              aria-expanded={customizeOpen}
-              onClick={() => setCustomizeOpen((v) => !v)}
-              className="flex min-h-[40px] items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              <ChevronDown
-                className={`chevron-spin h-3.5 w-3.5 ${customizeOpen ? 'is-open' : ''}`}
-                aria-hidden="true"
-              />
-              {t('roomsCustomize')}
-            </button>
-            <AnimatePresence initial={false}>
-              {customizeOpen && (
-                <motion.div
-                  initial={disclosure.initial}
-                  animate={disclosure.animate}
-                  exit={disclosure.exit}
-                  transition={disclosure.transition}
-                  className="overflow-hidden"
-                >
-                  <div className="pt-1.5">
-                    <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
-                      {t('roomsAliasLabel')}
-                    </label>
-                    <input
-                      id="create-alias"
-                      value={createAlias}
-                      onChange={(e) => setCreateAlias(e.target.value)}
-                      className="input-base mt-2"
-                      placeholder={t('roomsAliasPlaceholder')}
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <label htmlFor="create-alias" className="text-xs font-semibold text-ink">
+              {t('roomsAliasLabel')}
+            </label>
+            <input
+              id="create-alias"
+              value={createAlias}
+              onChange={(e) => setCreateAlias(e.target.value)}
+              className="input-base mt-2"
+              placeholder={t('roomsAliasPlaceholder')}
+            />
           </div>
 
           <motion.button
@@ -263,11 +232,14 @@ export function CreateRoomForm({ isJoining, onJoinRoom, douseKey = 0 }: CreateRo
         onConfirm={() => {
           setIncludePhraseInLink(true);
           setConfirmOpen(false);
-          toast.push({
-            message: t('phraseInLinkToast'),
-            tone: 'warning',
-            dedupeKey: 'phrase-in-link',
-          });
+          // Let the QR outer-line ritual land before the toast competes for attention.
+          window.setTimeout(() => {
+            toast.push({
+              message: t('phraseInLinkToast'),
+              tone: 'warning',
+              dedupeKey: 'phrase-in-link',
+            });
+          }, 640);
         }}
         onCancel={() => setConfirmOpen(false)}
       />

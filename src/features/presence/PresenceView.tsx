@@ -67,7 +67,12 @@ export function PresenceView({
   const reduceMotion = useReducedMotion();
   const [visuals, setVisuals] = useState<Record<string, PeerVisual>>({});
   const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({});
-  const [verifyPeer, setVerifyPeer] = useState<{ userId: string; alias: string; keyB64: string } | null>(null);
+  const [verifyPeer, setVerifyPeer] = useState<{
+    userId: string;
+    alias: string;
+    keyB64: string;
+    encB64: string;
+  } | null>(null);
   const [trustTick, setTrustTick] = useState(0);
   const [justJoinedIds, setJustJoinedIds] = useState<Set<string>>(() => new Set());
   const prevOnlineRef = useRef<Set<string>>(new Set());
@@ -191,7 +196,9 @@ export function PresenceView({
           const details = openDetails[id];
           const justJoined = justJoinedIds.has(id);
           const trustLevel = !isSelf && trustStore ? trustStore.get(id)?.level : undefined;
-          const canVerify = !isSelf && hasKey && Boolean(selfSignPubKeyB64);
+          const canShowTrust = !isSelf && hasKey && Boolean(selfSignPubKeyB64);
+          // Match/SAS only for non-changed peers; `changed` must go through KeyChange/repin first.
+          const canOpenVerify = canShowTrust && trustLevel !== 'changed';
           const trustActionLabel =
             trustLevel === 'verified'
               ? t('trustVerified')
@@ -263,22 +270,29 @@ export function PresenceView({
                     <p className="type-caption mt-0.5 leading-tight text-warn">{t('presenceNoKey')}</p>
                   )}
                 </div>
-                {canVerify && (
+                {canShowTrust && (
                   <motion.button
-                    whileTap={TAP}
+                    whileTap={canOpenVerify ? TAP : undefined}
                     transition={TAP_TRANSITION}
                     type="button"
+                    disabled={!canOpenVerify}
                     onClick={() => {
+                      if (!canOpenVerify) return;
                       const pinned =
                         trustStore?.get(id)?.pinnedKeyB64 ?? presence[id]?.signPubKeySpkiB64;
                       if (!pinned) return;
+                      const enc =
+                        trustStore?.getPinnedEnc(id) ??
+                        presence[id]?.encPubKeyRawB64 ??
+                        '';
                       setVerifyPeer({
                         userId: id,
                         alias,
                         keyB64: pinned,
+                        encB64: enc,
                       });
                     }}
-                    className="icon-action icon-action--ghost icon-action--dense shrink-0 focus-visible:outline-2 focus-visible:outline-accent"
+                    className="icon-action icon-action--ghost icon-action--dense shrink-0 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-80"
                     title={trustActionLabel}
                     aria-label={trustActionLabel}
                   >
@@ -331,6 +345,13 @@ export function PresenceView({
           peerAlias={verifyPeer.alias}
           selfKeyB64={selfSignPubKeyB64}
           peerKeyB64={verifyPeer.keyB64}
+          selfEncB64={
+            (selfUserId &&
+              (trustStore?.getPinnedEnc(selfUserId) ??
+                presence[selfUserId]?.encPubKeyRawB64)) ||
+            ''
+          }
+          peerEncB64={verifyPeer.encB64}
           roomId={roomId ?? ''}
           onVerify={() => {
             trustStore?.verify(verifyPeer.userId);

@@ -5,10 +5,14 @@ import {
 import { verifyDirectMessage } from '../crypto/messageSigning';
 import {
   isValidDirectMessage,
+  LIVE_CLOCK_SKEW_MS,
   MAX_DM_BODY_CHARS,
   type DirectMessage,
 } from '../protocol';
 import type { VerifyKeyRegistry } from './verifyKeyRegistry';
+
+const PENDING_TTL_MS = 60_000;
+const SEEN_CAP = 2_000;
 
 export interface DmIngestDeps {
   roomId: string;
@@ -21,7 +25,7 @@ export interface DmIngestDeps {
 }
 
 export class DmIngest {
-  private readonly seenDmIds = new Set<string>();
+  private readonly seenDmIds = new Map<string, number>();
   private readonly ingestingIds = new Set<string>();
   private readonly pendingDms = new Map<string, DirectMessage[]>();
   private readonly deps: DmIngestDeps;
@@ -34,6 +38,7 @@ export class DmIngest {
     if (!isValidDirectMessage(dm)) return false;
     if (transportUserId && dm.fromUserId !== transportUserId) return false;
     if (dm.toUserId !== this.deps.self.userId) return false;
+    this.pruneSeen(Date.now());
     if (this.seenDmIds.has(dm.msgId) || this.ingestingIds.has(dm.msgId)) return false;
     this.ingestingIds.add(dm.msgId);
 
@@ -61,12 +66,15 @@ export class DmIngest {
         toUserId: dm.toUserId,
         msgId: dm.msgId,
       });
-      if (plain === null || !plain.trim()) return false;
+      // Sig ok but wrong/stale enc (e.g. pre-repin): keep pending for later flush.
+      if (plain === null || !plain.trim()) {
+        this.queuePendingDm(dm);
+        return false;
+      }
 
-      this.seenDmIds.add(dm.msgId);
-      if (this.seenDmIds.size > 2_000) {
-        const first = this.seenDmIds.values().next().value;
-        if (first) this.seenDmIds.delete(first);
+      this.seenDmIds.set(dm.msgId, dm.createdAtMs);
+      if (this.seenDmIds.size > SEEN_CAP) {
+        this.pruneSeen(Date.now(), true);
       }
 
       this.deps.onDirectMessage?.({
@@ -82,7 +90,7 @@ export class DmIngest {
   }
 
   markSeenLocal(msgId: string): void {
-    this.seenDmIds.add(msgId);
+    this.seenDmIds.set(msgId, Date.now());
   }
 
   async flushPendingForUser(userId: string): Promise<void> {
@@ -94,11 +102,33 @@ export class DmIngest {
     }
   }
 
+  private pruneSeen(now: number, forceEvictOldest = false) {
+    const cutoff = now - LIVE_CLOCK_SKEW_MS;
+    for (const [id, at] of this.seenDmIds) {
+      if (at < cutoff) this.seenDmIds.delete(id);
+    }
+    if (forceEvictOldest && this.seenDmIds.size > SEEN_CAP) {
+      // Only drop ids older than skew window; if still over cap, drop oldest.
+      const oldest = [...this.seenDmIds.entries()].sort((a, b) => a[1] - b[1]);
+      for (const [id] of oldest) {
+        if (this.seenDmIds.size <= SEEN_CAP) break;
+        this.seenDmIds.delete(id);
+      }
+    }
+  }
+
   private queuePendingDm(dm: DirectMessage) {
     const list = this.pendingDms.get(dm.fromUserId) ?? [];
     if (list.some((d) => d.msgId === dm.msgId)) return;
     list.push(dm);
     if (list.length > 20) list.shift();
     this.pendingDms.set(dm.fromUserId, list);
+    window.setTimeout(() => {
+      const cur = this.pendingDms.get(dm.fromUserId);
+      if (!cur) return;
+      const next = cur.filter((d) => d.msgId !== dm.msgId);
+      if (next.length) this.pendingDms.set(dm.fromUserId, next);
+      else this.pendingDms.delete(dm.fromUserId);
+    }, PENDING_TTL_MS);
   }
 }

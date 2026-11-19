@@ -22,6 +22,8 @@ interface EmojiVerifyModalProps {
   peerAlias: string;
   selfKeyB64: string;
   peerKeyB64: string;
+  selfEncB64?: string;
+  peerEncB64?: string;
   roomId?: string;
   onVerify: () => void;
   onClose: () => void;
@@ -53,6 +55,8 @@ export function EmojiVerifyModal({
   peerAlias,
   selfKeyB64,
   peerKeyB64,
+  selfEncB64 = '',
+  peerEncB64 = '',
   roomId = '',
   onVerify,
   onClose,
@@ -69,13 +73,15 @@ export function EmojiVerifyModal({
   useEffect(() => {
     if (!open || !selfKeyB64 || !peerKeyB64) return;
     let cancelled = false;
-    void deriveEmojiSafetyCode(selfKeyB64, peerKeyB64, roomId).then((c) => {
-      if (!cancelled) setCode(c);
-    });
+    void deriveEmojiSafetyCode(selfKeyB64, peerKeyB64, roomId, selfEncB64, peerEncB64).then(
+      (c) => {
+        if (!cancelled) setCode(c);
+      }
+    );
     return () => {
       cancelled = true;
     };
-  }, [open, selfKeyB64, peerKeyB64, roomId]);
+  }, [open, selfKeyB64, peerKeyB64, selfEncB64, peerEncB64, roomId]);
 
   useEffect(() => {
     if (!open) {

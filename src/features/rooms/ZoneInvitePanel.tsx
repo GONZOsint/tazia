@@ -99,11 +99,14 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
         onConfirm={() => {
           setIncludePhrase(true);
           setConfirmOpen(false);
-          toast.push({
-            message: t('phraseInLinkToast'),
-            tone: 'warning',
-            dedupeKey: 'phrase-in-link',
-          });
+          // Let the QR outer-line ritual land before the toast competes for attention.
+          window.setTimeout(() => {
+            toast.push({
+              message: t('phraseInLinkToast'),
+              tone: 'warning',
+              dedupeKey: 'phrase-in-link',
+            });
+          }, 640);
         }}
         onCancel={() => setConfirmOpen(false)}
       />

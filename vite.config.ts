@@ -10,7 +10,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'apple-touch-icon.png', 'brand/tazia-logo-dark.jpg'],
+      includeAssets: [
+        'favicon.png',
+        'apple-touch-icon.png',
+        'brand/tazia-mark.svg',
+        'brand/tazia-logo-dark.jpg',
+      ],
       injectRegister: 'script',
       manifest: {
         name: 'TAZIA',

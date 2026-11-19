@@ -50,9 +50,9 @@ A `forumMsg` is accepted only if `authorUserId` matches the peer’s Trystero `u
 
 If ICE fails, chat can continue over **encrypted** Nostr relays (PBKDF2 210k + HKDF `tazep/*`; blob `0x03` + AAD `tazep.fallback.aad.v3:{roomId}`; envelope `v: 2`).
 
-Binding there is application-level, not transport: forum messages are accepted with Ed25519 and the **pinned** key registry (no fake `liveUserId`). Presence requires a signed attestation over `["tazep.presence.v1", …]` before TOFU pin. Goodbye is attested; `sync-res` is signed; EVENT clock skew is checked; `schnorr.verify` runs **before** decrypt.
+Binding there is application-level, not transport: forum messages are accepted with Ed25519 and the **pinned** key registry (no fake `liveUserId`). Presence requires a signed attestation over `["tazep.presence.v3", …, atMs, alias]` (±5 min clock, strictly increasing `atMs`) before TOFU pin. Goodbye is attested; `sync-res` is signed (WebRTC sync too) and merged until timeout; EVENT clock skew is checked; `schnorr.verify` runs **before** decrypt. Fallback rate limits (forum, DM, sync, presence/goodbye) use the Nostr EVENT pubkey, not only the claimed `userId`.
 
-Attestation binds keys to a claimed `userId` (first writer wins the TOFU pin). It does **not** equal Trystero WebRTC binding. Relays see metadata and encrypted bytes — not true P2P.
+Attestation binds sign+enc keys to a claimed `userId` (first writer wins the TOFU pin). A `changed` sign key does **not** redirect Susurro enc. WebRTC presence is preferred over Nostr for the same `userId`. It does **not** equal Trystero WebRTC binding. Relays see metadata and encrypted bytes — not true P2P.
 
 ### Sync and signatures
 
@@ -65,14 +65,14 @@ Soft rate limits: 30 publishes/min/peer, 30 Whispers/min, 12 sync answers/min; W
 
 **WebRTC:** the first key seen is pinned (TOFU: *trust on first use*) after validated Trystero presence (transport-bound ingest).  
 **Nostr:** pin only after attested presence.  
-Safety code (SAS): **6** emojis from a **256**-symbol pool (~48 bits) + `roomId` binding, from pinned SPKI keys ([ePrint 2025/1598](https://eprint.iacr.org/2025/1598)). Key rotation → `changed`; verify stays on the pinned key until an explicit `repin` (no silent auto-heal).
+Safety code (SAS): **6** emojis from a **256**-symbol pool (~48 bits) + `roomId` binding, from pinned SPKI **and** X25519 keys ([ePrint 2025/1598](https://eprint.iacr.org/2025/1598)). Key rotation → `changed`; verify stays on the pinned key until an explicit `repin` (no silent auto-heal). A `changed` sign key does **not** redirect Susurro enc keys.
 
 ### Network, consent, and burn
 
 IP consent on first use. Burn does **not** clear it; “Forget this device” does.  
 Phrase in the URL is scrubbed (`public/scrub-phrase.js` + React).  
 Optional TURN: `sessionStorage` by default; `localStorage` only with opt-in. Burn clears sessionStorage, **not** remembered TURN. Details: [`TURN.md`](TURN.md).  
-CSP / fonts: meta CSP + [`../public/_headers`](../public/_headers).
+CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_headers`](../public/_headers) is a sample for hosts that honor headers (Netlify/CF); Pages does **not** apply `_headers`, so `frame-ancestors` / `X-Frame-Options` are not present on the default github.io deploy.
 
 **Burn session** closes meshes, clears trust, wipes refs, `sessionStorage.clear`, and reloads. It is **not** forensic secure delete or practical deniability ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
 

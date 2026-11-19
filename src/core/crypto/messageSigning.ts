@@ -31,10 +31,17 @@ function rawPublicKeyToSpki(raw: Uint8Array): Uint8Array {
 }
 
 function spkiToRawPublicKey(spki: Uint8Array): Uint8Array {
-  if (spki.length === 32) return spki;
-  if (spki.length >= ED25519_SPKI_PREFIX.length + 32) {
-    return spki.subarray(spki.length - 32);
+  const expected = ED25519_SPKI_PREFIX.length + 32;
+  if (spki.length === expected) {
+    for (let i = 0; i < ED25519_SPKI_PREFIX.length; i++) {
+      if (spki[i] !== ED25519_SPKI_PREFIX[i]) {
+        throw new Error('Unrecognized Ed25519 SPKI encoding');
+      }
+    }
+    return spki.subarray(ED25519_SPKI_PREFIX.length);
   }
+  // Legacy raw 32-byte keys (noble path / older peers).
+  if (spki.length === 32) return spki;
   throw new Error('Unrecognized Ed25519 SPKI encoding');
 }
 

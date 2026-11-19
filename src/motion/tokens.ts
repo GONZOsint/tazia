@@ -7,7 +7,7 @@
  *   - Burn button heating → CSS (.burn-heat.is-heating)
  *   - Burn climax → canvas BurnFireOverlay + optional layoutId spark
  *   - Zone ignite / leave incinerate → CSS classes + IGNITE / BURN timings
- *   - App entrance → ZONE_BOOT (ritual; no confetti / no canvas)
+ *   - App entrance → APP_SPLASH then ZONE_BOOT (ritual; no confetti / no canvas)
  *   - Confetti / seal / mesh birth → Motion presets (ritual tier; confetti = create+verify only)
  *
  * Tiers (NN/g + Fluent hierarchy):
@@ -107,24 +107,45 @@ export const IGNITE = {
 } as const;
 
 /**
+ * Full-screen cold splash (Telegram / Duolingo beat) — once per session.
+ * Marks ZONE_BOOT.storageKey so the hero does not re-ritualize after.
+ *
+ * Timeline (full):
+ *   0ms        black field + mark scale-in
+ *   ~200ms     island / flag spring
+ *   ~340ms     chevron slides in
+ *   hapticMs   light tap
+ *   finish−exit fade veil
+ *   finishMs   unmount
+ */
+export const APP_SPLASH = {
+  hapticMs: 360,
+  /** Invite deep-link — hold + fade, no part stagger. */
+  shortMs: 560,
+  finishMs: 980,
+  exitMs: 260,
+  /** Must stay ≥ exitMs so reduced-motion still gets a clean fade. */
+  reducedMs: 320,
+  markPx: 128,
+  storageKey: 'tazia.splashSeen',
+} as const;
+
+/**
  * Cold-start / empty-hero entrance (“Se enciende”) — ritual mirror of IGNITE.
  * No confetti, no canvas. CTAs stay interactive from first paint.
  *
  * Timeline (full):
- *   0ms          cold glow opens
- *   sparkMs      mark flash + settle
- *   glowMs       ring / ember settle
- *   chainStartMs Frase → Tribu → Quemar chain
- *   ctaAtMs      CTA emphasis (already clickable)
- *   finishMs     rest pose
+ *   0ms       cold glow opens
+ *   sparkMs   mark flash + settle
+ *   glowMs    ring / ember settle
+ *   ctaAtMs   CTA emphasis (already clickable)
+ *   finishMs  rest pose
  */
 export const ZONE_BOOT = {
   sparkMs: 80,
   glowMs: 200,
-  chainStartMs: 280,
-  chainStepMs: 80,
-  ctaAtMs: 480,
-  finishMs: 640,
+  ctaAtMs: 360,
+  finishMs: 520,
   /** Revisit / post-burn mini-boot. */
   revisitMs: 200,
   reducedMs: 140,

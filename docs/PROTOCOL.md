@@ -54,7 +54,9 @@ UI only (not on the wire): up to **3** concurrent zones (`MAX_ROOMS`).
 | Presence attestation | `tazia.presence.v1` | `tazep.presence.v1` |
 | Goodbye (Nostr) | unauthenticated | attested `tazep.goodbye.v1` |
 | Nostr `sync-res` | first encrypted reply wins | `fromUserId` + Ed25519 over `tazep.sync-res.v1` + events digest |
-| Verify keys | latest observed SPKI | **pinned** TOFU until `repin` |
+| Verify keys | latest observed SPKI | **pinned** TOFU (sign+enc) until `repin` |
+| Presence attest | `tazep.presence.v1` (no time) | `tazep.presence.v3` + `atMs` + `alias` |
+| WebRTC sync | raw `ForumEvent[]` | signed digest (`tazep.sync-res.v1`, reqId `webrtc-sync`) |
 
 ---
 
@@ -94,16 +96,18 @@ Without `encPubKeyRawB64`, presence is rejected; there are no cleartext Whispers
 Nostr presence also carries `attestSig` over:
 
 ```
-["tazep.presence.v1", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64]
+["tazep.presence.v3", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs, alias]
 ```
 
-Attestation binds keys to a claimed `userId` (first-writer TOFU). It does **not** equal Trystero WebRTC binding.
+`atMs` must be within `LIVE_CLOCK_SKEW_MS` and **strictly increasing** per `userId` at the receiver. Attestation binds keys + alias to a claimed `userId` (first-writer TOFU). It does **not** equal Trystero WebRTC binding. Signing SPKI and X25519 enc are **pinned together**; a `changed` sign key does **not** update the enc key used for Susurros, and enc is not silently rotated under the same SPKI. WebRTC presence is preferred over Nostr when both exist for the same `userId`.
 
 Nostr goodbye (on leave while fallback is active):
 
 ```
-["tazep.goodbye.v1", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64]
+["tazep.goodbye.v3", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs]
 ```
+
+Goodbye only drops a peer when `signPubKeySpkiB64` matches the pinned key.
 
 ---
 
@@ -175,8 +179,8 @@ Room material: PBKDF2 210k once (salt `tazep.fallback.v2:{roomId}`) + dual HKDF 
 | `t` | Fields (beyond `v: 2`) | Auth |
 | --- | --- | --- |
 | `forum` | `event` | Ed25519 on event; ingest without live transport binding |
-| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v1` |
-| `goodbye` | `userId`, keys, `atMs`, `attestSig` | `tazep.goodbye.v1` |
+| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v3` |
+| `goodbye` | `userId`, keys, `atMs`, `attestSig` | `tazep.goodbye.v3` |
 | `dm` | `dm` | Same as Whisper wire |
 | `sync-req` | `fromUserId`, `reqId` | — |
 | `sync-res` | `fromUserId`, `toUserId`, `reqId`, `events`, `eventsDigest`, `sig` | see below |

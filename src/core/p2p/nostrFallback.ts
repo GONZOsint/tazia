@@ -52,22 +52,35 @@ export interface SyncResPayload {
 }
 
 export interface NostrFallbackHandlers {
-  onForum: (event: ForumEvent) => void;
-  onPresence: (userId: string, state: PresenceState, attestSig: string) => void;
+  onForum: (event: ForumEvent, nostrPubkey: string) => void;
+  onPresence: (
+    userId: string,
+    state: PresenceState,
+    attestSig: string,
+    atMs: number,
+    nostrPubkey: string
+  ) => void;
   onGoodbye: (
     userId: string,
     signPubKeySpkiB64: string,
     encPubKeyRawB64: string,
-    attestSig: string
+    attestSig: string,
+    atMs: number,
+    nostrPubkey: string
   ) => void;
-  onDirectMessage: (dm: DirectMessage) => void;
-  onSyncRequest: (fromUserId: string, reqId: string) => Promise<SyncResPayload | null>;
+  onDirectMessage: (dm: DirectMessage, nostrPubkey: string) => void;
+  onSyncRequest: (
+    fromUserId: string,
+    reqId: string,
+    nostrPubkey: string
+  ) => Promise<SyncResPayload | null>;
   onSyncResponse: (
     reqId: string,
     fromUserId: string,
     events: ForumEvent[],
     eventsDigest: string,
-    sig: string
+    sig: string,
+    nostrPubkey: string
   ) => void;
 }
 
@@ -158,15 +171,20 @@ export async function startNostrFallback(
   let stopped = false;
   let attachTimer: number | null = null;
 
-  const handlePayload = (env: FallbackEnvelope) => {
+  const handlePayload = (env: FallbackEnvelope, nostrPubkey: string) => {
     if (stopped) return;
     switch (env.t) {
       case 'forum':
-        handlers.onForum(env.event);
+        handlers.onForum(env.event, nostrPubkey);
         break;
       case 'presence':
-        if (env.userId !== selfUserId && typeof env.attestSig === 'string' && env.attestSig) {
-          handlers.onPresence(env.userId, env.state, env.attestSig);
+        if (
+          env.userId !== selfUserId &&
+          typeof env.attestSig === 'string' &&
+          env.attestSig &&
+          typeof env.atMs === 'number'
+        ) {
+          handlers.onPresence(env.userId, env.state, env.attestSig, env.atMs, nostrPubkey);
         }
         break;
       case 'goodbye':
@@ -175,17 +193,25 @@ export async function startNostrFallback(
           typeof env.attestSig === 'string' &&
           env.attestSig &&
           typeof env.signPubKeySpkiB64 === 'string' &&
-          typeof env.encPubKeyRawB64 === 'string'
+          typeof env.encPubKeyRawB64 === 'string' &&
+          typeof env.atMs === 'number'
         ) {
-          handlers.onGoodbye(env.userId, env.signPubKeySpkiB64, env.encPubKeyRawB64, env.attestSig);
+          handlers.onGoodbye(
+            env.userId,
+            env.signPubKeySpkiB64,
+            env.encPubKeyRawB64,
+            env.attestSig,
+            env.atMs,
+            nostrPubkey
+          );
         }
         break;
       case 'dm':
-        if (env.dm.toUserId === selfUserId) handlers.onDirectMessage(env.dm);
+        if (env.dm.toUserId === selfUserId) handlers.onDirectMessage(env.dm, nostrPubkey);
         break;
       case 'sync-req': {
         if (env.fromUserId === selfUserId) break;
-        void handlers.onSyncRequest(env.fromUserId, env.reqId).then((payload) => {
+        void handlers.onSyncRequest(env.fromUserId, env.reqId, nostrPubkey).then((payload) => {
           if (!payload || stopped) return;
           void publish({
             v: 2,
@@ -207,7 +233,14 @@ export async function startNostrFallback(
           typeof env.eventsDigest === 'string' &&
           typeof env.sig === 'string'
         ) {
-          handlers.onSyncResponse(env.reqId, env.fromUserId, env.events, env.eventsDigest, env.sig);
+          handlers.onSyncResponse(
+            env.reqId,
+            env.fromUserId,
+            env.events,
+            env.eventsDigest,
+            env.sig,
+            nostrPubkey
+          );
         }
         break;
       default:
@@ -266,7 +299,7 @@ export async function startNostrFallback(
     if (!okSig) return;
     const env = await decryptJson<FallbackEnvelope>(key, ev.content, roomId);
     if (!env || env.v !== 2) return;
-    handlePayload(env);
+    handlePayload(env, ev.pubkey);
   };
 
   const attach = () => {

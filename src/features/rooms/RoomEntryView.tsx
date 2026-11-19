@@ -13,6 +13,7 @@ import { Identicon } from '../../components/content/Identicon';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { TaziaLogo } from '../../components/brand/TaziaLogo';
+import { BurningPhrase } from '../../components/session/BurningPhrase';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { probeBrowserSupportSync } from '../../core/utils/browserSupport';
 import { ConfettiBurst } from '../../components/ui/ConfettiBurst';
@@ -116,7 +117,6 @@ export function RoomEntryView({
   if (hasZones) bootModeRef.current = null;
   const bootMode = bootModeRef.current ?? 'short';
   const [bootRing, setBootRing] = useState(false);
-  const [bootChain, setBootChain] = useState(false);
   const bootHapticRef = useRef(false);
 
   useEffect(() => {
@@ -128,7 +128,6 @@ export function RoomEntryView({
     if (hasZones) return;
     bootHapticRef.current = false;
     setBootRing(false);
-    setBootChain(false);
 
     if (bootMode === 'short' || bootMode === 'revisit') {
       markBootSeen();
@@ -141,7 +140,6 @@ export function RoomEntryView({
     }
 
     const ringAt = window.setTimeout(() => setBootRing(true), ZONE_BOOT.sparkMs);
-    const chainAt = window.setTimeout(() => setBootChain(true), ZONE_BOOT.chainStartMs);
     const hapticAt = window.setTimeout(() => {
       if (bootHapticRef.current) return;
       bootHapticRef.current = true;
@@ -154,7 +152,6 @@ export function RoomEntryView({
 
     return () => {
       window.clearTimeout(ringAt);
-      window.clearTimeout(chainAt);
       window.clearTimeout(hapticAt);
       window.clearTimeout(doneAt);
     };
@@ -294,47 +291,9 @@ export function RoomEntryView({
               }}
               className="type-lede mt-3 max-w-sm text-balance"
             >
-              {t('roomsHeroBody')}
+              {t('roomsHeroBodyLead')}
+              <BurningPhrase>{t('roomsHeroBodyBurn')}</BurningPhrase>
             </motion.p>
-
-            <motion.ul
-              initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
-              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
-              transition={{
-                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
-                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.chainStartMs / 1000,
-              }}
-              className="mt-6 flex flex-wrap items-center justify-center gap-2"
-              aria-label={t('roomsHowTitle')}
-            >
-              {(
-                [
-                  ['roomsHeroStepPhrase', 'phrase', 0] as const,
-                  ['roomsHeroStepTalk', 'tribe', 1] as const,
-                  ['roomsHeroStepBurn', 'burn', 2] as const,
-                ]
-              ).map(([key, kind, i]) => (
-                <motion.li
-                  key={key}
-                  initial={reduceMotion || bootMode !== 'full' ? false : { opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    delay:
-                      reduceMotion || bootMode !== 'full'
-                        ? 0
-                        : (ZONE_BOOT.chainStartMs + i * ZONE_BOOT.chainStepMs) / 1000,
-                    duration: DUR.switch,
-                    ease: EASE.outExpo,
-                  }}
-                  className={`hero-step${
-                    bootChain && bootMode === 'full' ? ` hero-step--${kind}` : ''
-                  }`}
-                >
-                  <span className="hero-step__dot" aria-hidden="true" />
-                  {t(key)}
-                </motion.li>
-              ))}
-            </motion.ul>
 
             <motion.div
               initial={reduceMotion ? zoneBootReduced.initial : zoneBootCopy.initial}
@@ -343,7 +302,7 @@ export function RoomEntryView({
                 ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
                 delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.ctaAtMs / 1000,
               }}
-              className="mt-9 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
+              className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
             >
               <motion.button
                 whileHover={browserBlocked || reduceMotion ? undefined : { y: -1 }}
@@ -617,7 +576,7 @@ export function RoomEntryView({
                 />
               ) : (
                 <JoinRoomForm
-                  key={`join-${inviteNonce}-${initialRoomId}-${initialPhrase ?? ''}`}
+                  key={`join-${inviteNonce}-${initialRoomId}`}
                   initialRoomId={initialRoomId}
                   initialPhrase={initialPhrase}
                   isJoining={isJoining}

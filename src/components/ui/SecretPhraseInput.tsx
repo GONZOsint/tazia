@@ -51,6 +51,14 @@ export function SecretPhraseInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        data-1p-ignore="true"
+        data-lpignore="true"
+        data-form-type="other"
+        name={`${id}-zone-phrase`}
         className={`input-base bg-bg pr-12 pl-10 focus:bg-surface-raised ${
           phraseMotion === 'ignite' ? 'phrase-ignite' : phraseMotion === 'douse' ? 'phrase-douse' : ''
         }`}

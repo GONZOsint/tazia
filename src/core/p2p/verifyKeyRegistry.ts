@@ -31,10 +31,7 @@ export class VerifyKeyRegistry {
   private async loadPinned(userId: string, pinned: string): Promise<VerifyKey | null> {
     if (this.cachedPinSpki.get(userId) === pinned) {
       const cached = this.verifyKeyCache.get(userId);
-      if (cached) {
-        this.onKeysReady?.(userId);
-        return cached;
-      }
+      if (cached) return cached;
     } else {
       this.verifyKeyCache.delete(userId);
     }
@@ -50,10 +47,21 @@ export class VerifyKeyRegistry {
     }
   }
 
-  async observe(userId: string, spkiB64: string): Promise<VerifyKey | null> {
+  async observe(
+    userId: string,
+    spkiB64: string,
+    encRawB64?: string
+  ): Promise<VerifyKey | null> {
     if (!userId || !spkiB64 || spkiB64.length < 32) return null;
 
-    const trustLevel = this.trustStore.observe(userId, spkiB64);
+    // Refuse TOFU pin / changed observe if the observed SPKI cannot be imported.
+    try {
+      await importVerifyKey(spkiB64);
+    } catch {
+      return null;
+    }
+
+    const trustLevel = this.trustStore.observe(userId, spkiB64, encRawB64);
     const pinned = this.trustStore.get(userId)?.pinnedKeyB64;
     if (!pinned) return null;
 

@@ -8,8 +8,40 @@
  * - Presence requires encPubKeyRawB64
  */
 
+import { b64ToBytes } from './crypto/bytes';
+
 export const PROTOCOL_NAME = 'tazep-v2';
 export const PROTOCOL_VERSION = 2 as const;
+
+/** RFC 8410 SPKI prefix for Ed25519 (12 bytes) + 32-byte raw key. */
+const ED25519_SPKI_PREFIX = Uint8Array.from([
+  0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+]);
+const ED25519_SPKI_LEN = 44;
+const X25519_RAW_LEN = 32;
+/** Opaque peer / msg ids: no `|` so AAD field concat stays unambiguous. */
+const SAFE_ID_RE = /^[A-Za-z0-9_-]+$/;
+
+function isExactB64Length(b64: string, byteLen: number): boolean {
+  try {
+    return b64ToBytes(b64).length === byteLen;
+  } catch {
+    return false;
+  }
+}
+
+function isValidEd25519SpkiB64(b64: string): boolean {
+  try {
+    const bytes = b64ToBytes(b64);
+    if (bytes.length !== ED25519_SPKI_LEN) return false;
+    for (let i = 0; i < ED25519_SPKI_PREFIX.length; i++) {
+      if (bytes[i] !== ED25519_SPKI_PREFIX[i]) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export type ForumMessageType = 'NEW_THREAD' | 'REPLY';
 
@@ -108,11 +140,28 @@ export function isValidDirectMessage(value: unknown): value is DirectMessage {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
   if (v.protocolVersion !== PROTOCOL_VERSION) return false;
-  if (typeof v.msgId !== 'string' || v.msgId.length < 8 || v.msgId.length > 80) return false;
-  if (typeof v.fromUserId !== 'string' || v.fromUserId.length < 4 || v.fromUserId.length > MAX_USER_ID_CHARS) {
+  if (
+    typeof v.msgId !== 'string' ||
+    v.msgId.length < 8 ||
+    v.msgId.length > 80 ||
+    !SAFE_ID_RE.test(v.msgId)
+  ) {
     return false;
   }
-  if (typeof v.toUserId !== 'string' || v.toUserId.length < 4 || v.toUserId.length > MAX_USER_ID_CHARS) {
+  if (
+    typeof v.fromUserId !== 'string' ||
+    v.fromUserId.length < 4 ||
+    v.fromUserId.length > MAX_USER_ID_CHARS ||
+    !SAFE_ID_RE.test(v.fromUserId)
+  ) {
+    return false;
+  }
+  if (
+    typeof v.toUserId !== 'string' ||
+    v.toUserId.length < 4 ||
+    v.toUserId.length > MAX_USER_ID_CHARS ||
+    !SAFE_ID_RE.test(v.toUserId)
+  ) {
     return false;
   }
   if (typeof v.body !== 'string' || v.body.length !== 0) return false;
@@ -152,10 +201,30 @@ export function isValidForumEvent(
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
   if (v.protocolVersion !== PROTOCOL_VERSION) return false;
-  if (typeof v.msgId !== 'string' || v.msgId.length < 8 || v.msgId.length > 80) return false;
+  if (
+    typeof v.msgId !== 'string' ||
+    v.msgId.length < 8 ||
+    v.msgId.length > 80 ||
+    !SAFE_ID_RE.test(v.msgId)
+  ) {
+    return false;
+  }
   if (v.type !== 'NEW_THREAD' && v.type !== 'REPLY') return false;
-  if (typeof v.threadId !== 'string' || !v.threadId || v.threadId.length > 80) return false;
-  if (v.parentMsgId !== null && (typeof v.parentMsgId !== 'string' || v.parentMsgId.length > 80)) {
+  if (
+    typeof v.threadId !== 'string' ||
+    !v.threadId ||
+    v.threadId.length > 80 ||
+    !SAFE_ID_RE.test(v.threadId)
+  ) {
+    return false;
+  }
+  if (v.type === 'NEW_THREAD' && v.parentMsgId !== null) return false;
+  if (v.type === 'REPLY') {
+    if (typeof v.parentMsgId !== 'string' || !v.parentMsgId || v.parentMsgId.length > 80) {
+      return false;
+    }
+    if (!SAFE_ID_RE.test(v.parentMsgId)) return false;
+  } else if (v.parentMsgId !== null) {
     return false;
   }
   if (typeof v.title !== 'string' || v.title.length > MAX_TITLE_CHARS) return false;
@@ -166,7 +235,8 @@ export function isValidForumEvent(
   if (
     typeof v.authorUserId !== 'string' ||
     v.authorUserId.length < 4 ||
-    v.authorUserId.length > MAX_USER_ID_CHARS
+    v.authorUserId.length > MAX_USER_ID_CHARS ||
+    !SAFE_ID_RE.test(v.authorUserId)
   ) {
     return false;
   }
@@ -188,12 +258,10 @@ export function isValidPresenceState(value: unknown): value is PresenceState {
   if (typeof v.alias !== 'string' || v.alias.length === 0 || v.alias.length > MAX_ALIAS_CHARS) {
     return false;
   }
-  if (typeof v.signPubKeySpkiB64 !== 'string' || v.signPubKeySpkiB64.length < 32) return false;
-  if (
-    typeof v.encPubKeyRawB64 !== 'string' ||
-    v.encPubKeyRawB64.length < 32 ||
-    v.encPubKeyRawB64.length > 128
-  ) {
+  if (typeof v.signPubKeySpkiB64 !== 'string' || !isValidEd25519SpkiB64(v.signPubKeySpkiB64)) {
+    return false;
+  }
+  if (typeof v.encPubKeyRawB64 !== 'string' || !isExactB64Length(v.encPubKeyRawB64, X25519_RAW_LEN)) {
     return false;
   }
   return true;

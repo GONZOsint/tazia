@@ -50,9 +50,9 @@ Los **Susurros** van sellados (`seal: 2`) con AAD `tazep.dm.aad.v2:…`. Entrar 
 
 Si falla ICE (el navegador no logra la ruta P2P), el chat puede seguir por relés Nostr **cifrados** (PBKDF2 210k + HKDF `tazep/*`; blob `0x03` + AAD `tazep.fallback.aad.v3:{roomId}`; envelope `v: 2`).
 
-Ahí la autenticación es de la aplicación, no del cable WebRTC: los mensajes de foro se aceptan con Ed25519 y la clave **fijada** en el registro (sin inventar un `liveUserId`). La presence exige una attestation firmada `["tazep.presence.v1", …]` antes de fijar TOFU. El goodbye también va atestiguado; las respuestas `sync-res` van firmadas; se comprueba el reloj del EVENT; `schnorr.verify` corre **antes** de descifrar.
+Ahí la autenticación es de la aplicación, no del cable WebRTC: los mensajes de foro se aceptan con Ed25519 y la clave **fijada** en el registro (sin inventar un `liveUserId`). La presence exige una attestation firmada `["tazep.presence.v3", …, atMs, alias]` (reloj ±5 min, `atMs` estricto) antes de fijar TOFU. El goodbye también va atestiguado; las respuestas `sync-res` van firmadas (también el sync WebRTC) y se fusionan hasta el timeout; se comprueba el reloj del EVENT; `schnorr.verify` corre **antes** de descifrar. Los rate limits del fallback (foro, DM, sync, presence/goodbye) usan la pubkey Nostr del EVENT, no solo el `userId` reclamado.
 
-La attestation liga claves a un `userId` reclamado (el primero que escribe gana el pin TOFU). **No** equivale al enlace WebRTC de Trystero. Los relés ven metadatos y bytes cifrados — no es P2P puro.
+La attestation liga claves a un `userId` reclamado (el primero que escribe gana el pin TOFU de firma+enc). Un cambio de firma (`changed`) **no** redirige la clave X25519 de Susurros. Presence WebRTC tiene prioridad sobre Nostr. **No** equivale al enlace WebRTC de Trystero. Los relés ven metadatos y bytes cifrados — no es P2P puro.
 
 ### Sincronización y firmas
 
@@ -65,14 +65,14 @@ Límites blandos: 30 publicaciones/min/peer, 30 Susurros/min, 12 respuestas de s
 
 **WebRTC:** la primera clave vista se fija (TOFU: *trust on first use*) tras la presence de Trystero (mensajes ligados al transporte).  
 **Nostr:** solo tras presence atestiguada.  
-Código de seguridad (SAS): **6** emojis de un pool de **256** (~48 bits) + binding a `roomId`, derivados de las claves SPKI fijadas ([ePrint 2025/1598](https://eprint.iacr.org/2025/1598)). Si rota la clave → estado `changed`; la verificación sigue en la clave fijada hasta un `repin` explícito (sin “auto-reparar” en silencio).
+Código de seguridad (SAS): **6** emojis de un pool de **256** (~48 bits) + binding a `roomId`, derivados de las claves SPKI **y** X25519 fijadas ([ePrint 2025/1598](https://eprint.iacr.org/2025/1598)). Si rota la clave → estado `changed`; la verificación sigue en la clave fijada hasta un `repin` explícito (sin “auto-reparar” en silencio).
 
 ### Red, consentimiento y burn
 
 Consentimiento de IP la primera vez. Quemar **no** lo borra; «Olvidar este dispositivo» sí.  
 La frase en la URL se limpia (`public/scrub-phrase.js` + React).  
 TURN es opcional: `sessionStorage` por defecto; `localStorage` solo con opt-in. Burn limpia sessionStorage, **no** el TURN recordado. Detalle: [`TURN.es.md`](TURN.es.md).  
-CSP / fuentes: meta CSP + [`../public/_headers`](../public/_headers).
+CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_headers`](../public/_headers) es plantilla para hosts que sí aplican cabeceras (Netlify/CF); Pages **no** aplica `_headers`, así que `frame-ancestors` / `X-Frame-Options` no están en el despliegue github.io por defecto.
 
 **Quemar sesión** cierra las redes locales, limpia la confianza guardada, borra referencias sensibles, hace `sessionStorage.clear` y recarga. **No** es borrado forense ni denegabilidad práctica ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
 

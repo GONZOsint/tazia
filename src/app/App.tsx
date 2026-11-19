@@ -11,6 +11,7 @@ import { useToast } from '../components/ui/ToastHost';
 import { BurnFireOverlay } from '../components/session/BurnFireOverlay';
 import { KeyChangeAlert } from '../components/session/KeyChangeAlert';
 import { IpConsentModal } from '../features/rooms/IpConsentModal';
+import { AppSplash } from '../components/brand/AppSplash';
 import { RoomEntryView } from '../features/rooms/RoomEntryView';
 import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -299,8 +300,11 @@ export default function App() {
     });
   }, [activeTab]);
 
+  const splashShort = Boolean(initialInvite?.roomId);
+
   return (
     <MotionConfig reducedMotion="user">
+      <AppSplash short={splashShort} />
       <div
         ref={mainRef}
         className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-0"

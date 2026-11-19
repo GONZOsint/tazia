@@ -30,26 +30,35 @@ export function JoinRoomForm({
   const t = useT();
   const reduceMotion = useReducedMotion();
   const [joinInviteInput, setJoinInviteInput] = useState(
-    initialRoomId
-      ? buildInviteUrl(initialRoomId, initialPhrase ?? undefined)
-      : ''
+    initialRoomId ? buildInviteUrl(initialRoomId) : ''
   );
   const [joinRoomId, setJoinRoomId] = useState(initialRoomId);
   const [joinPhrase, setJoinPhrase] = useState(initialPhrase ?? '');
-  const [showJoinPhrase, setShowJoinPhrase] = useState(Boolean(initialPhrase));
+  /** Always start masked — never leave invite-derived phrase visible by default. */
+  const [showJoinPhrase, setShowJoinPhrase] = useState(false);
   const [joinAlias, setJoinAlias] = useState('');
-  const [customizeOpen, setCustomizeOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(Boolean(initialRoomId));
   const [scannerOpen, setScannerOpen] = useState(false);
   const [spark, setSpark] = useState(false);
+  const [phraseScrubbedHint, setPhraseScrubbedHint] = useState(
+    Boolean(initialRoomId && initialPhrase)
+  );
 
   const handlePasteInviteInput = (raw: string) => {
-    setJoinInviteInput(raw);
     const parsed = parseInviteInput(raw);
     if (parsed) {
+      // Keep invite field roomId-only after parse (do not re-embed phrase).
+      setJoinInviteInput(buildInviteUrl(parsed.roomId));
       setJoinRoomId(parsed.roomId);
-      setJoinPhrase(parsed.phrase ?? '');
-      setShowJoinPhrase(Boolean(parsed.phrase));
+      if (parsed.phrase) {
+        setJoinPhrase(parsed.phrase);
+        setShowJoinPhrase(false);
+        setPhraseScrubbedHint(true);
+      } else {
+        setJoinInviteInput(raw);
+      }
+    } else {
+      setJoinInviteInput(raw);
     }
   };
 
@@ -125,11 +134,16 @@ export function JoinRoomForm({
                   className="input-base"
                   placeholder={t('roomsInvitePaste')}
                   aria-label={t('roomsInvitePaste')}
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 {joinRoomId && (
                   <p className="type-caption mt-1.5 font-mono">
                     {t('roomsRoomIdLabel')}: {joinRoomId}
                   </p>
+                )}
+                {phraseScrubbedHint && (
+                  <p className="type-caption mt-1.5 text-muted">{t('roomsPhraseScrubbed')}</p>
                 )}
               </div>
             </motion.div>
@@ -170,46 +184,29 @@ export function JoinRoomForm({
         )}
       </AnimatePresence>
 
-      {joinRoomId && joinPhrase && (
-        <div>
-          <button
-            type="button"
-            aria-expanded={customizeOpen}
-            onClick={() => setCustomizeOpen((v) => !v)}
-            className="flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
+      <AnimatePresence initial={false}>
+        {joinRoomId && joinPhrase && (
+          <motion.div
+            key="join-alias-block"
+            initial={disclosure.initial}
+            animate={disclosure.animate}
+            exit={disclosure.exit}
+            transition={disclosure.transition}
+            className="overflow-hidden"
           >
-            <ChevronDown
-              className={`chevron-spin h-3.5 w-3.5 ${customizeOpen ? 'is-open' : ''}`}
-              aria-hidden="true"
+            <label htmlFor="join-alias" className="text-xs font-semibold text-ink">
+              {t('roomsAliasLabel')}
+            </label>
+            <input
+              id="join-alias"
+              value={joinAlias}
+              onChange={(e) => setJoinAlias(e.target.value)}
+              className="input-base mt-2"
+              placeholder={t('roomsAliasPlaceholder')}
             />
-            {t('roomsCustomize')}
-          </button>
-          <AnimatePresence initial={false}>
-            {customizeOpen && (
-              <motion.div
-                initial={disclosure.initial}
-                animate={disclosure.animate}
-                exit={disclosure.exit}
-                transition={disclosure.transition}
-                className="overflow-hidden"
-              >
-                <div className="pt-2">
-                  <label htmlFor="join-alias" className="text-xs font-semibold text-ink">
-                    {t('roomsAliasLabel')}
-                  </label>
-                  <input
-                    id="join-alias"
-                    value={joinAlias}
-                    onChange={(e) => setJoinAlias(e.target.value)}
-                    className="input-base mt-2"
-                    placeholder={t('roomsAliasPlaceholder')}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.button
         whileTap={canJoin && !isJoining ? TAP : undefined}
@@ -252,9 +249,10 @@ export function JoinRoomForm({
             onClose={() => setScannerOpen(false)}
             onScan={(parsed) => {
               setJoinRoomId(parsed.roomId);
-              setJoinInviteInput(buildInviteUrl(parsed.roomId, parsed.phrase ?? undefined));
+              setJoinInviteInput(buildInviteUrl(parsed.roomId));
               setJoinPhrase(parsed.phrase ?? '');
-              setShowJoinPhrase(Boolean(parsed.phrase));
+              setShowJoinPhrase(false);
+              if (parsed.phrase) setPhraseScrubbedHint(true);
               setPasteOpen(true);
               setScannerOpen(false);
             }}

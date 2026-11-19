@@ -30,10 +30,36 @@ const DEFAULT: TurnConfig = {
   rememberDevice: false,
 };
 
+function isAllowedTurnUrl(url: string): boolean {
+  const u = url.trim().toLowerCase();
+  return u.startsWith('turn:') || u.startsWith('turns:');
+}
+
+/** Reject non-TURN schemes (http/ws/…); allow incomplete typing until a scheme appears. */
+function isDisallowedTurnUrl(url: string): boolean {
+  const u = url.trim().toLowerCase();
+  if (!u || !u.includes(':')) return false;
+  return !isAllowedTurnUrl(u);
+}
+
+function sanitizeTurnConfig(partial: Partial<TurnConfig>): TurnConfig {
+  const url = typeof partial.url === 'string' ? partial.url.trim() : '';
+  return {
+    enabled: Boolean(partial.enabled) && isAllowedTurnUrl(url),
+    relayOnly: Boolean(partial.relayOnly),
+    url: isDisallowedTurnUrl(url) ? '' : url,
+    username: typeof partial.username === 'string' ? partial.username : '',
+    credential: typeof partial.credential === 'string' ? partial.credential : '',
+    rememberDevice: Boolean(partial.rememberDevice),
+  };
+}
+
 function parseTurn(raw: string | null): TurnConfig | null {
   if (!raw) return null;
   try {
-    return { ...DEFAULT, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<TurnConfig>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return sanitizeTurnConfig({ ...DEFAULT, ...parsed });
   } catch {
     return null;
   }
@@ -70,12 +96,13 @@ export function buildRtcConfig(turn: TurnConfig = loadTurnConfig()): {
   turnConfig?: RTCIceServer[];
   relayOnly: boolean;
 } {
-  const hasTurn = turn.enabled && !!turn.url.trim();
+  const url = turn.url.trim();
+  const hasTurn = turn.enabled && !!url && isAllowedTurnUrl(url);
   const relayOnly = hasTurn && turn.relayOnly;
   const turnConfig: RTCIceServer[] | undefined = hasTurn
     ? [
         {
-          urls: turn.url.trim(),
+          urls: url,
           username: turn.username || undefined,
           credential: turn.credential || undefined,
         },
@@ -94,9 +121,10 @@ export function buildRtcConfig(turn: TurnConfig = loadTurnConfig()): {
 
 function saveTurnConfig(cfg: TurnConfig): void {
   try {
-    sessionStorage.setItem(SS_KEY, JSON.stringify(cfg));
-    if (cfg.rememberDevice) {
-      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+    const safe = sanitizeTurnConfig(cfg);
+    sessionStorage.setItem(SS_KEY, JSON.stringify(safe));
+    if (safe.rememberDevice) {
+      localStorage.setItem(LS_KEY, JSON.stringify(safe));
     } else {
       localStorage.removeItem(LS_KEY);
       // Legacy key from older builds that always used localStorage.
@@ -202,6 +230,10 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                       onChange={(e) => update({ url: e.target.value })}
                       placeholder="turn:turn.example.com:3478"
                       className="input-base mt-1 font-mono text-xs"
+                      autoComplete="off"
+                      spellCheck={false}
+                      data-1p-ignore="true"
+                      data-lpignore="true"
                     />
                   </div>
                   <div>
@@ -213,6 +245,10 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                       value={config.username}
                       onChange={(e) => update({ username: e.target.value })}
                       className="input-base mt-1"
+                      autoComplete="off"
+                      data-1p-ignore="true"
+                      data-lpignore="true"
+                      data-form-type="other"
                     />
                   </div>
                   <div>
@@ -225,6 +261,11 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                       value={config.credential}
                       onChange={(e) => update({ credential: e.target.value })}
                       className="input-base mt-1"
+                      autoComplete="off"
+                      data-1p-ignore="true"
+                      data-lpignore="true"
+                      data-form-type="other"
+                      name="turn-relay-credential"
                     />
                   </div>
 

@@ -51,8 +51,9 @@ Límite de UI (no del protocolo): hasta **3** zonas concurrentes (`MAX_ROOMS`).
 | --- | --- | --- |
 | Nombre / dominio | `agora-forum-v2`, `tazia.*` | `tazep-v2`, `tazep.*` |
 | Susurros | solo `seal: 2` | igual |
-| Attestation presence | `tazia.presence.v1` | `tazep.presence.v1` |
-| Goodbye (Nostr) | sin auth | atestiguado `tazep.goodbye.v1` |
+| Attestation presence | `tazia.presence.v1` | `tazep.presence.v3` + `atMs` + `alias` |
+| Goodbye (Nostr) | sin auth | atestiguado `tazep.goodbye.v3` + `atMs` |
+| Sync WebRTC | `ForumEvent[]` crudo | digest firmado (`tazep.sync-res.v1`) |
 | `sync-res` Nostr | primera respuesta gana | `fromUserId` + Ed25519 `tazep.sync-res.v1` + digest |
 | Verify keys | última SPKI observada | **pinned** TOFU hasta `repin` |
 
@@ -94,16 +95,18 @@ Sin `encPubKeyRawB64` la presencia se rechaza; no hay Susurros en claro.
 Presence Nostr lleva `attestSig` sobre:
 
 ```
-["tazep.presence.v1", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64]
+["tazep.presence.v3", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs, alias]
 ```
 
-Liga claves a un `userId` reclamado (TOFU first-writer). **No** equivale al binding WebRTC de Trystero.
+`atMs` debe estar dentro de `LIVE_CLOCK_SKEW_MS` y ser **estrictamente creciente** por `userId` en el receptor. Liga claves + alias a un `userId` reclamado (TOFU first-writer). **No** equivale al binding WebRTC de Trystero. SPKI de firma y X25519 enc se **pinnean juntos**; un sign `changed` **no** actualiza la enc de Susurros, y la enc no rota en silencio bajo el mismo SPKI. La presence WebRTC tiene prioridad sobre Nostr para el mismo `userId`.
 
 Goodbye Nostr (al salir con fallback activo):
 
 ```
-["tazep.goodbye.v1", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64]
+["tazep.goodbye.v3", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs]
 ```
+
+El goodbye solo elimina al peer si `signPubKeySpkiB64` coincide con la clave fijada.
 
 ---
 
@@ -175,8 +178,8 @@ Material de sala: PBKDF2 210k una vez (salt `tazep.fallback.v2:{roomId}`) + HKDF
 | `t` | Campos (además de `v: 2`) | Auth |
 | --- | --- | --- |
 | `forum` | `event` | Ed25519 del evento; sin enlace al transporte WebRTC |
-| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v1` |
-| `goodbye` | `userId`, claves, `atMs`, `attestSig` | `tazep.goodbye.v1` |
+| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v3` |
+| `goodbye` | `userId`, claves, `atMs`, `attestSig` | `tazep.goodbye.v3` |
 | `dm` | `dm` | Igual que Susurro en el mensaje de red |
 | `sync-req` | `fromUserId`, `reqId` | — |
 | `sync-res` | `fromUserId`, `toUserId`, `reqId`, `events`, `eventsDigest`, `sig` | ver abajo |

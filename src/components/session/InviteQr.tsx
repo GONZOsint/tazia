@@ -6,7 +6,8 @@ import { contentSwitch } from '../../motion/tokens';
 import { useTheme } from '../../theme';
 
 const SCAN_SETTLE_MS = 2800;
-const SECRET_RING_MS = 400;
+/** Must match `--dur-secret-frame` draw + settle in CSS. */
+const SECRET_RING_MS = 720;
 
 /** Rest pose — soft desk-lamp angle; keep ≤~10° so the QR stays readable. */
 const REST = { rotX: 5.5, rotY: -4.5, z: 0, scale: 1 } as const;
@@ -247,7 +248,14 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       raf = requestAnimationFrame(tick);
     };
 
+    const overlayBlocksTilt = (e: EventTarget | null) => {
+      const node = e instanceof Element ? e : null;
+      return Boolean(node?.closest('[aria-modal="true"], .tazia-toast-card'));
+    };
+
     const onMove = (e: PointerEvent) => {
+      // Keep the current 3D pose while the phrase confirm / toast owns the pointer.
+      if (overlayBlocksTilt(e.target)) return;
       target = targetFromPointer(stage, e.clientX, e.clientY);
       const g = glareFromPointer(stage, e.clientX, e.clientY);
       targetGlareX = g.gx;
@@ -262,8 +270,17 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       kick();
     };
 
-    // After click / modal confirm, re-sample pointer so tilt keeps flowing instead of freezing.
+    const pointerNearStage = (clientX: number, clientY: number) => {
+      const r = stage.getBoundingClientRect();
+      const nx = (clientX - (r.left + r.width / 2)) / (r.width * 0.5);
+      const ny = (clientY - (r.top + r.height / 2)) / (r.height * 0.5);
+      return Math.hypot(nx, ny) <= IDLE_DIST;
+    };
+
+    // Only re-sample when the pointer is still near the QR — modal/toast clicks
+    // must not yank the tilt back to rest mid-ritual.
     const onPointerUp = (e: PointerEvent) => {
+      if (!pointerNearStage(e.clientX, e.clientY)) return;
       target = targetFromPointer(stage, e.clientX, e.clientY);
       const g = glareFromPointer(stage, e.clientX, e.clientY);
       targetGlareX = g.gx;
@@ -271,9 +288,14 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       kick();
     };
 
+    // Tab hide only — in-page focus (confirm modal) must not flatten the 3D pose.
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') onLeave();
+    };
+
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerup', onPointerUp, { passive: true });
-    window.addEventListener('blur', onLeave);
+    document.addEventListener('visibilitychange', onVisibility);
     document.addEventListener('mouseleave', onLeave);
 
     return () => {
@@ -281,7 +303,7 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('blur', onLeave);
+      document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('mouseleave', onLeave);
       el.classList.remove('is-tilting');
       el.style.transition = '';
@@ -321,6 +343,24 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
             scanning ? 'scanning' : ''
           } ${secretRing ? 'qr-secret-ring' : ''} ${includesSecret ? 'qr-has-secret' : ''}`}
         >
+          {/* Frame lives outside the face overflow so the stroke draws around the card
+              without touching transform / box-shadow (JS owns the 3D lerp). */}
+          <svg
+            className="qr-secret-frame"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <rect
+              className="qr-secret-frame__path"
+              x="1.25"
+              y="1.25"
+              width="97.5"
+              height="97.5"
+              rx="4.5"
+              pathLength={1}
+            />
+          </svg>
           <div className="qr-surface-face rounded-[calc(var(--radius-ctrl)-4px)]">
             <div className="qr-laser-line" aria-hidden="true" />
             <img
@@ -338,22 +378,25 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
         <QrCode className="h-3.5 w-3.5 shrink-0 text-faint" aria-hidden="true" />
         {t('qrLocal')}
       </p>
-      <AnimatePresence initial={false}>
-        {includesSecret && (
-          <motion.p
-            key="secret-warn"
-            initial={contentSwitch.initial}
-            animate={contentSwitch.animate}
-            exit={contentSwitch.exit}
-            transition={contentSwitch.transition}
-            className="flex max-w-[16rem] items-center justify-center gap-1.5 text-center text-[11px] font-medium text-warn"
-            role="status"
-          >
-            <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {t('roomsQrHasSecret')}
-          </motion.p>
-        )}
-      </AnimatePresence>
+      {/* Fixed slot so the secret warning never reflows the 3D stage. */}
+      <div className="flex min-h-[1.35rem] max-w-[16rem] items-center justify-center">
+        <AnimatePresence initial={false}>
+          {includesSecret && (
+            <motion.p
+              key="secret-warn"
+              initial={contentSwitch.initial}
+              animate={contentSwitch.animate}
+              exit={contentSwitch.exit}
+              transition={contentSwitch.transition}
+              className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium text-warn"
+              role="status"
+            >
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {t('roomsQrHasSecret')}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

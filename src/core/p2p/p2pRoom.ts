@@ -61,6 +61,19 @@ export { P2pActionError } from './p2pTypes';
 
 const FALLBACK_PEER_TTL_MS = 45_000;
 const NOSTR_SYNC_TIMEOUT_MS = 8_000;
+/** Soft global budget for Nostr-layer sync answers (anti ID-rotation amp). */
+const MAX_GLOBAL_SYNC_ANSWERS_PER_MINUTE = MAX_SYNC_ANSWERS_PER_MINUTE * 3;
+const MAX_GLOBAL_DM_PER_MINUTE = MAX_DM_PER_MINUTE * 3;
+const MAX_GLOBAL_FALLBACK_FORUM_PER_MINUTE = MAX_PUBLISH_PER_MINUTE * 3;
+const MAX_PRESENCE_PER_MINUTE = 20;
+const MAX_GLOBAL_PRESENCE_PER_MINUTE = MAX_PRESENCE_PER_MINUTE * 3;
+
+interface ForumSyncResponse {
+  events: ForumEvent[];
+  fromUserId: string;
+  eventsDigest: string;
+  sig: string;
+}
 
 function emptyPresence(): PresenceState {
   return { alias: '', signPubKeySpkiB64: '', encPubKeyRawB64: '' };
@@ -81,8 +94,13 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const rateLimiter = new PeerRateLimiter();
   const syncAnswerLimiter = new PeerRateLimiter();
   const dmRateLimiter = new PeerRateLimiter();
+  const presenceRateLimiter = new PeerRateLimiter();
   const localMessages = new Map<string, ForumEvent>();
   const knownEncPubKeys = new Map<string, string>();
+  /** userIds first observed via WebRTC presence — preferred over Nostr for pin authority. */
+  const webrtcPinned = new Set<string>();
+  /** Last accepted presence/goodbye atMs per userId (monotonic). */
+  const lastAttestAtMs = new Map<string, number>();
   const selfRef = { userId: '' };
   const unsubs: Unsubscribe[] = [];
   const fallbackPeers = new Map<string, number>();
@@ -104,9 +122,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const registry = new VerifyKeyRegistry({
     trustStore,
     onKeyChange: options.onKeyChange,
+    // Forum only: DM flush waits until knownEncPubKeys is synced (rememberPresenceKeys / invalidatePeerKey).
     onKeysReady: (userId) => {
       void forumIngest.flushPendingForUser(userId);
-      void dmIngest.flushPendingForUser(userId);
     },
   });
 
@@ -139,6 +157,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     rateLimiter.pruneStale();
     syncAnswerLimiter.pruneStale();
     dmRateLimiter.pruneStale();
+    presenceRateLimiter.pruneStale();
   }, 5 * 60_000);
 
   const mergeOnline = () => {
@@ -146,13 +165,46 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     options.onPeerPresence([...ids]);
   };
 
-  const rememberPresenceKeys = (userId: string, state: PresenceState) => {
-    void registry.observe(userId, state.signPubKeySpkiB64);
+  /**
+   * Pin sign+enc via TOFU. Enc map only updates when observed SPKI matches the pin
+   * (never on `changed`). WebRTC presence wins over conflicting Nostr for initial pin.
+   */
+  const rememberPresenceKeys = async (
+    userId: string,
+    state: PresenceState,
+    source: 'webrtc' | 'nostr'
+  ): Promise<void> => {
+    if (source === 'nostr' && webrtcPinned.has(userId)) {
+      const pinned = trustStore.get(userId)?.pinnedKeyB64;
+      if (pinned && pinned !== state.signPubKeySpkiB64) {
+        // Surface key-change alert; do not redirect Susurro enc to attacker.
+        await registry.observe(userId, state.signPubKeySpkiB64, state.encPubKeyRawB64);
+        return;
+      }
+    }
+
+    await registry.observe(userId, state.signPubKeySpkiB64, state.encPubKeyRawB64);
+    if (source === 'webrtc') webrtcPinned.add(userId);
+
+    const rec = trustStore.get(userId);
+    if (!rec || rec.pinnedKeyB64 !== state.signPubKeySpkiB64) {
+      // `changed`: keep prior pinned enc in knownEncPubKeys (if any).
+      return;
+    }
+
+    const pinnedEnc = rec.pinnedEncRawB64 ?? state.encPubKeyRawB64;
     const prev = knownEncPubKeys.get(userId);
-    knownEncPubKeys.set(userId, state.encPubKeyRawB64);
-    if (prev !== state.encPubKeyRawB64) {
+    knownEncPubKeys.set(userId, pinnedEnc);
+    if (prev !== pinnedEnc) {
       void dmIngest.flushPendingForUser(userId);
     }
+  };
+
+  const acceptAttestAtMs = (userId: string, atMs: number): boolean => {
+    const prev = lastAttestAtMs.get(userId);
+    if (prev !== undefined && atMs <= prev) return false;
+    lastAttestAtMs.set(userId, atMs);
+    return true;
   };
 
   const touchFallbackPeer = (userId: string) => {
@@ -201,11 +253,12 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const self = await room.getSelf();
   selfRef.userId = self.userId;
   knownEncPubKeys.set(self.userId, encIdentity.publicKeyRawB64);
-  await registry.observe(self.userId, signing.publicKeySpkiB64);
+  await registry.observe(self.userId, signing.publicKeySpkiB64, encIdentity.publicKeyRawB64);
+  webrtcPinned.add(self.userId);
 
   const forumMsg = room.makeAction<ForumEvent>('forumMsg');
   const directMsg = room.makeAction<DirectMessage>('directMsg');
-  const forumSync = room.makeAction<{ want: string }, ForumEvent[]>('forumSync', {
+  const forumSync = room.makeAction<{ want: string }, ForumSyncResponse>('forumSync', {
     kind: 'request',
   });
   // Reject oversized inbound actions before JSON parse / ingest (Trystero onReceive).
@@ -228,21 +281,43 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
 
   const publishPresenceFallback = async (state: PresenceState) => {
     if (!fallback || left) return;
+    const atMs = Date.now();
     const attestSig = await signPresenceAttestation(
       signing,
       roomId,
       selfRef.userId,
       state.signPubKeySpkiB64,
-      state.encPubKeyRawB64
+      state.encPubKeyRawB64,
+      atMs,
+      state.alias
     );
     await fallback.publish({
       v: 2,
       t: 'presence',
       userId: selfRef.userId,
       state,
-      atMs: Date.now(),
+      atMs,
       attestSig,
     });
+  };
+
+  const buildSignedSyncResponse = async (toUserId: string): Promise<ForumSyncResponse> => {
+    const events = snapshotForSync(localMessages);
+    const eventsDigest = await digestSyncEvents(events);
+    const sig = await signSyncRes(
+      signing,
+      roomId,
+      'webrtc-sync',
+      selfRef.userId,
+      toUserId,
+      eventsDigest
+    );
+    return {
+      events,
+      fromUserId: selfRef.userId,
+      eventsDigest,
+      sig,
+    };
   };
 
   const ensureFallback = async (): Promise<NostrFallbackBus | null> => {
@@ -255,50 +330,82 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     fallbackStarting = (async () => {
       try {
         fallback = await startNostrFallback(roomId, password, selfRef.userId, {
-          onForum: (event) => {
+          onForum: (event, nostrPubkey) => {
+            if (!rateLimiter.allow(`nostr:${nostrPubkey}`, MAX_PUBLISH_PER_MINUTE)) return;
+            if (!rateLimiter.allow('__global_fallback_forum__', MAX_GLOBAL_FALLBACK_FORUM_PER_MINUTE)) {
+              return;
+            }
             // No fake Trystero liveUserId — signature + attested registry only.
             void forumIngest.ingest(event, { source: 'fallback' }).then((ok) => {
               if (ok) touchFallbackPeer(event.authorUserId);
             });
           },
-          onPresence: (userId, state, attestSig) => {
+          onPresence: (userId, state, attestSig, atMs, nostrPubkey) => {
             if (!isValidPresenceState(state)) return;
+            if (!presenceRateLimiter.allow(`nostr:${nostrPubkey}`, MAX_PRESENCE_PER_MINUTE)) {
+              return;
+            }
+            if (
+              !presenceRateLimiter.allow('__global_presence__', MAX_GLOBAL_PRESENCE_PER_MINUTE)
+            ) {
+              return;
+            }
             void verifyPresenceAttestation(
               roomId,
               userId,
               state.signPubKeySpkiB64,
               state.encPubKeyRawB64,
-              attestSig
-            ).then((ok) => {
+              atMs,
+              attestSig,
+              state.alias
+            ).then(async (ok) => {
               if (!ok || left) return;
-              rememberPresenceKeys(userId, state);
+              if (!acceptAttestAtMs(userId, atMs)) return;
+              await rememberPresenceKeys(userId, state, 'nostr');
               touchFallbackPeer(userId);
               options.onPresenceChange(userId, state, false);
             });
           },
-          onGoodbye: (userId, signPubKeySpkiB64, encPubKeyRawB64, attestSig) => {
+          onGoodbye: (userId, signPubKeySpkiB64, encPubKeyRawB64, attestSig, atMs, nostrPubkey) => {
+            if (!presenceRateLimiter.allow(`nostr:${nostrPubkey}`, MAX_PRESENCE_PER_MINUTE)) {
+              return;
+            }
+            if (
+              !presenceRateLimiter.allow('__global_presence__', MAX_GLOBAL_PRESENCE_PER_MINUTE)
+            ) {
+              return;
+            }
             void verifyGoodbyeAttestation(
               roomId,
               userId,
               signPubKeySpkiB64,
               encPubKeyRawB64,
+              atMs,
               attestSig
             ).then((ok) => {
               if (!ok || left) return;
+              if (!acceptAttestAtMs(userId, atMs)) return;
               const pinned = trustStore.get(userId)?.pinnedKeyB64;
-              if (pinned && pinned !== signPubKeySpkiB64) return;
+              if (!pinned || pinned !== signPubKeySpkiB64) return;
+              knownEncPubKeys.delete(userId);
               dropFallbackPeer(userId);
             });
           },
-          onDirectMessage: (dm) => {
-            // Transport null: forge still needs Ed25519 of attested fromUserId.
-            if (!dmRateLimiter.allow(dm.fromUserId, MAX_DM_PER_MINUTE)) return;
+          onDirectMessage: (dm, nostrPubkey) => {
+            // Rate-limit by Nostr pubkey (not spoofable claimed fromUserId).
+            if (!dmRateLimiter.allow(`nostr:${nostrPubkey}`, MAX_DM_PER_MINUTE)) return;
+            if (!dmRateLimiter.allow('__global_fallback_dm__', MAX_GLOBAL_DM_PER_MINUTE)) return;
             void dmIngest.accept(dm, null).then((ok) => {
               if (ok) touchFallbackPeer(dm.fromUserId);
             });
           },
-          onSyncRequest: async (fromUserId, reqId) => {
-            if (!syncAnswerLimiter.allow(fromUserId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
+          onSyncRequest: async (fromUserId, reqId, nostrPubkey) => {
+            if (!syncAnswerLimiter.allow(`nostr:${nostrPubkey}`, MAX_SYNC_ANSWERS_PER_MINUTE)) {
+              return null;
+            }
+            if (
+              !syncAnswerLimiter.allow('__global_sync__', MAX_GLOBAL_SYNC_ANSWERS_PER_MINUTE)
+            ) {
               return null;
             }
             const events = snapshotForSync(localMessages);
@@ -321,34 +428,26 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
           onSyncResponse: (reqId, fromUserId, events, eventsDigest, sig) => {
             void (async () => {
               const pending = pendingSync.get(reqId);
-              if (syncPayloadTooLarge(events)) {
+              if (!pending) return;
+
+              const rejectSoft = () => {
                 rejectedSyncCount += 1;
-                if (pending) {
-                  window.clearTimeout(pending.timer);
-                  pendingSync.delete(reqId);
-                  pending.resolve(pending.added);
-                }
+                // Keep pending open until timeout or a valid signed response.
+              };
+
+              if (syncPayloadTooLarge(events)) {
+                rejectSoft();
                 return;
               }
               const clamped = clampSyncEvents(events);
               const digest = await digestSyncEvents(clamped);
               if (digest !== eventsDigest) {
-                rejectedSyncCount += 1;
-                if (pending) {
-                  window.clearTimeout(pending.timer);
-                  pendingSync.delete(reqId);
-                  pending.resolve(pending.added);
-                }
+                rejectSoft();
                 return;
               }
               const verifyKey = await registry.get(fromUserId);
               if (!verifyKey) {
-                rejectedSyncCount += 1;
-                if (pending) {
-                  window.clearTimeout(pending.timer);
-                  pendingSync.delete(reqId);
-                  pending.resolve(pending.added);
-                }
+                rejectSoft();
                 return;
               }
               const okSig = await verifySyncRes(
@@ -361,12 +460,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
                 sig
               );
               if (!okSig) {
-                rejectedSyncCount += 1;
-                if (pending) {
-                  window.clearTimeout(pending.timer);
-                  pendingSync.delete(reqId);
-                  pending.resolve(pending.added);
-                }
+                rejectSoft();
                 return;
               }
               let added = 0;
@@ -374,11 +468,10 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
                 const ok = await forumIngest.ingest(item, { liveUserId: null, source: 'sync' });
                 if (ok) added += 1;
               }
-              if (pending) {
-                window.clearTimeout(pending.timer);
-                pendingSync.delete(reqId);
-                pending.resolve(pending.added + added);
-              }
+              const still = pendingSync.get(reqId);
+              if (!still) return;
+              // Merge all valid replies until timeout (no early resolve / empty-first censorship).
+              still.added += added;
             })();
           },
         });
@@ -427,16 +520,18 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     const reqId = crypto.randomUUID();
     return new Promise<number>((resolve) => {
       const timer = window.setTimeout(() => {
+        const p = pendingSync.get(reqId);
         pendingSync.delete(reqId);
-        resolve(0);
+        resolve(p?.added ?? 0);
       }, NOSTR_SYNC_TIMEOUT_MS);
       pendingSync.set(reqId, { resolve, added: 0, timer });
       void bus
         .publish({ v: 2, t: 'sync-req', fromUserId: selfRef.userId, reqId })
         .catch(() => {
           window.clearTimeout(timer);
+          const p = pendingSync.get(reqId);
           pendingSync.delete(reqId);
-          resolve(0);
+          resolve(p?.added ?? 0);
         });
     });
   };
@@ -459,9 +554,14 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   unsubs.push(
     forumSync.onRequest((_data, context) => {
       if (!syncAnswerLimiter.allow(context.userId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
-        return [];
+        return {
+          events: [],
+          fromUserId: selfRef.userId,
+          eventsDigest: '',
+          sig: '',
+        };
       }
-      return snapshotForSync(localMessages);
+      return buildSignedSyncResponse(context.userId);
     })
   );
 
@@ -476,9 +576,11 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
           return;
         }
         if (!value || !isValidPresenceState(value)) return;
-        rememberPresenceKeys(userId, value);
-        options.onPresenceChange(userId, value, false);
-        touchFallbackPeer(userId);
+        void rememberPresenceKeys(userId, value, 'webrtc').then(() => {
+          if (left) return;
+          options.onPresenceChange(userId, value, false);
+          touchFallbackPeer(userId);
+        });
       },
       { replay: true }
     )
@@ -537,18 +639,20 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       pendingSync.clear();
       if (fallback) {
         try {
+          const atMs = Date.now();
           const goodbyeSig = await signGoodbyeAttestation(
             signing,
             roomId,
             selfRef.userId,
             signing.publicKeySpkiB64,
-            encIdentity.publicKeyRawB64
+            encIdentity.publicKeyRawB64,
+            atMs
           );
           await fallback.publish({
             v: 2,
             t: 'goodbye',
             userId: selfRef.userId,
-            atMs: Date.now(),
+            atMs,
             signPubKeySpkiB64: signing.publicKeySpkiB64,
             encPubKeyRawB64: encIdentity.publicKeyRawB64,
             attestSig: goodbyeSig,
@@ -562,6 +666,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       rateLimiter.clear();
       syncAnswerLimiter.clear();
       dmRateLimiter.clear();
+      presenceRateLimiter.clear();
       trustStore.clear();
       registry.clear();
       for (const u of unsubs) {
@@ -632,11 +737,24 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         throw new P2pActionError('publish-rate', 'DM rate limited');
       }
 
-      const peerEnc = knownEncPubKeys.get(toUserId) ?? presence.get(toUserId)?.encPubKeyRawB64;
+      // Only seal to TOFU-pinned enc (never unpinned presence overwrites).
+      let peerEnc = knownEncPubKeys.get(toUserId);
       if (!peerEnc) {
-        throw new P2pActionError('unknown', 'Peer has no encryption key yet');
+        const live = presence.get(toUserId);
+        const pinned = trustStore.get(toUserId)?.pinnedKeyB64;
+        if (
+          live &&
+          pinned &&
+          live.signPubKeySpkiB64 === pinned &&
+          isValidPresenceState(live)
+        ) {
+          peerEnc = trustStore.getPinnedEnc(toUserId) ?? live.encPubKeyRawB64;
+          knownEncPubKeys.set(toUserId, peerEnc);
+        }
       }
-      knownEncPubKeys.set(toUserId, peerEnc);
+      if (!peerEnc) {
+        throw new P2pActionError('unknown', 'Peer has no pinned encryption key yet');
+      }
 
       const msgId = crypto.randomUUID();
       const cipher = await sealDmBody({
@@ -709,12 +827,47 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
             { targets, timeoutMs: 8000 }
           );
           for (const res of results) {
-            if (res.status !== 'fulfilled' || !Array.isArray(res.value)) continue;
-            if (syncPayloadTooLarge(res.value)) {
+            if (res.status !== 'fulfilled' || !res.value || typeof res.value !== 'object') {
+              continue;
+            }
+            const payload = res.value as ForumSyncResponse;
+            if (!Array.isArray(payload.events) || !payload.fromUserId || !payload.sig) {
               rejectedSyncCount += 1;
               continue;
             }
-            for (const item of clampSyncEvents(res.value)) {
+            if (res.userId !== payload.fromUserId) {
+              rejectedSyncCount += 1;
+              continue;
+            }
+            if (syncPayloadTooLarge(payload.events)) {
+              rejectedSyncCount += 1;
+              continue;
+            }
+            const clamped = clampSyncEvents(payload.events);
+            const digest = await digestSyncEvents(clamped);
+            if (digest !== payload.eventsDigest) {
+              rejectedSyncCount += 1;
+              continue;
+            }
+            const verifyKey = await registry.get(payload.fromUserId);
+            if (!verifyKey) {
+              rejectedSyncCount += 1;
+              continue;
+            }
+            const okSig = await verifySyncRes(
+              verifyKey,
+              roomId,
+              'webrtc-sync',
+              payload.fromUserId,
+              selfRef.userId,
+              payload.eventsDigest,
+              payload.sig
+            );
+            if (!okSig) {
+              rejectedSyncCount += 1;
+              continue;
+            }
+            for (const item of clamped) {
               const ok = await forumIngest.ingest(item, { liveUserId: null, source: 'sync' });
               if (ok) added += 1;
             }
@@ -747,7 +900,11 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     },
     getRejectedSyncCount: () => rejectedSyncCount,
     invalidatePeerKey: async (userId: string) => {
+      const enc = trustStore.getPinnedEnc(userId);
+      if (enc) knownEncPubKeys.set(userId, enc);
+      else knownEncPubKeys.delete(userId);
       await registry.invalidateAndReload(userId);
+      await dmIngest.flushPendingForUser(userId);
     },
   };
 }

@@ -34,19 +34,35 @@ const SPANISH_PASSPHRASE_WORDS: readonly string[] = [
   'lugar', 'lumbre', 'luna', 'lupa', 'luz', 'madera', 'madriguera', 'magia',
 ];
 
+const WORDSET = new Set(SPANISH_PASSPHRASE_WORDS);
+
 const COMMON_WEAK_PHRASES = new Set([
   '123456',
   '12345678',
   '123456789',
   'password',
+  'passwordpassword',
   'contraseña',
   'contrasena',
   'qwerty',
   'abcdef',
+  'abcdefghijklmnop',
   '000000',
   'admin',
   'prueba',
+  'the-the-the-the-the-the',
 ]);
+
+const WEAK_SUBSTRINGS = [
+  'password',
+  'contraseña',
+  'contrasena',
+  'qwerty',
+  '123456',
+  'abcdef',
+  'admin',
+  'prueba',
+];
 
 /** Default 6 words (~48 bits with 256-word list) — 4 words is too weak for Nostr ciphertext. */
 export function generateMemorablePassphrase(wordCount = 6): string {
@@ -71,6 +87,14 @@ interface PassphraseStrengthResult {
   isAcceptable: boolean;
 }
 
+function hasLongCharRun(s: string): boolean {
+  return /(.)\1{7,}/.test(s);
+}
+
+function containsWeakSubstring(lower: string): boolean {
+  return WEAK_SUBSTRINGS.some((w) => lower.includes(w));
+}
+
 export function evaluatePassphraseStrength(phrase: string): PassphraseStrengthResult {
   const trimmed = phrase.trim();
   if (trimmed.length === 0) {
@@ -78,7 +102,12 @@ export function evaluatePassphraseStrength(phrase: string): PassphraseStrengthRe
   }
 
   const lower = trimmed.toLowerCase();
-  if (COMMON_WEAK_PHRASES.has(lower) || /^(.)\1+$/.test(trimmed)) {
+  if (
+    COMMON_WEAK_PHRASES.has(lower) ||
+    /^(.)\1+$/.test(trimmed) ||
+    hasLongCharRun(lower) ||
+    containsWeakSubstring(lower)
+  ) {
     return { score: 0, id: 'weak', isAcceptable: false };
   }
 
@@ -87,20 +116,28 @@ export function evaluatePassphraseStrength(phrase: string): PassphraseStrengthRe
   }
 
   const words = trimmed.split(/[\s\-_.]+/).filter((w) => w.length >= 3);
+  const normalized = words.map((w) => w.toLowerCase());
+  if (normalized.length >= 2 && new Set(normalized).size < normalized.length) {
+    return { score: 0, id: 'weak', isAcceptable: false };
+  }
+
   const hasUpper = /[A-ZÁÉÍÓÚÑ]/.test(trimmed);
   const hasDigit = /\d/.test(trimmed);
   const hasSymbol = /[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/.test(trimmed);
   const charVariety = [hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
+  const wordlistHits = normalized.filter((w) => WORDSET.has(w)).length;
+  const fromWordlist = wordlistHits >= 6;
+  /** Freeform: long + all three classes (not length/2-class alone). */
+  const highEntropy = trimmed.length >= 24 && charVariety >= 3;
 
-  if (words.length >= 6 || (trimmed.length >= 20 && charVariety >= 2)) {
+  if (fromWordlist || (highEntropy && trimmed.length >= 28)) {
     return { score: 3, id: 'strong', isAcceptable: true };
   }
 
-  // Memorable phrases need ≥6 words; long mixed strings can still score "good".
-  if (words.length >= 6 || trimmed.length >= 16 || (trimmed.length >= 14 && charVariety >= 2)) {
+  if (fromWordlist || highEntropy) {
     return { score: 2, id: 'good', isAcceptable: true };
   }
 
-  // score 1 ("ok") / 5-word phrases are not acceptable for create/join.
+  // score 1 ("ok") / short freeform / <6 wordlist words are not acceptable.
   return { score: 1, id: 'ok', isAcceptable: false };
 }
