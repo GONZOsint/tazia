@@ -68,6 +68,7 @@ export const en = {
   roomsOpen: 'Open zone',
   roomsConnecting: 'Connecting…',
   roomsInvitePaste: 'Paste link or code',
+  roomsJoinCredentialsHint: 'Scan a QR or paste the link to continue.',
   roomsRoomIdLabel: 'Code',
   roomsJoinCta: 'Enter',
   roomsIpNote:
@@ -144,6 +145,7 @@ export const en = {
   readerDeleteVoteProgress: 'Delete vote: {have}/{need}',
   readerDeleteVoteWaiting: 'Waiting for: {names}',
   readerDeleteVoteYouVoted: 'You already voted.',
+  readerDeleteIncinerating: 'Talk burning away…',
 
   presenceEmptyTitle: 'Empty tribe',
   presenceEmptyBody: 'Open or enter a zone to see the tribe.',
@@ -293,7 +295,8 @@ export const en = {
   dmsTitle: 'Whispers',
   dmsEmpty: 'No whispers yet. Tap someone in the tribe to start.',
   dmsThreadEmpty: 'Say hello — this whisper is sealed pairwise (X25519 + room AAD).',
-  dmsSealedHint: 'Sealed pairwise in this zone (not transport E2E)',
+  dmsSealedHint: 'Sealed pairwise',
+  dmsSealedHintDetail: 'Sealed pairwise in this zone (not transport E2E)',
   dmsStartChat: 'Whisper',
   dmsSend: 'Send',
   dmsPlaceholder: 'Whisper…',

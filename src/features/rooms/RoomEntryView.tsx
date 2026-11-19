@@ -16,6 +16,7 @@ import { TaziaLogo } from '../../components/brand/TaziaLogo';
 import { BurningPhrase } from '../../components/session/BurningPhrase';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { probeBrowserSupportSync } from '../../core/utils/browserSupport';
+import { useHeroIdlePresence } from '../../hooks/useHeroIdlePresence';
 import { ConfettiBurst } from '../../components/ui/ConfettiBurst';
 import {
   BURN,
@@ -35,7 +36,7 @@ import {
   zoneBootReduced,
   zoneCardExit,
 } from '../../motion/tokens';
-import { haptic, HAPTIC_TAP } from '../../motion/haptic';
+import { haptic, HAPTIC_RITUAL, HAPTIC_TAP } from '../../motion/haptic';
 
 function readBootSeen(): boolean {
   try {
@@ -96,6 +97,9 @@ export function RoomEntryView({
   const [createFormKey, setCreateFormKey] = useState(0);
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
+  /** Prevents double commit from onAnimationComplete + fallback timer. */
+  const leaveCommitRef = useRef<string | null>(null);
+  const leaveFallbackRef = useRef<number | null>(null);
   const [qrRoomId, setQrRoomId] = useState<string | null>(null);
   const [pulseRoomId, setPulseRoomId] = useState<string | null>(null);
   const [forgeConfetti, setForgeConfetti] = useState(false);
@@ -131,6 +135,15 @@ export function RoomEntryView({
   const showConfigStage = stageMode && Boolean(entryTab) && !browserBlocked;
   const showHubEntry = hasZones && Boolean(entryTab) && !browserBlocked;
   const skipHeroBootMotion = heroBootPlayedRef.current;
+  const heroIdleEnabled = Boolean(showHeroStage && !reduceMotion && !browserBlocked);
+  const {
+    heroRef,
+    markRef,
+    paused: heroIdlePaused,
+    nudging: heroCtaNudging,
+    parallax: heroParallax,
+    noteInteraction: noteHeroInteraction,
+  } = useHeroIdlePresence(heroIdleEnabled);
 
   useEffect(() => {
     if (initialRoomId) setEntryTab('join');
@@ -241,6 +254,27 @@ export function RoomEntryView({
     onSwitchRoom?.(roomId);
   };
 
+  const commitLeave = (roomId: string) => {
+    if (!onLeaveRoom || leaveCommitRef.current === roomId) return;
+    leaveCommitRef.current = roomId;
+    if (leaveFallbackRef.current !== null) {
+      window.clearTimeout(leaveFallbackRef.current);
+      leaveFallbackRef.current = null;
+    }
+    void onLeaveRoom(roomId).finally(() => {
+      setLeavingId((cur) => (cur === roomId ? null : cur));
+      if (leaveCommitRef.current === roomId) leaveCommitRef.current = null;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (leaveFallbackRef.current !== null) {
+        window.clearTimeout(leaveFallbackRef.current);
+      }
+    };
+  }, []);
+
   const entryForms = (
     <>
       {errorMsg && (
@@ -297,54 +331,73 @@ export function RoomEntryView({
           {showHeroStage ? (
             <motion.section
               key="hero-landing"
+              ref={heroRef}
               initial={reduceMotion ? false : stageSwitch.initial}
               animate={stageSwitch.animate}
-              exit={reduceMotion ? { opacity: 0 } : stageSwitch.exit}
+              exit={reduceMotion ? { opacity: 0.92 } : stageSwitch.exit}
               transition={
                 reduceMotion
                   ? { duration: DUR.micro, ease: EASE.outExpo }
                   : stageSwitch.transition
               }
-              className="hero-landing px-5 py-14 sm:px-10 sm:py-20"
+              onPointerDownCapture={heroIdleEnabled ? noteHeroInteraction : undefined}
+              className={`hero-landing px-5 py-14 sm:px-10 sm:py-20${
+                heroIdleEnabled ? ' hero-landing--alive' : ''
+              }${heroIdleEnabled && heroIdlePaused ? ' hero-landing--paused' : ''}`}
             >
               <div
                 className={`hero-glow${bootMode === 'full' && !reduceMotion ? ' zone-boot-glow' : ''}`}
                 aria-hidden="true"
               />
               <div className="relative mx-auto flex max-w-md flex-col items-center text-center">
-                <motion.div
-                  initial={
-                    skipHeroBootMotion
-                      ? false
-                      : reduceMotion
-                        ? zoneBootReduced.initial
-                        : bootMode === 'full'
-                          ? zoneBootMark.initial
-                          : zoneBootMarkShort.initial
+                <div
+                  ref={markRef}
+                  className="hero-landing-mark-parallax"
+                  style={
+                    heroIdleEnabled
+                      ? {
+                          transform: `translate3d(${heroParallax.x}px, ${heroParallax.y}px, 0)`,
+                        }
+                      : undefined
                   }
-                  animate={
-                    reduceMotion
-                      ? zoneBootReduced.animate
-                      : bootMode === 'full'
-                        ? zoneBootMark.animate
-                        : zoneBootMarkShort.animate
-                  }
-                  transition={
-                    reduceMotion
-                      ? zoneBootReduced.transition
-                      : bootMode === 'full'
-                        ? zoneBootMark.transition
-                        : zoneBootMarkShort.transition
-                  }
-                  whileHover={reduceMotion || browserBlocked ? undefined : { scale: 1.04 }}
-                  className={`hero-landing-mark-wrap${bootRing ? ' zone-boot-mark-ring' : ''}`}
                 >
-                  <TaziaLogo
-                    size={88}
-                    sharedMark
-                    className="hero-landing-mark relative z-[1]"
-                  />
-                </motion.div>
+                  <motion.div
+                    initial={
+                      skipHeroBootMotion
+                        ? false
+                        : reduceMotion
+                          ? zoneBootReduced.initial
+                          : bootMode === 'full'
+                            ? zoneBootMark.initial
+                            : zoneBootMarkShort.initial
+                    }
+                    animate={
+                      reduceMotion
+                        ? zoneBootReduced.animate
+                        : bootMode === 'full'
+                          ? zoneBootMark.animate
+                          : zoneBootMarkShort.animate
+                    }
+                    transition={
+                      reduceMotion
+                        ? zoneBootReduced.transition
+                        : bootMode === 'full'
+                          ? zoneBootMark.transition
+                          : zoneBootMarkShort.transition
+                    }
+                    whileHover={reduceMotion || browserBlocked ? undefined : { scale: 1.04 }}
+                    className={`hero-landing-mark-wrap${bootRing ? ' zone-boot-mark-ring' : ''}`}
+                  >
+                    {/*
+                      No sharedMark here: layoutId orphan on hero→configure exit
+                      caused logo flicker. Handoff to TopBar runs when a zone is active.
+                    */}
+                    <TaziaLogo
+                      size={88}
+                      className="hero-landing-mark relative z-[1]"
+                    />
+                  </motion.div>
+                </div>
                 <motion.h1
                   initial={
                     skipHeroBootMotion
@@ -422,12 +475,19 @@ export function RoomEntryView({
                     transition={TAP_TRANSITION}
                     type="button"
                     disabled={browserBlocked}
+                    onFocus={heroIdleEnabled ? noteHeroInteraction : undefined}
                     onClick={() => {
+                      noteHeroInteraction();
                       haptic(HAPTIC_TAP);
                       openEntry('create');
                     }}
-                    className="hero-cta-primary btn-accent-sheen btn-ring-hover inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-4 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`hero-cta-primary btn-accent-sheen btn-ring-hover inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-4 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50${
+                      heroCtaNudging ? ' is-nudging' : ''
+                    }`}
                   >
+                    {heroIdleEnabled ? (
+                      <span className="hero-cta-sheen-idle" aria-hidden="true" />
+                    ) : null}
                     <PlusCircle className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
                     {t('roomsHeroCreate')}
                   </motion.button>
@@ -437,7 +497,9 @@ export function RoomEntryView({
                     transition={TAP_TRANSITION}
                     type="button"
                     disabled={browserBlocked}
+                    onFocus={heroIdleEnabled ? noteHeroInteraction : undefined}
                     onClick={() => {
+                      noteHeroInteraction();
                       haptic(HAPTIC_TAP);
                       openEntry('join');
                     }}
@@ -452,15 +514,15 @@ export function RoomEntryView({
           ) : showConfigStage ? (
             <motion.section
               key={`entry-stage-${entryTab}`}
-              initial={reduceMotion ? { opacity: 0 } : stageSwitch.initial}
+              initial={reduceMotion ? { opacity: 0.92 } : stageSwitch.initial}
               animate={stageSwitch.animate}
-              exit={reduceMotion ? { opacity: 0 } : stageSwitch.exit}
+              exit={reduceMotion ? { opacity: 0.92 } : stageSwitch.exit}
               transition={
                 reduceMotion
                   ? { duration: DUR.micro, ease: EASE.outExpo }
                   : stageSwitch.transition
               }
-              className="panel-surface p-4 sm:p-5"
+              className="panel-surface mx-auto w-full max-w-3xl p-4 sm:p-5 md:max-w-4xl"
               aria-labelledby="rooms-entry-stage-title"
             >
               <div className="mb-4 flex items-center gap-2">
@@ -538,7 +600,7 @@ export function RoomEntryView({
                         ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                         : 'border-border bg-bg'
                     } ${justJoined ? 'zone-join-pulse igniting-front' : ''} ${
-                      incinerating ? 'incinerated-collapse pointer-events-none' : ''
+                      incinerating ? 'pointer-events-none' : ''
                     } ${room.relayFallbackActive ? 'relay-channel-tint' : ''}`}
                     aria-current={isActive ? 'true' : undefined}
                     aria-busy={incinerating || undefined}
@@ -704,7 +766,7 @@ export function RoomEntryView({
             animate={contentSwitch.animate}
             exit={contentSwitch.exit}
             transition={contentSwitch.transition}
-            className="panel-surface p-4 sm:p-5"
+            className="panel-surface mx-auto w-full max-w-3xl p-4 sm:p-5 md:max-w-4xl"
           >
             {entryForms}
           </motion.section>
@@ -734,12 +796,20 @@ export function RoomEntryView({
           const id = leaveTarget;
           setLeaveTarget(null);
           if (!id || !onLeaveRoom) return;
-          const delayMs = reduceMotion ? BURN.reducedCollapseMs : Math.round(DUR.burn * 1000);
+          haptic(HAPTIC_RITUAL);
+          leaveCommitRef.current = null;
+          setQrRoomId((cur) => (cur === id ? null : cur));
           setLeavingId(id);
-          window.setTimeout(() => {
-            void onLeaveRoom(id).finally(() => {
-              setLeavingId((cur) => (cur === id ? null : cur));
-            });
+          // Match zoneCardExit.incinerate duration (Motion owns the fade; no CSS class).
+          const delayMs = reduceMotion
+            ? BURN.reducedCollapseMs
+            : Math.round(DUR.burn * 1000);
+          if (leaveFallbackRef.current !== null) {
+            window.clearTimeout(leaveFallbackRef.current);
+          }
+          leaveFallbackRef.current = window.setTimeout(() => {
+            leaveFallbackRef.current = null;
+            commitLeave(id);
           }, delayMs);
         }}
       />

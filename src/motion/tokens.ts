@@ -4,9 +4,12 @@
  * Engine contract (one motor per gesture):
  *   - Frequent chrome taps / panel fades → Motion duration tweens (TAP, contentSwitch)
  *   - Send plane → Motion useAnimate only (no CSS .plane-launching)
- *   - Burn button heating → CSS (.burn-heat.is-heating)
- *   - Burn climax → canvas BurnFireOverlay + optional layoutId spark
- *   - Zone ignite / leave incinerate → CSS classes + IGNITE / BURN timings
+ *   - Burn button heating → CSS (.burn-heat.is-heating / flame-flicker-hover)
+ *   - Burn climax → canvas BurnFireOverlay (density field + blur) + layoutId spark
+ *   - Zone ignite → CSS + IGNITE; zone leave → Motion zoneCardExit (not incinerated-collapse)
+ *   - Talk delete ash → CSS `.plaza-talk-incinerate` + TALK_ASH / --dur-talk-ash
+ *   - Hero burn phrase → CSS goo plume (#tazia-fire-plume) behind sharp type
+ *   - Hero idle presence → CSS breath/sheen + JS nudge/parallax (HERO_IDLE; paused when hidden / reduced)
  *   - App entrance → APP_SPLASH then ZONE_BOOT (ritual; no confetti / no canvas)
  *   - Confetti / seal / mesh birth → Motion presets (ritual tier; confetti = create+verify only)
  *
@@ -91,6 +94,15 @@ export const BURN = {
     visualDuration: 0.36,
     bounce: 0.1,
   },
+} as const;
+
+/**
+ * Plaza talk ash — unanimous delete exit (CSS `.plaza-talk-incinerate`).
+ * Shorter than session burn; no canvas overlay.
+ */
+export const TALK_ASH = {
+  durationMs: 720,
+  reducedMs: 160,
 } as const;
 
 /**
@@ -189,18 +201,37 @@ export const ZONE_BOOT = {
   glowMs: 200,
   ctaAtMs: 360,
   finishMs: 520,
-  /** Revisit / post-burn mini-boot. */
-  revisitMs: 200,
+  /** Revisit / post-burn mini-boot — must cover ignite-ring-expand (--dur-ignite-ring). */
+  revisitMs: 320,
   reducedMs: 140,
   storageKey: 'tazia.bootSeen',
   /** Shared brand mark: hero ↔ TopBar. */
   layoutId: 'tazia-mark',
 } as const;
 
+/**
+ * Hero landing idle presence — decorative only (transform/opacity).
+ * Pause when tab hidden or prefers-reduced-motion. Mirror --dur-hero-* in CSS.
+ */
+export const HERO_IDLE = {
+  /** Mark halo breath cycle. */
+  breathMs: 7200,
+  /** Primary CTA idle sheen cycle. */
+  sheenMs: 7200,
+  /** Wait after last interaction before a single CTA nudge. */
+  nudgeAfterMs: 10000,
+  /** Nudge animation length. */
+  nudgeMs: 680,
+  /** Silence after a nudge before the idle timer may fire again. */
+  nudgeCooldownMs: 22000,
+  /** Max parallax offset (px) for mark follow. */
+  parallaxPx: 3.5,
+} as const;
+
 /** Lime/ash confetti — max 400ms; only create-zone + verify OK. */
 export const CONFETTI = {
   ms: 400,
-  count: 14,
+  count: 20,
 } as const;
 
 /**
@@ -245,33 +276,32 @@ export const NAV_INDICATOR = {
 export const NAV_TAP = { scale: 0.9 } as const;
 
 /**
- * Cold leave — Motion must own opacity/scale/y/filter while incinerating.
- * CSS `.incinerated-collapse` only collapses max-height (Motion does not set it);
- * Motion inline styles otherwise win and the CSS fade never shows.
+ * Cold leave (zone card) — Motion-only. Do NOT pair with `.incinerated-collapse`
+ * (that class is for session burn via BurnFireOverlay; its opacity/filter/transform
+ * fight Motion inline styles, and max-height:80rem→0 barely collapses in time).
+ * No filter/blur — flickers on Windows GPUs (same rule as enterPlaza).
  */
 export const zoneCardExit = {
-  initial: { opacity: 1, scale: 1, y: 0, filter: 'blur(0px) brightness(1) saturate(1)' },
+  initial: { opacity: 1, scale: 1, y: 0 },
   /** Pre-unmount incinerate — duration must match DUR.burn / --dur-burn. */
   incinerate: {
     opacity: 0,
     scale: 0.96,
-    y: 4,
-    filter: 'blur(4px) brightness(0.4) saturate(0.55)',
+    y: 8,
     transition: { duration: DUR.burn, ease: EASE.easeIn },
   },
   incinerateReduced: {
     opacity: 0,
     scale: 0.98,
     y: 0,
-    filter: 'blur(0px) brightness(1) saturate(1)',
     transition: { duration: BURN.reducedCollapseMs / 1000, ease: EASE.easeIn },
   },
+  /** After incinerate the card is already gone — keep exit near-instant. */
   exit: {
     opacity: 0,
-    scale: 0.98,
-    y: 4,
-    filter: 'blur(6px) brightness(0.4) saturate(0.5)',
-    transition: { duration: DUR.tab, ease: EASE.easeIn },
+    scale: 0.96,
+    y: 8,
+    transition: { duration: 0.01 },
   },
 };
 
@@ -292,43 +322,46 @@ export const panelEnter = contentSwitch;
 
 /**
  * Hero ↔ configure stage swap (same viewport, no stack/scroll).
- * Fuller fade than contentSwitch so the handoff reads clearly; still panel-tier timing.
+ * Keep opacity high like contentSwitch — mode="wait" + opacity 0 = blank-frame flicker.
  */
 export const stageSwitch = {
-  initial: { opacity: 0, y: 10 },
+  initial: { opacity: 0.9, y: 8 },
   animate: { opacity: 1, y: 0 },
   exit: {
-    opacity: 0,
-    y: -8,
+    opacity: 0.9,
+    y: -6,
     transition: { duration: DUR.micro, ease: EASE.easeIn },
   },
   transition: { duration: DUR.switch, ease: EASE.outExpo },
 };
 
-/** ZONE_BOOT mark settle (full choreography). */
+/** ZONE_BOOT mark settle (full choreography). Soft opacity — avoids empty-frame under splash. */
 export const zoneBootMark = {
-  initial: { opacity: 0, y: 10, scale: 0.88 },
+  initial: { opacity: 0.88, y: 10, scale: 0.88 },
   animate: { opacity: 1, y: 0, scale: 1 },
   transition: EASE.ritualSpring,
 } as const;
 
-/** ZONE_BOOT mark — revisit / reduced: short fade only. */
+/**
+ * ZONE_BOOT mark — revisit / post-splash: settle only.
+ * High initial opacity — splash already owned the brand beat; opacity 0 reads as flicker.
+ */
 export const zoneBootMarkShort = {
-  initial: { opacity: 0, scale: 0.96 },
+  initial: { opacity: 0.92, scale: 0.98 },
   animate: { opacity: 1, scale: 1 },
   transition: { duration: DUR.switch, ease: EASE.outExpo },
 } as const;
 
-/** ZONE_BOOT copy / steps / CTAs — opacity + slight rise. */
+/** ZONE_BOOT copy / steps / CTAs — soft rise (no blank frame). */
 export const zoneBootCopy = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 0.9, y: 4 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: DUR.switch, ease: EASE.outExpo },
 } as const;
 
-/** ZONE_BOOT reduced-motion: fade only. */
+/** ZONE_BOOT reduced-motion: soft fade only. */
 export const zoneBootReduced = {
-  initial: { opacity: 0 },
+  initial: { opacity: 0.92 },
   animate: { opacity: 1 },
   transition: { duration: DUR.micro, ease: EASE.outExpo },
 } as const;
@@ -336,16 +369,17 @@ export const zoneBootReduced = {
 /**
  * Zone switch inside Plaza (apagón).
  * Opacity-first; no scale/blur — scale+blur flickers on Windows GPUs.
+ * Keep floor ≥0.9 so mode="wait" never flashes an empty shell.
  */
 export const enterPlaza = {
-  initial: { opacity: 0.9, y: 4 },
+  initial: { opacity: 0.92, y: 3 },
   animate: {
     opacity: 1,
     y: 0,
     transition: { duration: DUR.tab, ease: EASE.outExpo },
   },
   exit: {
-    opacity: 0.9,
+    opacity: 0.92,
     y: -2,
     transition: { duration: DUR.micro, ease: EASE.easeIn },
   },
@@ -390,6 +424,20 @@ export const modalSheet = {
   },
   transition: { duration: DUR.modal, ease: EASE.outExpo },
 };
+
+/**
+ * Toast auto-dismiss TTLs — keep in sync with ToastHost + CSS `--toast-ttl`.
+ * Progress bar drains over the same window; hover must pause both.
+ */
+export const TOAST = {
+  successMs: 2500,
+  infoMs: 2500,
+  warningMs: 4000,
+  errorMs: 5000,
+} as const;
+
+/** QR secret outer-line ritual — mirror `--dur-secret-frame` / InviteQr. */
+export const SECRET_FRAME_MS = 720;
 
 /** Toast stack card. */
 export const toastEnter = {
@@ -495,15 +543,15 @@ export const bannerEnter = {
 
 /**
  * Icon / label swap inside mode="wait" AnimatePresence
- * (theme, copy, secret phrase, lang).
+ * (theme, copy, secret phrase, lang). Soft opacity — avoid chrome flicker.
  */
 export const iconSwap = {
-  initial: { opacity: 0, scale: 0.85, y: 4 },
+  initial: { opacity: 0.85, scale: 0.9, y: 2 },
   animate: { opacity: 1, scale: 1, y: 0 },
   exit: {
-    opacity: 0,
-    scale: 0.85,
-    y: -4,
+    opacity: 0.85,
+    scale: 0.9,
+    y: -2,
     transition: { duration: DUR.micro, ease: EASE.easeIn },
   },
   transition: { duration: DUR.tab, ease: EASE.outExpo },

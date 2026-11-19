@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { QrCode, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { contentSwitch } from '../../motion/tokens';
+import { contentSwitch, SECRET_FRAME_MS } from '../../motion/tokens';
 import { useTheme } from '../../theme';
 
-const SCAN_SETTLE_MS = 2800;
-/** Must match `--dur-secret-frame` draw + settle in CSS. */
-const SECRET_RING_MS = 720;
+/** Must match `--dur-qr-scan` and CSS iteration count on `.qr-laser-line`. */
+const SCAN_SWEEP_MS = 1350;
+const SCAN_SWEEPS = 2;
+const SCAN_SETTLE_MS = SCAN_SWEEP_MS * SCAN_SWEEPS;
 
 /** Rest pose — soft desk-lamp angle; keep ≤~10° so the QR stays readable. */
 const REST = { rotX: 5.5, rotY: -4.5, z: 0, scale: 1 } as const;
@@ -99,6 +100,8 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [scanning, setScanning] = useState(false);
+  /** Bumps to remount the laser so each scan starts at 0%, never mid-pass. */
+  const [scanEpoch, setScanEpoch] = useState(0);
   const [secretRing, setSecretRing] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -107,6 +110,20 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   const prevSecret = useRef(false);
   const secretBootstrapped = useRef(false);
   const qrReady = dataUrl !== null;
+
+  const startScan = () => {
+    if (scanTimer.current) window.clearTimeout(scanTimer.current);
+    setScanEpoch((n) => n + 1);
+    setScanning(true);
+    // Safety net if animationend is skipped (reduced-motion / tab freeze).
+    scanTimer.current = window.setTimeout(() => setScanning(false), SCAN_SETTLE_MS + 40);
+  };
+
+  const endScan = () => {
+    if (scanTimer.current) window.clearTimeout(scanTimer.current);
+    scanTimer.current = null;
+    setScanning(false);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -128,9 +145,7 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
       .then((url) => {
         if (!cancelled) {
           setDataUrl(url);
-          setScanning(true);
-          if (scanTimer.current) window.clearTimeout(scanTimer.current);
-          scanTimer.current = window.setTimeout(() => setScanning(false), SCAN_SETTLE_MS);
+          startScan();
         }
       })
       .catch(() => {
@@ -151,11 +166,10 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
   useEffect(() => {
     const runSecretFx = () => {
       setSecretRing(true);
-      setScanning(true);
+      startScan();
       if (ringTimer.current) window.clearTimeout(ringTimer.current);
-      if (scanTimer.current) window.clearTimeout(scanTimer.current);
-      ringTimer.current = window.setTimeout(() => setSecretRing(false), SECRET_RING_MS);
-      scanTimer.current = window.setTimeout(() => setScanning(false), SCAN_SETTLE_MS);
+      // Small buffer so the last frames of stroke-dash settle aren't clipped.
+      ringTimer.current = window.setTimeout(() => setSecretRing(false), SECRET_FRAME_MS + 40);
     };
 
     if (!secretBootstrapped.current) {
@@ -362,7 +376,16 @@ export function InviteQr({ inviteUrl, size = 200, includesSecret = false }: Invi
             />
           </svg>
           <div className="qr-surface-face rounded-[calc(var(--radius-ctrl)-4px)]">
-            <div className="qr-laser-line" aria-hidden="true" />
+            <div
+              key={scanEpoch}
+              className="qr-laser-line"
+              aria-hidden="true"
+              onAnimationEnd={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.animationName !== 'qr-scan-sweep') return;
+                endScan();
+              }}
+            />
             <img
               src={dataUrl}
               alt={t('qrAlt')}

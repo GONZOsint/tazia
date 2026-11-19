@@ -1,10 +1,11 @@
 import { useReducedMotion } from 'motion/react';
 
-const EMBER_COUNT = 14;
+/** Fewer, larger blobs so the SVG goo filter fuses into one short plume. */
+const EMBER_COUNT = 11;
 
 /**
  * Inline phrase: soft fire plume rises from behind sharp type
- * (`#tazia-fire-plume` on particles only — text is never filtered).
+ * (transform/opacity particles only — no SVG filters; text stays sharp).
  */
 export function BurningPhrase({ children }: { children: string }) {
   const reduceMotion = useReducedMotion();

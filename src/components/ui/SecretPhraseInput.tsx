@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { TAP, TAP_TRANSITION, iconSwap } from '../../motion/tokens';
+import { DUR, TAP, TAP_TRANSITION, iconSwap } from '../../motion/tokens';
+
+/** Match phrase-ignite / phrase-douse (--dur-ritual). */
+const PHRASE_MOTION_MS = Math.round(DUR.ritual * 1000);
 
 interface SecretPhraseInputProps {
   id: string;
@@ -33,7 +36,7 @@ export function SecretPhraseInput({
     if (prevVisible.current === visible) return;
     prevVisible.current = visible;
     setPhraseMotion(visible ? 'ignite' : 'douse');
-    const id = window.setTimeout(() => setPhraseMotion(null), 300);
+    const id = window.setTimeout(() => setPhraseMotion(null), PHRASE_MOTION_MS);
     return () => window.clearTimeout(id);
   }, [visible]);
 

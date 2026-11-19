@@ -163,16 +163,19 @@ export function DmConversationView({
     }
   };
 
+  const hasText = Boolean(body.trim());
+  const canSend = hasText && !sending;
+
   return (
-    <main className="mx-auto flex h-full min-h-0 w-full max-w-[720px] flex-1 flex-col px-4 py-4 sm:px-8 sm:py-6 md:pb-6">
-      <header className="shrink-0 border-b border-border pb-3">
-        <div className="flex items-center gap-3">
+    <main className="mx-auto flex h-full min-h-0 w-full max-w-[720px] flex-1 flex-col px-4 pt-3 pb-4 sm:px-8 sm:pt-5 sm:pb-6 md:pb-6">
+      <header className="shrink-0 border-b border-border/80 pb-2.5">
+        <div className="flex items-center gap-2.5">
           <motion.button
             whileTap={TAP}
             transition={TAP_TRANSITION}
             type="button"
             onClick={onBack}
-            className="icon-action icon-action--ghost focus-visible:outline-2 focus-visible:outline-accent"
+            className="icon-action icon-action--ghost -ml-1.5 focus-visible:outline-2 focus-visible:outline-accent"
             aria-label={t('dmsBack')}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
@@ -190,6 +193,9 @@ export function DmConversationView({
                 </span>
               )}
             </h1>
+            <p className="type-caption mt-0.5 truncate" title={t('dmsSealedHintDetail')}>
+              {t('dmsSealedHint')}
+            </p>
           </div>
         </div>
       </header>
@@ -200,10 +206,12 @@ export function DmConversationView({
         aria-relevant="additions"
         aria-label={peerAlias}
         onScroll={updateStick}
-        className="relative mt-3 min-h-0 flex-1 space-y-2 overflow-x-clip overflow-y-auto overscroll-contain max-md:pb-28 md:pb-4"
+        className="relative mt-3 min-h-0 flex-1 space-y-1.5 overflow-x-clip overflow-y-auto overscroll-contain max-md:pb-28 md:pb-4"
       >
         {messages.length === 0 && (
-          <p className="py-10 text-center text-sm text-muted">{t('dmsThreadEmpty')}</p>
+          <p className="mx-auto max-w-[22rem] py-10 text-center text-sm leading-snug text-muted">
+            {t('dmsThreadEmpty')}
+          </p>
         )}
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
@@ -228,14 +236,10 @@ export function DmConversationView({
                 style={bubbleOrigin(isSelf)}
                 className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`dm-bubble max-w-[80%] ${isSelf ? 'dm-bubble--self' : ''}`}
-                >
+                <div className={`dm-bubble ${isSelf ? 'dm-bubble--self' : ''}`}>
                   <p className="whitespace-pre-wrap break-words">{msg.body}</p>
                   <motion.p
-                    className={`type-caption mt-1 inline-flex items-center gap-1 ${
-                      isSelf ? 'text-on-accent/60' : ''
-                    }`}
+                    className="dm-bubble__meta type-caption"
                     initial={isSelf && isFresh && !reduceMotion ? sealFlash.initial : false}
                     animate={
                       isSelf && isFresh && !reduceMotion
@@ -250,10 +254,12 @@ export function DmConversationView({
                         initial={isFresh ? sealIcon.initial : false}
                         animate={sealIcon.animate}
                       >
-                        <Lock className="h-2.5 w-2.5 opacity-80" strokeWidth={2.25} />
+                        <Lock className="h-2.5 w-2.5" strokeWidth={2.4} />
                       </motion.span>
                     )}
-                    {formatClockTime(msg.createdAtMs, locale)}
+                    <time dateTime={new Date(msg.createdAtMs).toISOString()}>
+                      {formatClockTime(msg.createdAtMs, locale)}
+                    </time>
                   </motion.p>
                 </div>
               </motion.div>
@@ -265,7 +271,7 @@ export function DmConversationView({
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
-        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2.5 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-4 md:rounded-[var(--radius-panel)] md:border md:p-3"
+        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 border-t border-border/60 bg-bg/90 px-3 py-2.5 backdrop-blur-md md:static md:bottom-auto md:z-auto md:mt-4 md:rounded-[var(--radius-panel)] md:border md:border-border md:bg-surface-raised/95 md:p-3"
       >
         <div className="dm-composer mx-auto w-full max-w-[720px]">
           <label className="sr-only" htmlFor="dm-body">
@@ -284,12 +290,14 @@ export function DmConversationView({
             enterKeyHint="send"
           />
           <motion.button
-            whileTap={body.trim() && !sending ? TAP : undefined}
+            whileTap={canSend ? TAP : undefined}
             transition={TAP_TRANSITION}
             type="submit"
-            disabled={!body.trim() || sending}
+            disabled={!canSend}
             aria-label={sending ? t('dmsSending') : t('dmsSend')}
-            className="btn-accent-sheen dm-composer__send inline-flex h-10 w-10 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent"
+            className={`dm-composer__send inline-flex h-10 w-10 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-accent ${
+              hasText ? 'dm-composer__send--ready btn-accent-sheen' : ''
+            }`}
           >
             <PlaneSendIcon
               planeKey={planeKey}

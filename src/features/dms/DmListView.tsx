@@ -106,11 +106,11 @@ export function DmListView({
   return (
     <main className="mx-auto max-w-[720px] px-4 py-4 sm:px-8 sm:py-6">
       <h1 className="type-headline text-ink">{t('dmsTitle')}</h1>
-      <p className="type-caption mt-1">
+      <p className="type-caption mt-1 max-w-[36rem] text-pretty">
         {hasAnyThread ? t('dmsStartChat') : t('dmsEmpty')}
       </p>
 
-      <ul className="mt-3 space-y-1.5" role="list">
+      <ul className="mt-4 space-y-1" role="list">
         <AnimatePresence mode="popLayout" initial={false}>
           {peerIds.map((id) => {
             const visual = visuals[id];
@@ -140,8 +140,8 @@ export function DmListView({
                         ? `${alias} — ${t('peerOnline')}`
                         : alias
                   }
-                  className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent ${
-                    unread > 0 ? 'ring-1 ring-accent/35' : ''
+                  className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-3.5 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-accent ${
+                    unread > 0 ? 'ring-1 ring-accent/40' : ''
                   }`}
                 >
                   <div className="relative shrink-0">
@@ -158,7 +158,7 @@ export function DmListView({
                     )}
                     {isOnline && (
                       <span
-                        className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-ok"
+                        className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-raised bg-ok"
                         title={t('peerOnline')}
                         aria-hidden="true"
                       />
@@ -182,7 +182,9 @@ export function DmListView({
                       </p>
                       {lastMsg && (
                         <time
-                          className="type-caption shrink-0 tabular-nums"
+                          className={`type-caption shrink-0 tabular-nums ${
+                            unread > 0 ? 'font-semibold text-accent' : ''
+                          }`}
                           dateTime={new Date(lastMsg.createdAtMs).toISOString()}
                         >
                           {formatClockTime(lastMsg.createdAtMs, locale)}
@@ -192,7 +194,7 @@ export function DmListView({
                     {lastMsg ? (
                       <p
                         className={`type-caption mt-0.5 truncate ${
-                          unread > 0 ? 'font-medium text-ink/80' : ''
+                          unread > 0 ? 'font-medium text-ink/85' : ''
                         }`}
                       >
                         {lastMsg.fromUserId === selfUserId ? `${t('you')}: ` : ''}
@@ -203,7 +205,7 @@ export function DmListView({
                     )}
                   </div>
                   {unread > 0 && (
-                    <span className="type-badge shrink-0 rounded-full bg-accent px-2 py-0.5 text-on-accent">
+                    <span className="type-badge shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-on-accent">
                       {unread > 9 ? '9+' : unread}
                     </span>
                   )}

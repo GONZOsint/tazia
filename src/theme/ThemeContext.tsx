@@ -45,13 +45,19 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>(() => detectTheme());
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    const mode = detectTheme();
+    // Sync with theme-boot.js / first paint — do not wait for useEffect (FOUC).
+    applyThemeClass(mode);
+    return mode;
+  });
 
   useEffect(() => {
     applyThemeClass(theme);
   }, [theme]);
 
   const setTheme = useCallback((mode: ThemeMode) => {
+    applyThemeClass(mode);
     setThemeState(mode);
     try {
       localStorage.setItem(STORAGE_KEY, mode);

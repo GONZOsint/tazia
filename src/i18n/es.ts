@@ -70,6 +70,7 @@ export const es: Messages = {
   roomsOpen: 'Abrir zona',
   roomsConnecting: 'Conectando…',
   roomsInvitePaste: 'Pegar enlace o código',
+  roomsJoinCredentialsHint: 'Escanea un QR o pega el enlace para continuar.',
   roomsRoomIdLabel: 'Código',
   roomsJoinCta: 'Entrar',
   roomsIpNote:
@@ -146,6 +147,7 @@ export const es: Messages = {
   readerDeleteVoteProgress: 'Voto de borrado: {have}/{need}',
   readerDeleteVoteWaiting: 'Falta: {names}',
   readerDeleteVoteYouVoted: 'Ya has votado.',
+  readerDeleteIncinerating: 'La charla se apaga…',
 
   presenceEmptyTitle: 'Tribu vacía',
   presenceEmptyBody: 'Abre o entra a una zona para ver a la tribu.',
@@ -295,7 +297,9 @@ export const es: Messages = {
   dmsTitle: 'Susurros',
   dmsEmpty: 'Sin susurros aún. Toca a alguien de la tribu para empezar.',
   dmsThreadEmpty: 'Di hola — este susurro va sellado entre pares (X25519 + AAD de zona).',
-  dmsSealedHint: 'Sellado entre pares en esta zona (no es E2E de transporte)',
+  dmsSealedHint: 'Sellado entre pares',
+  dmsSealedHintDetail:
+    'Sellado entre pares en esta zona (no es E2E de transporte)',
   dmsStartChat: 'Susurro',
   dmsSend: 'Enviar',
   dmsPlaceholder: 'Susurro…',

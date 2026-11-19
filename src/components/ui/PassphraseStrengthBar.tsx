@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PassphraseStrengthId } from '../../core/crypto/passphraseWords';
 import { useT, type MessageKey } from '../../i18n';
+import { DUR } from '../../motion/tokens';
+
+/** Match strength-accept-tremor / passphrase-douse CSS durations. */
+const TREMOR_MS = Math.round(DUR.flash * 1000);
+const DOUSE_MS = Math.round(DUR.ritual * 1000);
 
 const STRENGTH_COPY: Record<PassphraseStrengthId, { label: MessageKey; hint: MessageKey }> = {
   empty: { label: 'strengthEmpty', hint: 'strengthEmptyHint' },
@@ -56,12 +61,12 @@ export function PassphraseStrengthBar({
     prevId.current = id;
     if (!ACCEPTABLE.has(prev) && ACCEPTABLE.has(id)) {
       setTremor(true);
-      const timer = window.setTimeout(() => setTremor(false), 320);
+      const timer = window.setTimeout(() => setTremor(false), TREMOR_MS);
       return () => window.clearTimeout(timer);
     }
     if (ACCEPTABLE.has(prev) && !ACCEPTABLE.has(id) && id !== 'empty') {
       setDouse(true);
-      const timer = window.setTimeout(() => setDouse(false), 280);
+      const timer = window.setTimeout(() => setDouse(false), DOUSE_MS);
       return () => window.clearTimeout(timer);
     }
   }, [id]);
@@ -70,7 +75,7 @@ export function PassphraseStrengthBar({
     if (douseKey <= 0 || douseKey === prevDouseKey.current) return;
     prevDouseKey.current = douseKey;
     setDouse(true);
-    const timer = window.setTimeout(() => setDouse(false), 280);
+    const timer = window.setTimeout(() => setDouse(false), DOUSE_MS);
     return () => window.clearTimeout(timer);
   }, [douseKey]);
 

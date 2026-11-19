@@ -67,8 +67,10 @@
   --dur-flash: 280ms;
   --dur-pulse: 360ms;
   --dur-ring: 360ms;
-  /* QR secret outer-line draw (InviteQr SECRET_RING_MS). */
+  /* QR secret outer-line draw (SECRET_FRAME_MS in motion/tokens.ts). */
   --dur-secret-frame: 720ms;
+  /* QR laser sweep — keep in sync with InviteQr SCAN_SWEEP_MS. */
+  --dur-qr-scan: 1350ms;
   --dur-burn: 480ms;
   --dur-burn-ignition: 480ms;
   --dur-ignite: 280ms;
@@ -82,11 +84,19 @@
   --dur-boot-spark: 80ms;
   --dur-boot-glow: 200ms;
   --dur-boot-chain: 280ms;
-  --dur-boot-finish: 640ms;
-  --dur-boot-revisit: 200ms;
+  /* Mirror ZONE_BOOT.finishMs / revisitMs in motion/tokens.ts */
+  --dur-boot-finish: 520ms;
+  --dur-boot-revisit: 320ms;
+  /* HERO_IDLE — mirror src/motion/tokens.ts */
+  --dur-hero-breath: 7200ms;
+  --dur-hero-sheen: 7200ms;
+  --dur-hero-nudge: 680ms;
   --dur-burn-shimmer: 480ms;
   --dur-burn-front-pulse: 520ms;
   --dur-burn-heat-glow: 560ms;
+  /* Mirror TALK_ASH.durationMs / reducedMs in motion/tokens.ts */
+  --dur-talk-ash: 720ms;
+  --dur-talk-ash-reduced: 160ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -674,32 +684,125 @@ html.dark {
     box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
   }
 
+  /* Unanimous delete ballot — sits under title with clear separation */
+  .plaza-delete-ballot {
+    margin-top: 0.75rem;
+    border: 1px solid var(--color-danger-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-danger-bg);
+    padding: 0.85rem 1rem 0.9rem;
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-danger) 12%, transparent);
+  }
+  .plaza-delete-ballot__track {
+    margin-top: 0.65rem;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-danger) 16%, var(--color-border));
+  }
+  .plaza-delete-ballot__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-danger);
+    transition: width var(--dur-switch) var(--ease-out-expo);
+  }
+
+  /* Talk ash exit after unanimous delete — fire palette (eco of session burn) */
+  .plaza-talk-incinerate {
+    transform-origin: 50% 20%;
+    pointer-events: none;
+    animation: plaza-talk-ash var(--dur-talk-ash) var(--ease-exit) forwards;
+  }
+  .plaza-talk-incinerate--reduced {
+    animation: plaza-talk-ash-reduced var(--dur-talk-ash-reduced) var(--ease-exit) forwards;
+  }
+  @keyframes plaza-talk-ash {
+    0% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      filter: brightness(1) saturate(1);
+      box-shadow: none;
+    }
+    22% {
+      opacity: 1;
+      transform: scale(1.015) translateY(0);
+      filter: brightness(1.06) saturate(1.12);
+      box-shadow:
+        0 0 22px color-mix(in oklab, var(--fire-mid) 36%, transparent),
+        0 0 40px color-mix(in oklab, var(--fire-edge) 18%, transparent);
+    }
+    55% {
+      opacity: 0.55;
+      transform: scale(0.98) translateY(6px);
+      filter: brightness(0.85) saturate(0.7) blur(0.4px);
+      box-shadow: 0 0 12px color-mix(in oklab, var(--fire-edge) 14%, transparent);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.94) translateY(14px);
+      filter: brightness(0.45) saturate(0.4) blur(2px);
+      box-shadow: 0 0 0 transparent;
+    }
+  }
+  @keyframes plaza-talk-ash-reduced {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* Messenger-style bubbles: soft radius with a flatter corner on the seat side */
   .dm-bubble {
-    border-radius: var(--radius-msg);
-    padding: 0.625rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    max-width: 80%;
+    border-radius: var(--radius-msg) var(--radius-msg) var(--radius-msg) 5px;
+    padding: 0.55rem 0.85rem 0.45rem;
     font-size: var(--type-body);
     line-height: var(--leading-message);
-    border: 1px solid var(--color-border);
+    border: 1px solid color-mix(in oklab, var(--color-border) 72%, transparent);
     background: var(--color-surface-raised);
     color: var(--color-ink);
     text-wrap: pretty;
   }
   .dm-bubble--self {
+    border-radius: var(--radius-msg) var(--radius-msg) 5px var(--radius-msg);
     border-color: transparent;
     background: var(--color-accent);
     color: var(--color-on-accent);
+  }
+  .dm-bubble__meta {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--color-muted);
+  }
+  .dm-bubble--self .dm-bubble__meta {
+    color: color-mix(in oklab, var(--color-on-accent) 68%, transparent);
   }
 
   /* Compact chat composer — single-line feel, grows with content */
   .dm-composer {
     display: flex;
     align-items: flex-end;
-    gap: 0.5rem;
-    border-radius: calc(var(--radius-panel) + 2px);
-    border: 1px solid var(--color-border);
-    background: color-mix(in oklab, var(--color-surface-raised) 92%, var(--color-bg));
-    padding: 0.4rem 0.4rem 0.4rem 0.65rem;
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
+    gap: 0.45rem;
+    border-radius: calc(var(--radius-panel) + 4px);
+    border: 1px solid color-mix(in oklab, var(--color-border) 88%, var(--color-ink));
+    background: color-mix(in oklab, var(--color-surface-raised) 88%, var(--color-bg));
+    padding: 0.35rem 0.35rem 0.35rem 0.75rem;
+    transition:
+      border-color var(--dur-micro) var(--ease-out-expo),
+      box-shadow var(--dur-micro) var(--ease-out-expo);
+  }
+  .dm-composer:focus-within {
+    border-color: color-mix(in oklab, var(--color-accent) 42%, var(--color-border));
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 18%, transparent);
   }
   .dm-composer__field {
     flex: 1 1 auto;
@@ -709,7 +812,7 @@ html.dark {
     resize: none;
     border: 0;
     background: transparent;
-    padding: 0.55rem 0.25rem;
+    padding: 0.55rem 0.2rem;
     font-size: 16px;
     line-height: 1.4;
     color: var(--color-ink);
@@ -717,7 +820,8 @@ html.dark {
     field-sizing: content;
   }
   .dm-composer__field::placeholder {
-    color: var(--color-faint);
+    color: var(--color-muted);
+    opacity: 0.78;
   }
   .dm-composer__field:focus {
     outline: none;
@@ -725,6 +829,30 @@ html.dark {
   }
   .dm-composer__send {
     flex-shrink: 0;
+    border: 0;
+    background: var(--color-surface);
+    color: var(--color-accent);
+    transition:
+      background-color var(--dur-micro) var(--ease-out-expo),
+      color var(--dur-micro) var(--ease-out-expo),
+      opacity var(--dur-micro) var(--ease-out-expo);
+  }
+  .dm-composer__send:disabled:not(.dm-composer__send--ready) {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .dm-composer__send--ready {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  .dm-composer__send--ready:disabled {
+    cursor: wait;
+    opacity: 0.85;
+  }
+  @media (hover: hover) {
+    .dm-composer__send--ready:not(:disabled):hover {
+      background: var(--color-accent-hover);
+    }
   }
 
   .thread-quote {
@@ -834,7 +962,7 @@ html.dark {
       );
     opacity: 1;
   }
-  /* ZONE_BOOT: one-shot cold → lit glow (no infinite loop; WCAG 2.2.2). */
+  /* ZONE_BOOT: one-shot cold → lit glow. Idle loops live under .hero-landing--alive. */
   .hero-glow.zone-boot-glow {
     opacity: 0;
   }
@@ -861,6 +989,10 @@ html.dark {
         var(--color-bg) 100%
       );
   }
+  .hero-landing-mark-parallax {
+    display: inline-flex;
+    will-change: transform;
+  }
   .hero-landing-mark {
     position: relative;
     box-shadow:
@@ -882,9 +1014,15 @@ html.dark {
       color-mix(in oklab, var(--color-accent) 28%, transparent),
       transparent 68%
     );
-    opacity: 0.55;
+    opacity: 0.52;
     pointer-events: none;
     z-index: 0;
+  }
+  /* Soft brand breath — long period, opacity only (Duolingo-style idle presence). */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-landing--alive:not(.hero-landing--paused) .hero-landing-mark-wrap::before {
+      animation: hero-mark-breath var(--dur-hero-breath) ease-in-out infinite;
+    }
   }
   /* One-shot ring on boot mark (mirrors ignite-ring-expand). */
   .hero-landing-mark-wrap.zone-boot-mark-ring::after {
@@ -903,8 +1041,8 @@ html.dark {
     }
   }
   /*
-   * Hero burn phrase — soft plume rises FROM BEHIND sharp type (never filtered).
-   * Particles use #tazia-fire-plume (goo only, no SourceGraphic dots).
+   * Hero burn phrase — soft plume rises FROM BEHIND sharp type.
+   * Transform/opacity only (no SVG filter — Windows GPU flicker).
    */
   .hero-burn-phrase {
     position: relative;
@@ -921,81 +1059,112 @@ html.dark {
     z-index: 2;
     font-weight: 650;
     /* Readable ink with a warm tint — no heavy glow that looks melted */
-    color: color-mix(in oklab, var(--fire-mid) 42%, var(--color-ink));
-    text-shadow: 0 0 0.5px color-mix(in oklab, var(--fire-edge) 30%, transparent);
+    color: color-mix(in oklab, var(--fire-mid) 40%, var(--color-ink));
+    text-shadow: 0 0 0.5px color-mix(in oklab, var(--fire-edge) 28%, transparent);
   }
-  @media (prefers-reduced-motion: no-preference) {
-    .hero-burn-phrase:not(.hero-burn-phrase--static) .hero-burn-phrase__text {
-      animation: hero-burn-text-flicker 3.2s ease-in-out infinite;
-    }
-  }
+  /*
+   * No infinite text-color flicker (WCAG 2.2.2 + Windows GPU shimmer).
+   * Plume is opacity/transform only — SVG feGaussianBlur filters flicker on Windows.
+   */
   .hero-burn-phrase__embers {
     position: absolute;
-    left: -0.15em;
-    right: -0.15em;
-    bottom: 0.02em;
-    height: 1.35em;
+    left: -0.1em;
+    right: -0.1em;
+    bottom: 0;
+    height: 1.2em;
     pointer-events: none;
     z-index: 0;
     overflow: visible;
-    opacity: 0.72;
-    filter: url(#tazia-fire-plume);
+    /* Quieter when mark breath + CTA sheen also run. */
+    opacity: 0.38;
   }
   .hero-burn-phrase__p {
     position: absolute;
-    bottom: 0.08em;
-    width: 0.22em;
-    height: 0.22em;
+    bottom: 0.04em;
+    width: 0.34em;
+    height: 0.34em;
     border-radius: 50%;
     background: var(--fire-mid);
     pointer-events: none;
-    animation-duration: 1.45s;
-    animation-timing-function: linear;
+    /* Soft edge without SVG filter (box-shadow composites cheaper on Windows). */
+    box-shadow: 0 0 0.35em color-mix(in oklab, var(--fire-mid) 55%, transparent);
+    /* Shared duration → blobs rise as one plume, not scattered sparks */
+    animation-duration: 2.15s;
+    animation-timing-function: ease-out;
     animation-iteration-count: infinite;
   }
-  .hero-burn-phrase__p:nth-child(1)  { left: 4%;  background: var(--fire-edge); animation-name: hero-plume-1;  animation-delay: -0.43s; }
-  .hero-burn-phrase__p:nth-child(2)  { left: 11%; background: var(--fire-mid);  animation-name: hero-plume-2;  animation-delay: -0.65s; }
-  .hero-burn-phrase__p:nth-child(3)  { left: 18%; background: var(--fire-core); animation-name: hero-plume-3;  animation-delay: 0s; }
-  .hero-burn-phrase__p:nth-child(4)  { left: 25%; background: var(--fire-mid);  animation-name: hero-plume-1;  animation-delay: -0.9s; }
-  .hero-burn-phrase__p:nth-child(5)  { left: 32%; background: color-mix(in oklab, var(--color-accent) 35%, var(--fire-core)); animation-name: hero-plume-2;  animation-delay: -0.3s; }
-  .hero-burn-phrase__p:nth-child(6)  { left: 39%; background: var(--fire-core); animation-name: hero-plume-3;  animation-delay: -0.12s; }
-  .hero-burn-phrase__p:nth-child(7)  { left: 46%; background: var(--fire-mid);  animation-name: hero-plume-1;  animation-delay: -0.84s; }
-  .hero-burn-phrase__p:nth-child(8)  { left: 53%; background: var(--fire-edge); animation-name: hero-plume-2;  animation-delay: -0.36s; }
-  .hero-burn-phrase__p:nth-child(9)  { left: 60%; background: var(--fire-core); animation-name: hero-plume-3;  animation-delay: -0.33s; }
-  .hero-burn-phrase__p:nth-child(10) { left: 67%; background: color-mix(in oklab, var(--color-accent) 28%, var(--fire-core)); animation-name: hero-plume-1; animation-delay: -0.96s; }
-  .hero-burn-phrase__p:nth-child(11) { left: 74%; background: var(--fire-mid);  animation-name: hero-plume-2; animation-delay: -0.67s; }
-  .hero-burn-phrase__p:nth-child(12) { left: 81%; background: var(--fire-core); animation-name: hero-plume-3; animation-delay: -0.36s; }
-  .hero-burn-phrase__p:nth-child(13) { left: 88%; background: var(--fire-edge); animation-name: hero-plume-1; animation-delay: -0.96s; }
-  .hero-burn-phrase__p:nth-child(14) { left: 94%; background: var(--fire-mid);  animation-name: hero-plume-2; animation-delay: -0.98s; }
+  .hero-landing--paused .hero-burn-phrase__p {
+    animation-play-state: paused;
+  }
+  .hero-burn-phrase__p:nth-child(1)  { left: 6%;  background: var(--fire-edge); animation-name: hero-plume-1; animation-delay: -0.2s; }
+  .hero-burn-phrase__p:nth-child(2)  { left: 15%; background: var(--fire-mid);  animation-name: hero-plume-2; animation-delay: -0.55s; }
+  .hero-burn-phrase__p:nth-child(3)  { left: 24%; background: var(--fire-core); animation-name: hero-plume-3; animation-delay: -0.1s; }
+  .hero-burn-phrase__p:nth-child(4)  { left: 33%; background: var(--fire-mid);  animation-name: hero-plume-1; animation-delay: -0.85s; }
+  .hero-burn-phrase__p:nth-child(5)  { left: 42%; background: color-mix(in oklab, var(--color-accent) 22%, var(--fire-core)); animation-name: hero-plume-2; animation-delay: -0.35s; }
+  .hero-burn-phrase__p:nth-child(6)  { left: 50%; background: var(--fire-core); animation-name: hero-plume-3; animation-delay: -0.7s; }
+  .hero-burn-phrase__p:nth-child(7)  { left: 58%; background: var(--fire-mid);  animation-name: hero-plume-1; animation-delay: -0.05s; }
+  .hero-burn-phrase__p:nth-child(8)  { left: 67%; background: var(--fire-edge); animation-name: hero-plume-2; animation-delay: -0.95s; }
+  .hero-burn-phrase__p:nth-child(9)  { left: 76%; background: var(--fire-core); animation-name: hero-plume-3; animation-delay: -0.4s; }
+  .hero-burn-phrase__p:nth-child(10) { left: 85%; background: color-mix(in oklab, var(--color-accent) 18%, var(--fire-mid)); animation-name: hero-plume-1; animation-delay: -0.75s; }
+  .hero-burn-phrase__p:nth-child(11) { left: 93%; background: var(--fire-mid);  animation-name: hero-plume-2; animation-delay: -0.25s; }
 
-  /* Short rise: flame peeks from glyph baseline upward, not a tall covering plume */
+  /* Short rise: fused plume peeks from glyph baseline — tight vertical travel */
   @keyframes hero-plume-1 {
-    from { transform: translate(0, 0.15em) scale(0.85); opacity: 0.35; }
-    40%  { transform: translate(-0.04em, -0.55em) scale(1); opacity: 0.85; }
-    to   { transform: translate(0.02em, -1.05em) scale(0.2); opacity: 0; }
+    from { transform: translate(0, 0.12em) scale(0.9); opacity: 0.4; }
+    38%  { transform: translate(-0.03em, -0.42em) scale(1.05); opacity: 0.9; }
+    to   { transform: translate(0.02em, -0.88em) scale(0.25); opacity: 0; }
   }
   @keyframes hero-plume-2 {
-    from { transform: translate(0, 0.12em) scale(0.8); opacity: 0.3; }
-    45%  { transform: translate(0.05em, -0.62em) scale(1.05); opacity: 0.8; }
-    to   { transform: translate(-0.03em, -1.15em) scale(0.15); opacity: 0; }
+    from { transform: translate(0, 0.1em) scale(0.85); opacity: 0.35; }
+    42%  { transform: translate(0.035em, -0.48em) scale(1.08); opacity: 0.85; }
+    to   { transform: translate(-0.02em, -0.95em) scale(0.2); opacity: 0; }
   }
   @keyframes hero-plume-3 {
-    from { transform: translate(0, 0.1em) scale(0.75); opacity: 0.28; }
-    50%  { transform: translate(-0.02em, -0.48em) scale(1); opacity: 0.75; }
-    to   { transform: translate(0.04em, -0.95em) scale(0.18); opacity: 0; }
-  }
-
-  @keyframes hero-burn-text-flicker {
-    0%, 100% {
-      color: color-mix(in oklab, var(--fire-mid) 42%, var(--color-ink));
-    }
-    50% {
-      color: color-mix(in oklab, var(--fire-mid) 52%, var(--color-ink));
-    }
+    from { transform: translate(0, 0.08em) scale(0.8); opacity: 0.32; }
+    48%  { transform: translate(-0.015em, -0.38em) scale(1.02); opacity: 0.8; }
+    to   { transform: translate(0.03em, -0.82em) scale(0.22); opacity: 0; }
   }
 
   .hero-cta-primary {
+    position: relative;
     min-height: 3.25rem;
+    overflow: hidden;
+  }
+  /* Idle sheen layer — separate from hover ::after so motors do not fight. */
+  .hero-cta-sheen-idle {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      110deg,
+      transparent 28%,
+      color-mix(in srgb, white 26%, transparent) 50%,
+      transparent 72%
+    );
+    transform: translateX(-130%);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-landing--alive:not(.hero-landing--paused) .hero-cta-sheen-idle {
+      opacity: 1;
+      animation: hero-cta-sheen-idle var(--dur-hero-sheen) var(--ease-out-expo) infinite;
+    }
+  }
+  @media (hover: hover) {
+    .hero-cta-primary:hover .hero-cta-sheen-idle,
+    .hero-cta-primary:focus-visible .hero-cta-sheen-idle {
+      animation-play-state: paused;
+      opacity: 0;
+    }
+  }
+  .hero-cta-primary > :not(.hero-cta-sheen-idle) {
+    position: relative;
+    z-index: 1;
+  }
+  .hero-cta-primary.is-nudging {
+    animation: hero-cta-nudge var(--dur-hero-nudge) var(--ease-out-expo) 1;
   }
   .hero-cta-secondary {
     min-height: 3.25rem;
@@ -1134,13 +1303,12 @@ html.dark {
     }
     .burn-heat:hover:not(.is-heating) .burn-flame-icon {
       color: var(--fire-mid);
-      transform: scale(1.06);
+      animation: flame-flicker-hover 420ms ease-in-out infinite alternate;
     }
   }
   .burn-heat .burn-flame-icon {
     transition:
       color var(--dur-micro) var(--ease-out-expo),
-      transform var(--dur-micro) var(--ease-out-expo),
       filter var(--dur-micro) ease;
   }
   .burn-heat.is-heating {
@@ -1181,6 +1349,11 @@ html.dark {
     filter: saturate(1.06) brightness(1.02);
     animation: burn-front-pulse var(--dur-burn-front-pulse) ease-in-out infinite alternate;
   }
+  /*
+   * Session burn only (BurnFireOverlay classList). Zone-card leave uses Motion
+   * (zoneCardExit) — do not add this class to motion-driven zone rows or the
+   * CSS opacity/filter/transform will fight Motion inline styles.
+   */
   .session-burn-target.incinerated-collapse {
     opacity: 0;
     max-height: 0 !important;
@@ -1190,8 +1363,9 @@ html.dark {
     padding-bottom: 0 !important;
     border-width: 0 !important;
     overflow: hidden;
-    filter: blur(4px) brightness(0.4) saturate(0.55);
-    transform: scale(0.96) translateY(4px);
+    /* Warm ash cool-down — keep filter light so it doesn't fight layout collapse */
+    filter: brightness(0.5) saturate(0.55) sepia(0.2);
+    transform: scale(0.97) translateY(5px);
     transition:
       max-height var(--dur-burn) var(--ease-in-out-quart),
       opacity var(--dur-burn) var(--ease-exit),
@@ -1256,7 +1430,8 @@ html.dark {
     width: 100%;
     background: var(--color-accent);
     transform-origin: left center;
-    animation: toast-progress-drain var(--toast-ttl, 4500ms) linear forwards;
+    /* Fallback matches TOAST.infoMs — live value set via --toast-ttl on the card. */
+    animation: toast-progress-drain var(--toast-ttl, 2500ms) linear forwards;
   }
   .tazia-toast-card[data-tone='warning'] .tazia-toast-progress > span {
     background: var(--color-warn);
@@ -1338,9 +1513,16 @@ html.dark {
   }
 }
 
+/* Transform + box-shadow only — filter drop-shadow flickers on Windows GPUs. */
 @keyframes flame-flicker-hover {
-  0% { transform: scale(1) rotate(-4deg); filter: drop-shadow(0 0 2px var(--fire-mid)); }
-  100% { transform: scale(1.14) rotate(4deg); filter: drop-shadow(0 0 8px var(--fire-core)); }
+  0% {
+    transform: scale(1) rotate(-3deg);
+    box-shadow: 0 0 2px color-mix(in oklab, var(--fire-mid) 55%, transparent);
+  }
+  100% {
+    transform: scale(1.1) rotate(3deg);
+    box-shadow: 0 0 7px color-mix(in oklab, var(--fire-core) 70%, transparent);
+  }
 }
 
 @keyframes burn-heat-glow {
@@ -1559,7 +1741,44 @@ html.dark {
   100% { opacity: 0.7; letter-spacing: 0.02em; }
 }
 
-/* ZONE_BOOT one-shots (finite; no infinite hero loops). */
+/* Hero idle presence — long-period decorative loops (paused when tab hidden / reduced). */
+@keyframes hero-mark-breath {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.68;
+    transform: scale(1.04);
+  }
+}
+@keyframes hero-cta-sheen-idle {
+  0%,
+  70% {
+    transform: translateX(-130%);
+  }
+  88% {
+    transform: translateX(130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+@keyframes hero-cta-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-2px);
+  }
+  70% {
+    transform: translateY(0);
+  }
+}
+
+/* ZONE_BOOT one-shots (finite boot ritual). */
 @keyframes zone-boot-glow {
   0% { opacity: 0; transform: scale(0.94); }
   100% { opacity: 1; transform: scale(1); }
@@ -1793,13 +2012,14 @@ html.dark {
   pointer-events: none;
 }
 .qr-surface-3d.scanning .qr-laser-line {
-  animation: qr-scan-sweep 1.35s var(--ease-in-out-quart) infinite;
+  /* Finite sweeps — never cut mid-pass via JS timeout (InviteQr SCAN_SWEEPS). */
+  animation: qr-scan-sweep var(--dur-qr-scan) var(--ease-in-out-quart) 2 both;
 }
 @keyframes qr-scan-sweep {
   0% { top: 8%; opacity: 0; transform: scaleX(0.94); }
   12% { opacity: 0.88; transform: scaleX(1); }
   88% { opacity: 0.72; transform: scaleX(1); }
-  100% { top: 90%; opacity: 0; transform: scaleX(0.96); }
+  100% { top: 92%; opacity: 0; transform: scaleX(0.96); }
 }
 
 /* --- Verify emoji tiles: per-cell 3D (no shared grid tilt) --- */
@@ -1884,11 +2104,15 @@ html.dark {
   .qr-success-ring,
   .hero-glow.zone-boot-glow,
   .hero-landing-mark-wrap.zone-boot-mark-ring::after,
+  .hero-landing-mark-wrap::before,
+  .hero-cta-sheen-idle,
+  .hero-cta-primary.is-nudging,
   .hero-burn-phrase__text,
   .hero-burn-phrase__p {
     animation: none !important;
   }
-  .hero-burn-phrase__embers {
+  .hero-burn-phrase__embers,
+  .hero-cta-sheen-idle {
     display: none !important;
   }
   .cta-ignite-spark,
@@ -1940,6 +2164,10 @@ html.dark {
   .session-burn-target.incinerated-collapse {
     filter: none;
     transition: opacity 160ms ease, max-height 160ms ease;
+  }
+  .plaza-talk-incinerate {
+    filter: none !important;
+    box-shadow: none !important;
   }
   .qr-surface-3d {
     transition: none;

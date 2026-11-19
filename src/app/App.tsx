@@ -46,7 +46,7 @@ const ALL_TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const satisfies
 function TabSkeleton() {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={{ opacity: 0.85 }}
       animate={{ opacity: 1 }}
       transition={{ duration: DUR.micro, ease: EASE.outExpo }}
       className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16"
@@ -310,20 +310,6 @@ export default function App() {
         ref={mainRef}
         className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-0"
       >
-        {/* Soft plume filter for hero burn phrase (no SourceGraphic — no hard dots on letters). */}
-        <svg width="0" height="0" className="pointer-events-none absolute" aria-hidden="true" focusable="false">
-          <defs>
-            <filter id="tazia-fire-plume" x="-40%" y="-120%" width="180%" height="260%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="blur" />
-              <feColorMatrix
-                in="blur"
-                mode="matrix"
-                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 12 -5"
-                result="plume"
-              />
-            </filter>
-          </defs>
-        </svg>
         <TopBar
           activeTab={activeTab}
           onSelectTab={selectTab}

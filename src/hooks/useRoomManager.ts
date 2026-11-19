@@ -28,6 +28,7 @@ import {
   type RoomJoinParams,
   type RoomState,
 } from './roomManagerTypes';
+import { TOAST } from '../motion/tokens';
 
 export type { SessionError } from './sessionErrors';
 export type { RoomJoinParams, RoomState } from './roomManagerTypes';
@@ -126,7 +127,7 @@ export function useRoomManager(
   useEffect(() => {
     if (!burnNotice) return;
     if (burnTimerRef.current !== null) window.clearTimeout(burnTimerRef.current);
-    burnTimerRef.current = window.setTimeout(() => setBurnNotice(false), 4000);
+    burnTimerRef.current = window.setTimeout(() => setBurnNotice(false), TOAST.warningMs);
     return () => {
       if (burnTimerRef.current !== null) window.clearTimeout(burnTimerRef.current);
     };

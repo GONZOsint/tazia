@@ -18,6 +18,7 @@ import { EmptyZoneCta } from '../../components/ui/AccentButton';
 import {
   DUR,
   EASE,
+  IGNITE,
   listRowEnter,
   peerMaterialize,
   peerRowExit,
@@ -120,13 +121,14 @@ export function PresenceView({
       for (const id of joined) merged.add(id);
       return merged;
     });
+    // Cover peer-join-dot (--dur-pulse) + peerMaterialize settle.
     const timer = window.setTimeout(() => {
       setJustJoinedIds((cur) => {
         const cleaned = new Set(cur);
         for (const id of joined) cleaned.delete(id);
         return cleaned;
       });
-    }, 420);
+    }, IGNITE.finishMs);
     return () => window.clearTimeout(timer);
   }, [onlineUserIds, selfUserId]);
 

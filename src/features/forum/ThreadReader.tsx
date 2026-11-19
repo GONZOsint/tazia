@@ -470,35 +470,71 @@ export function ThreadReader({
         )}
       </div>
 
-      {deleteBallot && (
-        <div className="mb-2 shrink-0 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-3 py-2">
-          <p className="text-sm font-semibold text-ink">
-            {t('readerDeleteVoteProgress', {
-              have: deleteBallot.votes.length,
-              need: deleteBallot.electorate.length,
-            })}
-          </p>
-          {waitingNames ? (
-            <p className="type-caption mt-0.5 text-ink/70">
-              {t('readerDeleteVoteWaiting', { names: waitingNames })}
-            </p>
-          ) : null}
-          {selfHasVoted ? (
-            <p className="type-caption mt-1 text-ink/60">{t('readerDeleteVoteYouVoted')}</p>
-          ) : (
-            <motion.button
-              whileTap={TAP}
-              transition={TAP_TRANSITION}
-              type="button"
-              onClick={() => void handleVoteDelete()}
-              disabled={isBusy || deleteBusy}
-              className="mt-2 inline-flex min-h-[40px] items-center rounded-[var(--radius-ctrl)] bg-danger px-3 py-1.5 text-sm font-semibold text-on-danger hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
-            >
-              {t('readerDeleteVoteAye')}
-            </motion.button>
-          )}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {deleteBallot && (
+          <motion.div
+            key={deleteBallot.proposalMsgId}
+            initial={disclosure.initial}
+            animate={disclosure.animate}
+            exit={disclosure.exit}
+            transition={disclosure.transition}
+            className="plaza-delete-ballot shrink-0 overflow-hidden"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-start gap-2.5">
+              <Flame
+                className="mt-0.5 h-4 w-4 shrink-0 text-danger-ink"
+                aria-hidden="true"
+                strokeWidth={2}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-danger-ink">
+                  {t('readerDeleteVoteProgress', {
+                    have: deleteBallot.votes.length,
+                    need: deleteBallot.electorate.length,
+                  })}
+                </p>
+                {waitingNames ? (
+                  <p className="type-caption mt-1 text-danger-ink/75">
+                    {t('readerDeleteVoteWaiting', { names: waitingNames })}
+                  </p>
+                ) : null}
+                {selfHasVoted ? (
+                  <p className="type-caption mt-1.5 text-danger-ink/60">
+                    {t('readerDeleteVoteYouVoted')}
+                  </p>
+                ) : (
+                  <motion.button
+                    whileTap={TAP}
+                    transition={TAP_TRANSITION}
+                    type="button"
+                    onClick={() => void handleVoteDelete()}
+                    disabled={isBusy || deleteBusy}
+                    className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-ctrl)] bg-danger px-3 py-2 text-sm font-semibold text-on-danger hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger sm:w-auto"
+                  >
+                    {t('readerDeleteVoteAye')}
+                  </motion.button>
+                )}
+                <div
+                  className="plaza-delete-ballot__track"
+                  aria-hidden="true"
+                >
+                  <div
+                    className="plaza-delete-ballot__fill"
+                    style={{
+                      width: `${Math.round(
+                        (deleteBallot.votes.length / Math.max(1, deleteBallot.electorate.length)) *
+                          100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ConfirmModal
         open={deleteConfirmOpen}
@@ -512,7 +548,7 @@ export function ThreadReader({
       />
 
       <div
-        className={`min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain py-2 md:space-y-2 md:pb-4 ${
+        className={`min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain pt-3 pb-2 md:space-y-2 md:pt-4 md:pb-4 ${
           replyParent ? 'max-md:pb-32' : 'max-md:pb-24'
         }`}
       >

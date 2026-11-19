@@ -3,7 +3,7 @@ import { Link2, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { buildInviteUrl } from '../../core/utils/inviteLink';
 import { useT } from '../../i18n';
-import { contentSwitch, disclosure } from '../../motion/tokens';
+import { contentSwitch, disclosure, SECRET_FRAME_MS } from '../../motion/tokens';
 import { InviteQr } from '../../components/session/InviteQr';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { CopyButton } from '../../components/ui/CopyButton';
@@ -106,7 +106,7 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
               tone: 'warning',
               dedupeKey: 'phrase-in-link',
             });
-          }, 640);
+          }, SECRET_FRAME_MS);
         }}
         onCancel={() => setConfirmOpen(false)}
       />

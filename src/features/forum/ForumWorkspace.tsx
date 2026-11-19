@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { List, MessageSquare, MessageSquarePlus } from 'lucide-react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import {
   deletedThreadIds,
@@ -10,7 +10,15 @@ import {
 } from '../../core/forum/threadDelete';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
-import { TAP, TAP_TRANSITION, contentSwitch, drawerPanel, modalScrim } from '../../motion/tokens';
+import { haptic, HAPTIC_RITUAL } from '../../motion/haptic';
+import {
+  TAP,
+  TAP_TRANSITION,
+  TALK_ASH,
+  contentSwitch,
+  drawerPanel,
+  modalScrim,
+} from '../../motion/tokens';
 import { RoomSidebar, type ThreadGroup } from './RoomSidebar';
 import { ThreadComposer } from './ThreadComposer';
 import { ThreadReader, type AuthorVisualCache } from './ThreadReader';
@@ -61,11 +69,16 @@ export function ForumWorkspace({
   onVoteDeleteThread,
 }: ForumWorkspaceProps) {
   const t = useT();
+  const reduceMotion = useReducedMotion();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isComposingThread, setIsComposingThread] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [authorVisuals, setAuthorVisuals] = useState<AuthorVisualCache>({});
   const [topicsOpen, setTopicsOpen] = useState(false);
+  /** Snapshot while the talk ash exit plays after unanimous delete. */
+  const [ashThread, setAshThread] = useState<ThreadGroup | null>(null);
+  const lastLiveThreadRef = useRef<ThreadGroup | null>(null);
+  const ashPlayedRef = useRef<Set<string>>(new Set());
 
   const deletedIds = useMemo(() => deletedThreadIds(messages), [messages]);
 
@@ -124,7 +137,37 @@ export function ForumWorkspace({
     return openBallotForThread(messages, activeThread.threadId);
   }, [messages, activeThread]);
 
+  useEffect(() => {
+    if (activeThread && !deletedIds.has(activeThread.threadId)) {
+      lastLiveThreadRef.current = activeThread;
+    }
+  }, [activeThread, deletedIds]);
+
+  useEffect(() => {
+    if (selectedThreadId && deletedIds.has(selectedThreadId)) {
+      setSelectedThreadId(null);
+    }
+  }, [deletedIds, selectedThreadId]);
+
+  useEffect(() => {
+    const last = lastLiveThreadRef.current;
+    if (!last || !deletedIds.has(last.threadId)) return;
+    if (ashPlayedRef.current.has(last.threadId)) return;
+    ashPlayedRef.current.add(last.threadId);
+    setAshThread(last);
+    haptic(HAPTIC_RITUAL);
+  }, [deletedIds]);
+
+  useEffect(() => {
+    if (!ashThread) return;
+    const ms = reduceMotion ? TALK_ASH.reducedMs : TALK_ASH.durationMs;
+    const timer = window.setTimeout(() => setAshThread(null), ms);
+    return () => window.clearTimeout(timer);
+  }, [ashThread, reduceMotion]);
+
   const isBusy = isPublishing;
+  const displayThread = ashThread ?? activeThread;
+  const displayBallot = ashThread ? null : activeDeleteBallot;
 
   const sidebarProps = {
     roomId,
@@ -255,29 +298,37 @@ export function ForumWorkspace({
               </motion.div>
             ) : (
               <motion.div
-                key={activeThread?.threadId ?? 'idle'}
-                initial={contentSwitch.initial}
+                key={ashThread ? `ash-${ashThread.threadId}` : displayThread?.threadId ?? 'idle'}
+                initial={ashThread ? false : contentSwitch.initial}
                 animate={contentSwitch.animate}
                 exit={contentSwitch.exit}
                 transition={contentSwitch.transition}
-                className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+                  ashThread
+                    ? reduceMotion
+                      ? 'plaza-talk-incinerate plaza-talk-incinerate--reduced'
+                      : 'plaza-talk-incinerate'
+                    : ''
+                }`}
+                aria-busy={ashThread ? true : undefined}
+                aria-label={ashThread ? t('readerDeleteIncinerating') : undefined}
               >
-                {isSyncing && messages.length === 0 ? (
+                {isSyncing && messages.length === 0 && !ashThread ? (
                   <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
                     <div className="panel-surface h-32 animate-pulse" />
                     <div className="panel-surface h-24 animate-pulse" />
                   </div>
-                ) : activeThread ? (
+                ) : displayThread ? (
                   <ThreadReader
-                    thread={activeThread}
+                    thread={displayThread}
                     identity={profile}
                     selfUserId={selfUserId}
                     presenceAliases={presenceAliases}
                     authorVisuals={authorVisuals}
                     onAuthorVisuals={setAuthorVisuals}
                     onlineUserIds={onlineUserIds}
-                    deleteBallot={activeDeleteBallot}
-                    isBusy={isBusy}
+                    deleteBallot={displayBallot}
+                    isBusy={isBusy || Boolean(ashThread)}
                     onReplyThread={onReplyThread}
                     onProposeDeleteThread={onProposeDeleteThread}
                     onVoteDeleteThread={onVoteDeleteThread}

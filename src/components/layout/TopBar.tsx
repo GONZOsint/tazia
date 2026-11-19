@@ -81,7 +81,7 @@ export function TopBar({
             className="flex shrink-0 items-center gap-2 rounded-[var(--radius-ctrl)] py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             aria-label={t('navRooms')}
           >
-            {/* sharedMark when zone active — handoff from hero ZONE_BOOT layoutId */}
+            {/* sharedMark stays on TopBar only — hero no longer shares layoutId (stage-exit flicker). */}
             <TaziaLogo size={36} sharedMark={hasActiveRoom} />
             <span className="hidden min-w-0 sm:block">
               <span className="type-title text-ink">

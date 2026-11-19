@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
 import { useT } from '../../i18n';
 import type { MeshStatus } from '../../core/protocol';
-import { MESH_BIRTH } from '../../motion/tokens';
+import { DUR, MESH_BIRTH } from '../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 
 interface MeshStatusBadgeProps {
@@ -62,7 +62,8 @@ export function MeshStatusBadge({
     prevRelay.current = relayActive;
     if (relayActive) {
       setRelayFlash(true);
-      const id = window.setTimeout(() => setRelayFlash(false), MESH_BIRTH.reducedMs * 2);
+      // Must match mesh-connected-flash (--dur-flash); reducedMs*2 was cutting mid-flash.
+      const id = window.setTimeout(() => setRelayFlash(false), Math.round(DUR.flash * 1000));
       return () => window.clearTimeout(id);
     }
   }, [relayActive]);
