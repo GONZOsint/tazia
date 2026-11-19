@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { motion } from 'motion/react';
 import { visualFromUserId } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import type { MeshStatus, PresenceState } from '../../core/protocol';
@@ -8,6 +9,7 @@ import { Identicon } from '../../components/content/Identicon';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { TrustBadge } from '../../components/session/TrustBadge';
 import { EmojiVerifyModal } from '../../components/session/EmojiVerifyModal';
+import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 function shortKeyFp(spkiB64: string): string {
   if (!spkiB64) return '—';
@@ -72,15 +74,17 @@ export function PresenceView({
       <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <Users className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
         {onGoToRooms && (
-          <button
+          <motion.button
+            whileTap={TAP}
+            transition={TAP_TRANSITION}
             type="button"
             onClick={onGoToRooms}
             aria-label={t('presenceEmptyCta')}
-            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
           >
             <Users className="h-5 w-5" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
-          </button>
+          </motion.button>
         )}
       </main>
     );
@@ -119,7 +123,9 @@ export function PresenceView({
             </p>
           )}
         </div>
-        <button
+        <motion.button
+          whileTap={isSyncing ? undefined : TAP}
+          transition={TAP_TRANSITION}
           type="button"
           onClick={() => void onSyncNow()}
           disabled={isSyncing}
@@ -127,7 +133,7 @@ export function PresenceView({
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           {t('presenceRefresh')}
-        </button>
+        </motion.button>
       </div>
 
       <ul className="mt-3 space-y-2">
@@ -146,7 +152,7 @@ export function PresenceView({
                 {visual ? (
                   <Identicon matrix={visual.identiconMatrix} size={32} label={alias} />
                 ) : (
-                  <div className="h-8 w-8 rounded-lg bg-surface" />
+                  <div className="h-8 w-8 rounded-[var(--radius-ctrl)] bg-surface" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-ink">
@@ -171,7 +177,9 @@ export function PresenceView({
                   </div>
                 </div>
                 {id !== selfUserId && hasKey && selfSignPubKeyB64 && (
-                  <button
+                  <motion.button
+                    whileTap={TAP}
+                    transition={TAP_TRANSITION}
                     type="button"
                     onClick={() =>
                       setVerifyPeer({
@@ -180,22 +188,25 @@ export function PresenceView({
                         keyB64: presence[id].signPubKeySpkiB64,
                       })
                     }
-                    className="min-h-[44px] rounded-lg px-2 text-[11px] font-medium text-ok focus-visible:outline-2 focus-visible:outline-accent"
+                    className="icon-action icon-action--ghost text-ok focus-visible:outline-2 focus-visible:outline-accent"
                     title={t('trustVerifyTitle')}
+                    aria-label={t('trustVerifyTitle')}
                   >
                     <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  </motion.button>
                 )}
-                <button
+                <motion.button
+                  whileTap={TAP}
+                  transition={TAP_TRANSITION}
                   type="button"
                   aria-expanded={!!details}
                   onClick={() =>
                     setOpenDetails((prev) => ({ ...prev, [id]: !prev[id] }))
                   }
-                  className="min-h-[44px] rounded-lg px-2 text-[11px] font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
+                  className="min-h-[44px] rounded-[var(--radius-ctrl)] px-2 text-[11px] font-medium text-muted hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   {details ? t('presenceHideDetails') : t('presenceDetails')}
-                </button>
+                </motion.button>
               </div>
               {details && (
                 <p className="mt-2 break-all font-mono text-[11px] text-muted">{id}</p>

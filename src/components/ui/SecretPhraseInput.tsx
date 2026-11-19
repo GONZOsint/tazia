@@ -1,6 +1,7 @@
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
+import { DUR, TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface SecretPhraseInputProps {
   id: string;
@@ -41,11 +42,13 @@ export function SecretPhraseInput({
         placeholder={placeholder}
         className="input-base bg-bg pr-12 pl-10 focus:bg-surface-raised"
       />
-      <button
+      <motion.button
+        whileTap={TAP}
+        transition={TAP_TRANSITION}
         type="button"
         onClick={onToggleVisible}
         aria-label={visible ? t('phraseHide') : t('phraseShow')}
-        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[var(--radius-ctrl)] text-muted transition-colors duration-[var(--dur-micro)] hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
       >
         <AnimatePresence mode="wait" initial={false}>
           {visible ? (
@@ -54,7 +57,7 @@ export function SecretPhraseInput({
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ duration: 0.12 }}
+              transition={{ duration: DUR.tap }}
             >
               <EyeOff className="h-4 w-4" aria-hidden="true" />
             </motion.span>
@@ -64,13 +67,13 @@ export function SecretPhraseInput({
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ duration: 0.12 }}
+              transition={{ duration: DUR.tap }}
             >
               <Eye className="h-4 w-4" aria-hidden="true" />
             </motion.span>
           )}
         </AnimatePresence>
-      </button>
+      </motion.button>
     </div>
   );
 }

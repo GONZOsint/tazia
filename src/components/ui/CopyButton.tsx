@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCopyFeedback } from '../../hooks/useCopyFeedback';
+import { DUR, TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 type IconComp = ComponentType<{
   className?: string;
@@ -34,13 +35,13 @@ export function CopyButton({
 
   return (
     <motion.button
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.12 }}
+      whileTap={TAP}
+      transition={TAP_TRANSITION}
       type="button"
       onClick={() => void copyText(text, 'copy')}
       aria-label={iconOnly ? (copied ? copiedLabel : label) : undefined}
       title={title ?? (copied ? copiedLabel : label)}
-      className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-colors duration-[var(--dur-micro)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`}
     >
       <AnimatePresence mode="wait" initial={false}>
         {copied ? (
@@ -49,7 +50,7 @@ export function CopyButton({
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ duration: 0.12 }}
+            transition={{ duration: DUR.micro }}
             className="inline-flex items-center gap-1.5 text-ok"
           >
             <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -61,7 +62,7 @@ export function CopyButton({
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ duration: 0.12 }}
+            transition={{ duration: DUR.micro }}
             className="inline-flex items-center gap-1.5"
           >
             <IdleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" strokeWidth={1.75} />

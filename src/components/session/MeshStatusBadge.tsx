@@ -47,36 +47,38 @@ export function MeshStatusBadge({
   if (compact) {
     return (
       <p
-        className={`inline-flex items-center gap-1.5 rounded-[var(--radius-ctrl)] border px-2 py-1 text-xs font-medium ${tone}`}
+        className={`inline-flex h-7 min-w-[2.75rem] items-center justify-center gap-1 rounded-[var(--radius-ctrl)] border px-1.5 text-xs font-medium transition-colors duration-[var(--dur-micro)] ${tone}`}
         role="status"
         aria-label={label}
         title={label}
       >
-        {status === 'mesh' ? (
-          <span className="mesh-radar-dot shrink-0" aria-hidden="true">
-            <span />
-          </span>
-        ) : (
-          <StatusIcon
-            className={`h-3.5 w-3.5 shrink-0 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
-            aria-hidden="true"
-            strokeWidth={1.75}
-          />
-        )}
-        {peerDots > 0 && (
-          <span className="inline-flex items-center gap-0.5" aria-hidden="true">
-            {Array.from({ length: peerDots }, (_, i) => (
-              <span key={i} className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-            ))}
-          </span>
-        )}
+        <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden="true">
+          {status === 'mesh' ? (
+            <span className="mesh-radar-dot">
+              <span />
+            </span>
+          ) : (
+            <StatusIcon
+              className={`h-3.5 w-3.5 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
+              strokeWidth={1.75}
+            />
+          )}
+        </span>
+        <span className="inline-flex w-[2.25rem] items-center justify-start gap-0.5" aria-hidden="true">
+          {Array.from({ length: 5 }, (_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 w-1.5 rounded-full bg-current transition-opacity duration-[var(--dur-micro)] ${i < peerDots ? 'opacity-80' : 'opacity-0'}`}
+            />
+          ))}
+        </span>
       </p>
     );
   }
 
   return (
     <p
-      className={`inline-flex items-center gap-1.5 rounded-[var(--radius-ctrl)] border px-2 py-1 text-xs font-medium ${tone}`}
+      className={`inline-flex items-center gap-1.5 rounded-[var(--radius-ctrl)] border px-2 py-1 text-xs font-medium transition-colors duration-[var(--dur-micro)] ${tone}`}
       role="status"
       aria-label={label}
       title={label}
@@ -95,11 +97,7 @@ export function MeshStatusBadge({
           )}
           <span
             className={`relative inline-flex h-2 w-2 rounded-full ${
-              status === 'syncing'
-                ? 'bg-info'
-                : status === 'alone'
-                  ? 'bg-warn'
-                  : 'bg-faint'
+              status === 'syncing' ? 'bg-info' : status === 'alone' ? 'bg-warn' : 'bg-faint'
             }`}
           />
         </span>

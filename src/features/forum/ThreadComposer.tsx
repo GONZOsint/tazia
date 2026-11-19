@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { FileText, Loader2, Send, X } from 'lucide-react';
+import { motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import { MAX_BODY_CHARS, MAX_TITLE_CHARS } from '../../core/protocol';
+import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
+import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface ThreadComposerProps {
   identity: LocalProfile;
@@ -20,7 +23,7 @@ export function ThreadComposer({
   const t = useT();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [planeKey, setPlaneKey] = useState(0);
+  const { planeKey, launching: planeLaunching, trigger: triggerPlane } = usePlaneLaunch();
 
   const overLimit =
     title.length > MAX_TITLE_CHARS || body.length > MAX_BODY_CHARS || !title.trim() || !body.trim();
@@ -28,7 +31,7 @@ export function ThreadComposer({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (overLimit || isBusy) return;
-    setPlaneKey((k) => k + 1);
+    triggerPlane();
     const ok = await onSubmitThread(title.trim(), body.trim());
     if (ok) {
       setTitle('');
@@ -47,14 +50,16 @@ export function ThreadComposer({
           </h2>
           <p className="mt-1 text-xs text-muted">{t('composerAs', { alias: identity.alias })}</p>
         </div>
-        <button
+        <motion.button
+          whileTap={TAP}
+          transition={TAP_TRANSITION}
           type="button"
           onClick={onCancel}
-          className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent"
+          className="inline-flex min-h-[44px] items-center gap-1 rounded-[var(--radius-ctrl)] border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
           {t('composerCancel')}
-        </button>
+        </motion.button>
       </div>
 
       <form className="mt-5 space-y-4" onSubmit={(e) => void handleSubmit(e)}>
@@ -87,20 +92,22 @@ export function ThreadComposer({
             required
           />
         </div>
-        <button
+        <motion.button
+          whileTap={!overLimit && !isBusy ? TAP : undefined}
+          transition={TAP_TRANSITION}
           type="submit"
           disabled={overLimit || isBusy}
-          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          {isBusy ? (
+          {isBusy && !planeLaunching ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
             <span key={planeKey} className={planeKey > 0 ? 'plane-launching' : 'inline-flex'}>
               <Send className="h-4 w-4" aria-hidden="true" />
             </span>
           )}
-          {isBusy ? t('composerPublishing') : t('composerPublish')}
-        </button>
+          {isBusy && !planeLaunching ? t('composerPublishing') : t('composerPublish')}
+        </motion.button>
       </form>
     </div>
   );

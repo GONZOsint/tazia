@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR } from '../../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
 import { MOBILE_NAV_ITEMS, type ActiveTab } from './navItems';
 
 interface BottomNavProps {
@@ -41,8 +41,8 @@ export function BottomNav({
           return (
             <li key={id} className="flex-1">
               <motion.button
-                whileTap={{ scale: 0.97 }}
-                transition={{ duration: 0.12 }}
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 aria-current={active ? 'page' : undefined}
                 aria-label={
@@ -59,8 +59,8 @@ export function BottomNav({
               >
                 <span className="relative">
                   <motion.span
-                    animate={{ scale: active ? 1.08 : 1 }}
-                    transition={{ duration: 0.12 }}
+                    animate={{ scale: active ? 1.05 : 1 }}
+                    transition={{ duration: DUR.tab, ease: EASE.outExpo }}
                     className="inline-flex"
                   >
                     <Icon
@@ -75,7 +75,7 @@ export function BottomNav({
                   <motion.span
                     layoutId="bottomnav-active-dot"
                     className="absolute bottom-1 h-0.5 w-4 rounded-full bg-accent"
-                    transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: DUR.tab, ease: EASE.outExpo }}
                   />
                 )}
               </motion.button>

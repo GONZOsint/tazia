@@ -14,7 +14,7 @@ import { RoomEntryView } from '../features/rooms/RoomEntryView';
 import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useT } from '../i18n';
-import { DUR, EASE, contentSwitch } from '../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION, contentSwitch, enterPlaza } from '../motion/tokens';
 import { parseInviteInput, scrubPhraseFromLocationHash } from '../core/utils/inviteLink';
 
 const ForumWorkspace = lazy(() => import('../features/forum/ForumWorkspace'));
@@ -25,9 +25,14 @@ const DmConversationView = lazy(() => import('../features/dms/DmConversationView
 
 function TabSkeleton() {
   return (
-    <div className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16">
+    <motion.div
+      className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16"
+      initial={contentSwitch.initial}
+      animate={contentSwitch.animate}
+      transition={contentSwitch.transition}
+    >
       <Loader2 className="h-6 w-6 animate-spin text-faint" />
-    </div>
+    </motion.div>
   );
 }
 
@@ -153,11 +158,6 @@ export default function App() {
 
   const joinErrorMsg = joinError ? t(joinError.key, joinError.vars) : null;
   const roomErrorMsg = roomError ? t(roomError.key, roomError.vars) : null;
-  const hardIceFailed =
-    joinError?.key === 'errPeerConnect' ||
-    joinError?.key === 'errLocalNetworkDenied' ||
-    roomError?.key === 'errPeerConnect' ||
-    roomError?.key === 'errLocalNetworkDenied';
   const showIceHint =
     joinError?.key === 'errPeerConnect' ||
     joinError?.key === 'errLocalNetworkDenied' ||
@@ -224,39 +224,17 @@ export default function App() {
 
         <BurnFireOverlay play={burnPlaying} onComplete={finishBurnChoreography} />
 
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {burnNotice && (
             <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
               transition={{ duration: DUR.medium, ease: EASE.outExpo }}
               className="mx-auto mt-4 flex max-w-[1280px] items-center px-4 sm:px-8"
             >
               <AlertBanner tone="success" role="status" className="w-full">
                 {t('burnNotice')}
-              </AlertBanner>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {hardIceFailed && activeTab !== 'rooms' && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.16 }}
-              className="mx-auto mt-4 max-w-[1280px] px-4 sm:px-8"
-            >
-              <AlertBanner tone="warning" role="status" className="w-full">
-                <button
-                  type="button"
-                  className="text-left underline-offset-2 hover:underline"
-                  onClick={() => selectTab('rooms')}
-                >
-                  {t('errPeerConnect')}
-                </button>
               </AlertBanner>
             </motion.div>
           )}
@@ -314,13 +292,13 @@ export default function App() {
               >
                 {activeTab === 'forum' &&
                   (isInRoom && roomId && profile && selfUserId ? (
-                    <AnimatePresence mode="wait">
+                    <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={roomId}
-                        initial={contentSwitch.initial}
-                        animate={contentSwitch.animate}
-                        exit={contentSwitch.exit}
-                        transition={contentSwitch.transition}
+                        initial={enterPlaza.initial}
+                        animate={enterPlaza.animate}
+                        exit={enterPlaza.exit}
+                        transition={enterPlaza.transition}
                       >
                         <ForumWorkspace
                           roomId={roomId}
@@ -367,15 +345,17 @@ export default function App() {
                   ) : (
                     <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
                       <Radio className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-                      <button
+                      <motion.button
+                        whileTap={TAP}
+                        transition={TAP_TRANSITION}
                         type="button"
                         onClick={() => selectTab('rooms')}
                         aria-label={t('forumEmptyCta')}
-                        className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                        className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
                         <Radio className="h-5 w-5" aria-hidden="true" />
                         <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
-                      </button>
+                      </motion.button>
                     </main>
                   ))}
 

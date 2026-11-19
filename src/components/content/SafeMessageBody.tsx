@@ -27,7 +27,7 @@ export function SafeMessageBody({ text }: SafeMessageBodyProps) {
                       return (
                         <span
                           key={idx}
-                          className="mx-0.5 inline-flex max-w-full align-middle items-center gap-1.5 rounded-md border border-warn-border bg-warn-bg/80 px-2 py-0.5 font-mono text-[12px] text-warn-ink"
+                          className="mx-0.5 inline-flex max-w-full align-middle items-center gap-1.5 rounded-[calc(var(--radius-ctrl)-4px)] border border-warn-border bg-warn-bg/80 px-2 py-0.5 font-mono text-[12px] text-warn-ink"
                           title={t('linkDisabledTitle')}
                         >
                           <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-warn" aria-hidden="true" />

@@ -102,6 +102,7 @@ export const en = {
   meshSyncing: 'Pulling…',
 
   sidebarSearch: 'Search talks…',
+  sidebarClearSearch: 'Clear search',
   sidebarNewThread: 'New talk',
   sidebarNoThreads: 'No talks yet.',
   sidebarReplies: '{n} reply',
@@ -270,6 +271,7 @@ export const en = {
   dmsSending: 'Sending…',
   dmsNoOnline: 'Nobody else in the tribe right now.',
   dmsUnread: '{n} unread',
+  dmsBack: 'Back to whispers',
 
   turnRelayTitle: "Can't reach each other?",
   turnRelayHint:

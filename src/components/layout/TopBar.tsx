@@ -4,6 +4,7 @@ import { useT } from '../../i18n';
 import { identiconMatrixFromHex } from '../../core/crypto/identity';
 import type { MeshStatus } from '../../core/protocol';
 import { countOtherPeers } from '../../hooks/useRoomManager';
+import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
 import { TaziaLogo } from '../brand/TaziaLogo';
 import { Identicon } from '../content/Identicon';
 import { MeshStatusBadge } from '../session/MeshStatusBadge';
@@ -59,10 +60,12 @@ export function TopBar({
     >
       <div className="mx-auto flex h-12 max-w-[1280px] items-center justify-between gap-2 px-4 sm:h-14 sm:gap-4 sm:px-8">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <button
+          <motion.button
+            whileTap={TAP}
+            transition={TAP_TRANSITION}
             type="button"
             onClick={() => onSelectTab('rooms')}
-            className="flex shrink-0 items-center gap-2 rounded-md py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex shrink-0 items-center gap-2 rounded-[var(--radius-ctrl)] py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             aria-label={t('navRooms')}
           >
             <TaziaLogo size={36} />
@@ -71,10 +74,12 @@ export function TopBar({
                 {t('brand')}
               </span>
             </span>
-          </button>
+          </motion.button>
 
           {activeZone && (
-            <button
+            <motion.button
+              whileTap={TAP}
+              transition={TAP_TRANSITION}
               type="button"
               onClick={() => onSelectTab(roomsCount > 1 ? 'rooms' : 'forum')}
               title={
@@ -87,7 +92,7 @@ export function TopBar({
                   ? `${t('roomsActiveLabel')}: ${activeZone.roomId} — ${t('navRooms')} (${roomsCount})`
                   : `${t('roomsActiveLabel')}: ${activeZone.roomId}`
               }
-              className="session-burn-target flex min-h-[36px] min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
+              className="session-burn-target flex min-h-[36px] min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-2 py-1 hover:border-accent/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
             >
               <Identicon
                 matrix={identiconMatrixFromHex(activeZone.roomId)}
@@ -109,7 +114,7 @@ export function TopBar({
                   compact
                 />
               </span>
-            </button>
+            </motion.button>
           )}
         </div>
 
@@ -128,8 +133,10 @@ export function TopBar({
                     ? roomsCount
                     : 0;
             return (
-              <button
+              <motion.button
                 key={id}
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={
@@ -140,7 +147,7 @@ export function TopBar({
                     : undefined
                 }
                 onClick={() => onSelectTab(id)}
-                className={`relative inline-flex h-full items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
+                className={`relative inline-flex h-full items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
                   isActive ? 'font-semibold text-ink' : 'text-muted hover:text-ink'
                 }`}
               >
@@ -154,7 +161,7 @@ export function TopBar({
                   <motion.span
                     initial={{ scale: 0.6, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: DUR.micro }}
                     className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-on-accent"
                   >
                     {badge > 9 ? '9+' : badge}
@@ -163,35 +170,39 @@ export function TopBar({
                 {isActive && (
                   <motion.span
                     layoutId="topbar-active-underline"
-                    transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: DUR.tab, ease: EASE.outExpo }}
                     aria-hidden="true"
                     className="absolute inset-x-0 bottom-0 h-[2px] bg-accent"
                   />
                 )}
-              </button>
+              </motion.button>
             );
           })}
         </nav>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex h-11 shrink-0 items-center gap-2">
           <ThemeToggle />
           <LangToggle />
           {hasActiveRoom ? (
             <motion.button
-              whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12 }}
+              whileTap={burnHeating ? undefined : TAP}
+              transition={TAP_TRANSITION}
               type="button"
               onClick={onBurnSession}
               disabled={burnHeating}
               aria-label={t('leaveTab')}
               title={t('leaveTab')}
-              className={`burn-heat inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-3 py-2 text-xs font-semibold text-danger-ink whitespace-nowrap ${
+              className={`burn-heat inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-danger-border bg-danger-bg px-3 text-xs font-semibold text-danger-ink whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80 ${
                 burnHeating ? 'is-heating' : ''
               }`}
             >
               <span
                 className="burn-ignition-bar"
-                style={burnHeating ? { transform: 'scaleX(1)', transition: 'transform 700ms linear' } : undefined}
+                style={
+                  burnHeating
+                    ? { transform: 'scaleX(1)', transition: 'transform var(--dur-burn-ignition) linear' }
+                    : undefined
+                }
                 aria-hidden="true"
               />
               <Flame className="burn-flame-icon relative z-10 h-4 w-4 shrink-0" aria-hidden="true" />

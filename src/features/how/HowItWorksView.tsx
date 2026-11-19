@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Radio, ShieldAlert, Users, WifiOff, Wrench } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useT } from '../../i18n';
 import { clearIpConsent } from '../../core/utils/ipConsent';
+import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 export function HowItWorksView() {
   const t = useT();
@@ -71,7 +73,7 @@ export function HowItWorksView() {
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpRelayBody')}</p>
         </li>
-        <li className="rounded-2xl border border-warn-border bg-warn-bg p-5">
+        <li className="rounded-[var(--radius-panel)] border border-warn-border bg-warn-bg p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-warn-ink">
             <ShieldAlert className="h-4 w-4 text-warn" aria-hidden="true" />
             {t('helpSafetyTitle')}
@@ -99,31 +101,35 @@ export function HowItWorksView() {
         </li>
       </ul>
 
-      <button
+      <motion.button
+        whileTap={TAP}
+        transition={TAP_TRANSITION}
         type="button"
         aria-expanded={moreOpen}
         onClick={() => setMoreOpen((v) => !v)}
         className="mt-6 min-h-[44px] text-sm font-semibold text-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-accent"
       >
         {moreOpen ? t('helpMoreHide') : t('helpMore')}
-      </button>
+      </motion.button>
       {moreOpen && (
-        <p className="mt-2 rounded-xl border border-border bg-bg p-4 text-xs leading-relaxed text-muted">
+        <p className="mt-2 rounded-[var(--radius-panel)] border border-border bg-bg p-4 text-xs leading-relaxed text-muted">
           {t('helpMoreBody')}
         </p>
       )}
 
       <div className="mt-8 panel-surface p-5">
-        <button
+        <motion.button
+          whileTap={TAP}
+          transition={TAP_TRANSITION}
           type="button"
           onClick={() => {
             clearIpConsent();
             setForgetDone(true);
           }}
-          className="inline-flex min-h-[44px] items-center rounded-lg border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-bg"
+          className="inline-flex min-h-[44px] items-center rounded-[var(--radius-ctrl)] border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
         >
           {t('helpForgetDevice')}
-        </button>
+        </motion.button>
         <p className="mt-2 text-xs text-muted">
           {forgetDone ? t('helpForgetDone') : t('helpForgetHint')}
         </p>

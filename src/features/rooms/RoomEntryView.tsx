@@ -15,7 +15,7 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { TaziaLogo } from '../../components/brand/TaziaLogo';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { probeBrowserSupportSync } from '../../core/utils/browserSupport';
-import { DUR, EASE, zoneCardExit } from '../../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION, zoneCardExit } from '../../motion/tokens';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { TurnRelaySettings } from './TurnRelaySettings';
@@ -57,6 +57,8 @@ export function RoomEntryView({
   const [createFormKey, setCreateFormKey] = useState(0);
   const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
   const [qrRoomId, setQrRoomId] = useState<string | null>(null);
+  const [pulseRoomId, setPulseRoomId] = useState<string | null>(null);
+  const prevJoinedIdsRef = useRef<Set<string>>(new Set(joinedRooms.map((r) => r.roomId)));
   const prevJoinedCountRef = useRef(joinedRooms.length);
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
@@ -74,11 +76,26 @@ export function RoomEntryView({
   useEffect(() => {
     const prev = prevJoinedCountRef.current;
     prevJoinedCountRef.current = joinedRooms.length;
+    const prevIds = prevJoinedIdsRef.current;
+    const nextIds = new Set(joinedRooms.map((r) => r.roomId));
+    let newlyJoined: string | null = null;
+    for (const id of nextIds) {
+      if (!prevIds.has(id)) {
+        newlyJoined = id;
+        break;
+      }
+    }
+    prevJoinedIdsRef.current = nextIds;
     if (joinedRooms.length > prev) {
       setEntryTab(null);
       setCreateFormKey((k) => k + 1);
+      if (newlyJoined) {
+        setPulseRoomId(newlyJoined);
+        const t = window.setTimeout(() => setPulseRoomId((cur) => (cur === newlyJoined ? null : cur)), 700);
+        return () => window.clearTimeout(t);
+      }
     }
-  }, [joinedRooms.length]);
+  }, [joinedRooms]);
 
   const openEntry = (tab: 'create' | 'join') => {
     if (atCap) return;
@@ -118,28 +135,30 @@ export function RoomEntryView({
 
             <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
               <motion.button
-                whileTap={{ scale: 0.98 }}
+                whileTap={browserBlocked ? undefined : TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 disabled={browserBlocked}
                 onClick={() => openEntry('create')}
                 className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
                   entryTab === 'create'
                     ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink hover:border-ink/30'
+                    : 'border border-border bg-bg text-ink hover:border-ink/30 hover:bg-surface'
                 }`}
               >
                 <PlusCircle className="h-5 w-5" aria-hidden="true" />
                 {t('roomsCreate')}
               </motion.button>
               <motion.button
-                whileTap={{ scale: 0.98 }}
+                whileTap={browserBlocked ? undefined : TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 disabled={browserBlocked}
                 onClick={() => openEntry('join')}
                 className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
                   entryTab === 'join'
                     ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink hover:border-ink/30'
+                    : 'border border-border bg-bg text-ink hover:border-ink/30 hover:bg-surface'
                 }`}
               >
                 <KeyRound className="h-5 w-5" aria-hidden="true" />
@@ -170,6 +189,7 @@ export function RoomEntryView({
                 const isActive = room.roomId === activeRoomId;
                 const dmUnread = Object.values(room.dmUnread).reduce((a, b) => a + b, 0);
                 const showQr = qrRoomId === room.roomId;
+                const justJoined = pulseRoomId === room.roomId;
                 return (
                   <motion.li
                     key={room.roomId}
@@ -185,14 +205,14 @@ export function RoomEntryView({
                       isActive
                         ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                         : 'border-border bg-bg'
-                    }`}
+                    } ${justJoined ? 'zone-join-pulse' : ''}`}
                     aria-current={isActive ? 'true' : undefined}
                   >
                     <div className="flex items-stretch gap-1">
                       <button
                         type="button"
                         onClick={() => enterZone(room.roomId)}
-                        className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-3.5"
+                        className="pressable flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-3.5"
                         aria-label={
                           isActive
                             ? `${t('roomsGoToChat')}: ${room.roomId}`
@@ -246,10 +266,8 @@ export function RoomEntryView({
                         type="button"
                         onClick={() => setQrRoomId((cur) => (cur === room.roomId ? null : room.roomId))}
                         aria-pressed={showQr}
-                        className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center rounded-[var(--radius-ctrl)] border focus-visible:outline-2 focus-visible:outline-accent ${
-                          showQr
-                            ? 'border-accent bg-accent-soft text-ink'
-                            : 'border-transparent text-muted hover:border-border hover:bg-surface-raised'
+                        className={`icon-action pressable shrink-0 self-center focus-visible:outline-2 focus-visible:outline-accent ${
+                          showQr ? 'is-active' : 'icon-action--ghost'
                         }`}
                         title={showQr ? t('roomsHideQr') : t('roomsShowQr')}
                         aria-label={showQr ? t('roomsHideQr') : t('roomsShowQr')}
@@ -260,7 +278,7 @@ export function RoomEntryView({
                         <button
                           type="button"
                           onClick={() => setLeaveTarget(room.roomId)}
-                          className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center rounded-[var(--radius-ctrl)] border border-transparent text-danger-ink hover:border-danger-border hover:bg-danger-bg focus-visible:outline-2 focus-visible:outline-accent"
+                          className="icon-action icon-action--danger pressable shrink-0 self-center focus-visible:outline-2 focus-visible:outline-accent"
                           title={t('roomsLeaveRoom')}
                           aria-label={t('roomsLeaveRoom')}
                         >
@@ -293,7 +311,8 @@ export function RoomEntryView({
             </div>
             <div className="grid grid-cols-2 gap-2">
               <motion.button
-                whileTap={{ scale: atCap ? 1 : 0.98 }}
+                whileTap={atCap || browserBlocked ? undefined : TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 disabled={atCap || browserBlocked}
                 onClick={() => openEntry('create')}
@@ -301,14 +320,15 @@ export function RoomEntryView({
                 className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
                   entryTab === 'create'
                     ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink'
+                    : 'border border-border bg-bg text-ink hover:bg-surface'
                 }`}
               >
                 <PlusCircle className="h-4 w-4" aria-hidden="true" />
                 {t('roomsCreate')}
               </motion.button>
               <motion.button
-                whileTap={{ scale: atCap ? 1 : 0.98 }}
+                whileTap={atCap || browserBlocked ? undefined : TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 disabled={atCap || browserBlocked}
                 onClick={() => openEntry('join')}
@@ -316,7 +336,7 @@ export function RoomEntryView({
                 className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
                   entryTab === 'join'
                     ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink'
+                    : 'border border-border bg-bg text-ink hover:bg-surface'
                 }`}
               >
                 <KeyRound className="h-4 w-4" aria-hidden="true" />
@@ -334,7 +354,7 @@ export function RoomEntryView({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
+            transition={{ duration: DUR.tab, ease: EASE.outExpo }}
             className="panel-surface p-4 sm:p-5"
           >
             {errorMsg && (
@@ -376,7 +396,7 @@ export function RoomEntryView({
         <AlertBanner tone="warning" role="status">
           <button
             type="button"
-            className="underline-offset-2 hover:underline"
+            className="min-h-[44px] rounded-[var(--radius-ctrl)] text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={() => setEntryTab('join')}
           >
             {t('errIceHint')}
@@ -416,7 +436,7 @@ function CapacityDots({
         <span
           key={i}
           aria-hidden="true"
-          className={`h-2 w-2 rounded-full ${
+          className={`h-2 w-2 rounded-full transition-colors duration-[var(--dur-micro)] ${
             i < filled ? 'bg-accent' : 'bg-border'
           }`}
         />

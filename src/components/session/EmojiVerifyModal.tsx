@@ -3,7 +3,7 @@ import { ShieldCheck, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { deriveEmojiSafetyCode } from '../../core/trust/trustStore';
 import { useT } from '../../i18n';
-import { DUR, EASE } from '../../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface EmojiVerifyModalProps {
   open: boolean;
@@ -73,7 +73,7 @@ export function EmojiVerifyModal({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: DUR.modal, ease: EASE.outExpo }}
-            className="panel-surface relative w-full max-w-xs overflow-hidden outline-none"
+            className="panel-surface shadow-sheet relative w-full max-w-xs overflow-hidden outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -81,13 +81,16 @@ export function EmojiVerifyModal({
                 <ShieldCheck className="h-4 w-4 text-ok" aria-hidden="true" />
                 {t('trustVerifyTitle')}
               </div>
-              <button
+              <motion.button
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 onClick={onClose}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-muted focus-visible:outline-2 focus-visible:outline-accent"
+                className="icon-action icon-action--ghost focus-visible:outline-2 focus-visible:outline-accent"
+                aria-label={t('consentCancel')}
               >
                 <X className="h-4 w-4" />
-              </button>
+              </motion.button>
             </div>
 
             <div className="p-5 text-center">
@@ -107,20 +110,24 @@ export function EmojiVerifyModal({
               )}
 
               <div className="mt-6 flex gap-3">
-                <button
+                <motion.button
+                  whileTap={TAP}
+                  transition={TAP_TRANSITION}
                   type="button"
                   onClick={onClose}
-                  className="flex-1 min-h-[44px] rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
+                  className="flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] border border-border px-3 py-2 text-xs font-semibold text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   {t('trustNoMatch')}
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  whileTap={TAP}
+                  transition={TAP_TRANSITION}
                   type="button"
                   onClick={onVerify}
-                  className="flex-1 min-h-[44px] rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
+                  className="btn-accent-sheen flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   {t('trustMatch')}
-                </button>
+                </motion.button>
               </div>
             </div>
           </motion.div>

@@ -84,7 +84,7 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: DUR.modal, ease: EASE.outExpo }}
-            className="panel-surface w-full max-w-md p-5 shadow-lg outline-none sm:p-6"
+            className="panel-surface shadow-sheet w-full max-w-md p-5 outline-none sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="ip-consent-title" className="font-display text-lg font-semibold text-ink">
@@ -93,19 +93,21 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
             <IpExposureDiagram />
             <p className="mt-2 text-sm leading-relaxed text-muted">{t('consentBody')}</p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button
+              <motion.button
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 onClick={onCancel}
-                className="min-h-[44px] rounded-lg border border-border bg-surface-raised px-4 py-2 text-sm font-medium text-muted hover:bg-bg"
+                className="min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-4 py-2 text-sm font-medium text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
               >
                 {t('consentCancel')}
-              </button>
+              </motion.button>
               <motion.button
                 whileTap={TAP}
                 transition={TAP_TRANSITION}
                 type="button"
                 onClick={onAccept}
-                className="min-h-[44px] rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:opacity-90"
+                className="btn-accent-sheen min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
               >
                 {t('consentAccept')}
               </motion.button>

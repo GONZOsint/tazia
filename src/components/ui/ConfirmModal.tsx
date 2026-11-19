@@ -66,7 +66,7 @@ export function ConfirmModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: DUR.modal, ease: EASE.outExpo }}
-            className={`w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised p-5 shadow-lg outline-none sm:p-6 ${
+            className={`shadow-sheet w-full max-w-md rounded-[var(--radius-sheet)] border bg-surface-raised p-5 outline-none sm:p-6 ${
               danger ? 'border-danger-border' : 'border-border'
             }`}
             onClick={(e) => e.stopPropagation()}

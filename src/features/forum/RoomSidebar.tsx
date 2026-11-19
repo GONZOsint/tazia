@@ -41,6 +41,11 @@ interface RoomSidebarProps {
   onCloseSheet?: () => void;
 }
 
+const ICON_ACTION =
+  'icon-action text-ink focus-visible:outline-2 focus-visible:outline-accent';
+const ICON_ACTION_PRESS =
+  `${ICON_ACTION} pressable`;
+
 export function RoomSidebar({
   roomId,
   phrase,
@@ -67,7 +72,7 @@ export function RoomSidebar({
   const [showQr, setShowQr] = useState(false);
 
   return (
-    <aside className={`space-y-4 ${mobileSheet ? '' : ''}`}>
+    <aside className="space-y-3">
       {mobileSheet && (
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-display text-base font-semibold text-ink">{t('sidebarTopics')}</h2>
@@ -75,7 +80,7 @@ export function RoomSidebar({
             <button
               type="button"
               onClick={onCloseSheet}
-              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border"
+              className={ICON_ACTION_PRESS}
               aria-label={t('sidebarCloseTopics')}
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -84,25 +89,27 @@ export function RoomSidebar({
         </div>
       )}
 
-      <div className="panel-surface p-5">
-        <div className="flex items-center gap-3">
+      <div className="panel-surface p-3.5 sm:p-4">
+        <div className="flex items-start gap-3">
           <Identicon matrix={profile.identiconMatrix} size={36} label={profile.alias} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-ink">{profile.alias}</p>
-            <p className="truncate font-mono text-[10px] text-muted md:block hidden">{selfUserId}</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-sm font-semibold text-ink">{profile.alias}</p>
+              <MeshStatusBadge status={meshStatus} onlineCount={onlineCount} compact />
+            </div>
+            <p className="mt-0.5 truncate font-mono text-[10px] text-muted md:block hidden">
+              {selfUserId}
+            </p>
           </div>
         </div>
-        <div className="mt-3">
-          <MeshStatusBadge status={meshStatus} onlineCount={onlineCount} compact />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-1.5">
           <CopyButton
             text={invite}
             label={t('roomsCopyLink')}
             copiedLabel={t('copiedDefault')}
             icon={Link2}
             iconOnly
-            className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
+            className={ICON_ACTION}
           />
           {phrase && (
             <CopyButton
@@ -111,7 +118,7 @@ export function RoomSidebar({
               copiedLabel={t('copiedDefault')}
               icon={KeyRound}
               iconOnly
-              className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink"
+              className={ICON_ACTION}
             />
           )}
           <button
@@ -120,11 +127,7 @@ export function RoomSidebar({
             aria-pressed={showQr}
             aria-label={showQr ? t('roomsHideQr') : t('roomsShowQr')}
             title={showQr ? t('roomsHideQr') : t('roomsShowQr')}
-            className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-accent ${
-              showQr
-                ? 'border-accent bg-accent-soft text-ink'
-                : 'border-border bg-bg text-ink'
-            }`}
+            className={`${ICON_ACTION_PRESS} ${showQr ? 'is-active' : ''}`}
           >
             <QrCode className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
@@ -134,7 +137,7 @@ export function RoomSidebar({
             disabled={isSyncing || isBusy}
             aria-label={t('sidebarRefresh')}
             title={t('sidebarRefresh')}
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
+            className={`${ICON_ACTION_PRESS} disabled:opacity-50`}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
@@ -144,7 +147,7 @@ export function RoomSidebar({
         </AnimatePresence>
       </div>
 
-      <div className="panel-surface p-4">
+      <div className="panel-surface p-3.5 sm:p-4">
         <div className="relative">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-faint"
@@ -160,8 +163,8 @@ export function RoomSidebar({
             <button
               type="button"
               onClick={() => onSearchChange('')}
-              className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-full text-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-              aria-label="Clear"
+              className="icon-action icon-action--ghost icon-action--dense pressable absolute top-1/2 right-1.5 -translate-y-1/2 text-faint focus-visible:outline-2 focus-visible:outline-accent"
+              aria-label={t('sidebarClearSearch')}
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -171,12 +174,12 @@ export function RoomSidebar({
           type="button"
           onClick={onStartCompose}
           disabled={isBusy}
-          className="btn-accent-sheen mt-3 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="btn-accent-sheen pressable mt-2.5 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden="true" />
           {t('sidebarNewThread')}
         </button>
-        <ul className="mt-3 max-h-[50vh] space-y-1 overflow-y-auto lg:max-h-[420px]">
+        <ul className="mt-2.5 max-h-[50vh] space-y-1 overflow-y-auto lg:max-h-[420px]">
           {!hasAnyThreads && (
             <li className="px-2 py-6 text-center text-xs text-muted">{t('sidebarNoThreads')}</li>
           )}
@@ -188,7 +191,7 @@ export function RoomSidebar({
                 <button
                   type="button"
                   onClick={() => onSelectThread(thread.threadId)}
-                  className={`flex w-full min-h-[44px] items-start gap-2 rounded-[var(--radius-ctrl)] px-3 py-2.5 text-left text-sm transition-colors ${
+                  className={`pressable flex w-full min-h-[40px] items-start gap-2 rounded-[var(--radius-ctrl)] px-2.5 py-2 text-left text-sm ${
                     active
                       ? 'border border-accent/40 bg-accent-soft font-semibold text-ink'
                       : 'border border-transparent text-ink hover:bg-bg'

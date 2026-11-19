@@ -3,7 +3,7 @@ import { Camera, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useQrScanner } from 'cam2qr/react';
 import { useT } from '../../i18n';
-import { DUR, EASE } from '../../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
 import { parseInviteInput, type ParsedInvite } from '../../core/utils/inviteLink';
 
 interface QrScannerModalProps {
@@ -66,7 +66,7 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: DUR.modal, ease: EASE.outExpo }}
-            className="panel-surface relative w-full max-w-sm overflow-hidden outline-none"
+            className="panel-surface shadow-sheet relative w-full max-w-sm overflow-hidden outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -74,14 +74,16 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
                 <Camera className="h-4 w-4 text-muted" aria-hidden="true" />
                 {t('qrScanTitle')}
               </div>
-              <button
+              <motion.button
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 onClick={onClose}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-muted focus-visible:outline-2 focus-visible:outline-accent"
+                className="icon-action icon-action--ghost focus-visible:outline-2 focus-visible:outline-accent"
                 aria-label={t('consentCancel')}
               >
                 <X className="h-4 w-4" />
-              </button>
+              </motion.button>
             </div>
 
             <div className="relative aspect-square w-full bg-black">
@@ -93,7 +95,7 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
                 autoPlay
               />
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-48 w-48 rounded-2xl border-2 border-accent/60" />
+                <div className="h-48 w-48 rounded-[var(--radius-sheet)] border-2 border-accent/60" />
               </div>
             </div>
 

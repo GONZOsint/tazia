@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { BURN } from '../../motion/tokens';
 
 interface Particle {
   x: number;
@@ -9,7 +10,15 @@ interface Particle {
   life: number;
   decay: number;
   wobble: number;
+  stretch: number;
   type: 'spark' | 'flame';
+}
+
+interface FirePalette {
+  core: string;
+  mid: string;
+  edge: string;
+  accent: string;
 }
 
 interface BurnFireOverlayProps {
@@ -23,6 +32,37 @@ function prefersReducedMotion(): boolean {
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
+}
+
+function cssColor(name: string, fallback: string): string {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+function readFirePalette(): FirePalette {
+  return {
+    core: cssColor('--fire-core', '#e8b84a'),
+    mid: cssColor('--fire-mid', '#d97706'),
+    edge: cssColor('--fire-edge', '#b45309'),
+    accent: cssColor('--color-accent', '#ccff66'),
+  };
+}
+
+/** Parse #rgb / #rrggbb into rgb channels. */
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const raw = hex.trim();
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(raw);
+  if (!m) return null;
+  let h = m[1]!;
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  const n = parseInt(h, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgba(hex: string, alpha: number): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return `rgba(217, 119, 6, ${alpha})`;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
 function markTargets(phase: 'front' | 'collapse' | 'clear') {
@@ -40,7 +80,7 @@ function markTargets(phase: 'front' | 'collapse' | 'clear') {
 
 /**
  * Full-viewport canvas fire burst for burn-session choreography.
- * Targets elements with `.session-burn-target` for collapse styling.
+ * Subtle teardrop flames + lime sparks; targets `.session-burn-target`.
  */
 export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,6 +106,8 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       return;
     }
 
+    const palette = readFirePalette();
+
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -90,8 +132,8 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
         window.setTimeout(() => {
           if (abortedRef.current) return;
           markTargets('collapse');
-          timeouts.push(window.setTimeout(finish, 160));
-        }, 80)
+          timeouts.push(window.setTimeout(finish, BURN.reducedCollapseMs));
+        }, BURN.reducedFrontMs)
       );
       return () => {
         abortedRef.current = true;
@@ -103,16 +145,17 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
 
     const spawnBurst = (rect: DOMRect, count: number) => {
       for (let i = 0; i < count; i++) {
-        const isSpark = Math.random() > 0.62;
+        const isSpark = Math.random() > 0.55;
         particlesRef.current.push({
-          x: rect.left + Math.random() * rect.width,
-          y: rect.top + rect.height * (0.25 + Math.random() * 0.75),
-          vx: (Math.random() - 0.5) * (isSpark ? 3.2 : 1.4),
-          vy: -(1.8 + Math.random() * (isSpark ? 4.8 : 2.8)),
-          size: isSpark ? 1.8 + Math.random() * 2.5 : 8 + Math.random() * 14,
+          x: rect.left + rect.width * (0.15 + Math.random() * 0.7),
+          y: rect.top + rect.height * (0.45 + Math.random() * 0.5),
+          vx: (Math.random() - 0.5) * (isSpark ? 1.4 : 0.7),
+          vy: -(0.9 + Math.random() * (isSpark ? 2.4 : 1.8)),
+          size: isSpark ? 1.2 + Math.random() * 1.8 : 5 + Math.random() * 8,
           life: 1,
-          decay: 0.014 + Math.random() * 0.022,
+          decay: 0.018 + Math.random() * 0.02,
           wobble: Math.random() * Math.PI * 2,
+          stretch: isSpark ? 1.2 : 1.6 + Math.random() * 0.9,
           type: isSpark ? 'spark' : 'flame',
         });
       }
@@ -129,41 +172,51 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     }
 
     markTargets('front');
-    for (const r of rects) spawnBurst(r, 70);
+    for (const r of rects) spawnBurst(r, 28);
+
+    const drawTeardrop = (p: Particle, fill: string | CanvasGradient) => {
+      const s = p.size * p.life;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(Math.sin(p.wobble) * 0.12);
+      ctx.scale(1, p.stretch);
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 0.55, s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
 
     const tick = () => {
       if (abortedRef.current) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = 'lighter';
       const list = particlesRef.current;
       for (let i = list.length - 1; i >= 0; i--) {
         const p = list[i]!;
-        p.wobble += 0.14;
-        p.x += p.vx + Math.sin(p.wobble) * 0.65;
+        p.wobble += 0.08;
+        p.x += p.vx + Math.sin(p.wobble) * 0.35;
+        p.vy += 0.018;
         p.y += p.vy;
         p.life -= p.decay;
         if (p.life <= 0) {
           list.splice(i, 1);
           continue;
         }
-        ctx.save();
+        const a = p.life * 0.55;
         if (p.type === 'flame') {
-          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * p.life);
-          grad.addColorStop(0, `rgba(250, 204, 21, ${p.life * 0.9})`);
-          grad.addColorStop(0.45, `rgba(249, 115, 22, ${p.life * 0.75})`);
-          grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-          ctx.fill();
+          const s = p.size * p.life;
+          const grad = ctx.createRadialGradient(p.x, p.y + s * 0.2, 0, p.x, p.y, s * 1.15);
+          grad.addColorStop(0, rgba(palette.core, a * 0.95));
+          grad.addColorStop(0.45, rgba(palette.mid, a * 0.7));
+          grad.addColorStop(1, rgba(palette.edge, 0));
+          drawTeardrop(p, grad);
         } else {
-          ctx.fillStyle =
-            p.life > 0.5 ? `rgba(254, 240, 138, ${p.life})` : `rgba(249, 115, 22, ${p.life})`;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-          ctx.fill();
+          const sparkHex = p.life > 0.45 ? palette.accent : palette.core;
+          drawTeardrop(p, rgba(sparkHex, a * 0.85));
         }
-        ctx.restore();
       }
+      ctx.globalCompositeOperation = 'source-over';
       if (list.length > 0) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
@@ -175,13 +228,13 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     timeouts.push(
       window.setTimeout(() => {
         if (abortedRef.current) return;
-        for (const r of rects) spawnBurst(r, 40);
+        for (const r of rects) spawnBurst(r, 16);
         if (rafRef.current === null) rafRef.current = requestAnimationFrame(tick);
         markTargets('collapse');
-      }, 180)
+      }, BURN.collapseAtMs)
     );
 
-    timeouts.push(window.setTimeout(finish, 820));
+    timeouts.push(window.setTimeout(finish, BURN.finishMs));
 
     return () => {
       abortedRef.current = true;

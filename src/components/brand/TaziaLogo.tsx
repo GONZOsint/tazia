@@ -14,7 +14,7 @@ export function TaziaLogo({ className = '', size = 40 }: TaziaLogoProps) {
       alt="TAZIA"
       width={size}
       height={size}
-      className={`rounded-lg object-cover ring-1 ring-border shadow-sm ${className}`}
+      className={`logo-mark rounded-[var(--radius-ctrl)] object-cover ring-1 ring-border ${className}`}
       decoding="async"
     />
   );

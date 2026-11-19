@@ -5,7 +5,7 @@ import { evaluatePassphraseStrength } from '../../core/crypto/passphraseWords';
 import { buildInviteUrl, parseInviteInput } from '../../core/utils/inviteLink';
 import type { RoomJoinParams } from '../../hooks/useRoomManager';
 import { useT } from '../../i18n';
-import { DUR, EASE } from '../../motion/tokens';
+import { DUR, TAP, TAP_TRANSITION, disclosure } from '../../motion/tokens';
 import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
 
@@ -62,7 +62,7 @@ export function JoinRoomForm({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.12 }}
+      transition={{ duration: DUR.tab }}
       className="mt-1 space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
@@ -75,10 +75,11 @@ export function JoinRoomForm({
       }}
     >
       <motion.button
-        whileTap={{ scale: 0.97 }}
+        whileTap={TAP}
+        transition={TAP_TRANSITION}
         type="button"
         onClick={() => setScannerOpen(true)}
-        className="btn-accent-sheen inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-3 text-sm font-semibold text-on-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="btn-accent-sheen inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <QrCode className="h-5 w-5" aria-hidden="true" />
         {t('qrScanTitle')}
@@ -92,18 +93,18 @@ export function JoinRoomForm({
           className="flex min-h-[44px] w-full items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
         >
           <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${pasteOpen ? 'rotate-180' : ''}`}
+            className={`chevron-spin h-3.5 w-3.5 ${pasteOpen ? 'is-open' : ''}`}
             aria-hidden="true"
           />
           {t('roomsInvitePaste')}
         </button>
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {pasteOpen && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: DUR.medium, ease: EASE.outExpo }}
+              initial={disclosure.initial}
+              animate={disclosure.animate}
+              exit={disclosure.exit}
+              transition={disclosure.transition}
               className="overflow-hidden"
             >
               <div className="pt-2">
@@ -126,14 +127,14 @@ export function JoinRoomForm({
         </AnimatePresence>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {(phraseNeeded || joinPhrase || joinRoomId) && (
           <motion.div
             key="join-phrase-block"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: DUR.medium, ease: EASE.outExpo }}
+            initial={disclosure.initial}
+            animate={disclosure.animate}
+            exit={disclosure.exit}
+            transition={disclosure.transition}
             className="overflow-hidden"
           >
             <label htmlFor="join-phrase" className="text-xs font-semibold text-ink">
@@ -164,18 +165,18 @@ export function JoinRoomForm({
             className="flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent"
           >
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${customizeOpen ? 'rotate-180' : ''}`}
+              className={`chevron-spin h-3.5 w-3.5 ${customizeOpen ? 'is-open' : ''}`}
               aria-hidden="true"
             />
             {t('roomsCustomize')}
           </button>
-          <AnimatePresence>
+          <AnimatePresence initial={false}>
             {customizeOpen && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: DUR.medium, ease: EASE.outExpo }}
+                initial={disclosure.initial}
+                animate={disclosure.animate}
+                exit={disclosure.exit}
+                transition={disclosure.transition}
                 className="overflow-hidden"
               >
                 <div className="pt-2">
@@ -197,8 +198,8 @@ export function JoinRoomForm({
       )}
 
       <motion.button
-        whileTap={{ scale: 0.97 }}
-        transition={{ duration: 0.12 }}
+        whileTap={joinRoomId.trim() && joinPhrase.trim() && !isJoining ? TAP : undefined}
+        transition={TAP_TRANSITION}
         type="submit"
         disabled={!joinRoomId.trim() || !joinPhrase.trim() || isJoining}
         className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 text-sm font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"

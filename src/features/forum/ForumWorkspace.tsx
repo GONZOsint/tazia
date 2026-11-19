@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
+import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
 import { RoomSidebar, type ThreadGroup } from './RoomSidebar';
 import { ThreadComposer } from './ThreadComposer';
 import { ThreadReader, type AuthorVisualCache } from './ThreadReader';
@@ -131,21 +132,21 @@ export function ForumWorkspace({
     <main className="card-container mx-auto flex max-w-[1280px] flex-col px-4 pt-2 sm:px-8 sm:pt-4 lg:min-h-0 lg:py-5">
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3 lg:hidden">
         <motion.button
-          whileTap={{ scale: 0.97 }}
-          transition={{ duration: 0.12 }}
+          whileTap={TAP}
+          transition={TAP_TRANSITION}
           type="button"
           onClick={() => setTopicsOpen(true)}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
         >
           <List className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           {t('sidebarTopics')}
         </motion.button>
         <motion.button
-          whileTap={{ scale: 0.97 }}
-          transition={{ duration: 0.12 }}
+          whileTap={TAP}
+          transition={TAP_TRANSITION}
           type="button"
           onClick={() => setIsComposingThread(true)}
-          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent"
+          className="btn-accent-sheen inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
         >
           <MessageSquarePlus className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           {t('sidebarNewThread')}
@@ -157,7 +158,7 @@ export function ForumWorkspace({
           <RoomSidebar {...sidebarProps} />
         </div>
 
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {topicsOpen && (
             <motion.button
               key="topics-scrim"
@@ -167,20 +168,20 @@ export function ForumWorkspace({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: DUR.tab }}
               onClick={() => setTopicsOpen(false)}
             />
           )}
         </AnimatePresence>
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {topicsOpen && (
             <motion.div
               key="topics-panel"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="fixed inset-y-0 left-0 z-50 w-[min(100%,360px)] overflow-y-auto bg-bg p-4 shadow-xl lg:hidden"
+              transition={EASE.spring}
+              className="shadow-sheet fixed inset-y-0 left-0 z-50 w-[min(100%,360px)] overflow-y-auto border-r border-border bg-bg p-4 lg:hidden"
               style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
             >
               <RoomSidebar {...sidebarProps} mobileSheet onCloseSheet={() => setTopicsOpen(false)} />
@@ -196,7 +197,7 @@ export function ForumWorkspace({
                 {onDismissRoomError && (
                   <button
                     type="button"
-                    className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline"
+                    className="min-h-[44px] shrink-0 rounded-[var(--radius-ctrl)] px-2 text-xs font-semibold underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                     onClick={onDismissRoomError}
                   >
                     {t('dismissAlert')}
@@ -206,14 +207,14 @@ export function ForumWorkspace({
             </AlertBanner>
           )}
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             {isComposingThread ? (
               <motion.div
                 key="composer"
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.18 }}
+                transition={{ duration: DUR.tab, ease: EASE.outExpo }}
                 className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
               >
                 <ThreadComposer
@@ -225,11 +226,11 @@ export function ForumWorkspace({
               </motion.div>
             ) : (
               <motion.div
-                key={activeThread?.threadId ?? (isSyncing && messages.length === 0 ? 'syncing' : 'empty')}
+                key={activeThread?.threadId ?? 'idle'}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.18 }}
+                transition={{ duration: DUR.tab, ease: EASE.outExpo }}
               >
                 {isSyncing && messages.length === 0 ? (
                   <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
@@ -260,11 +261,12 @@ export function ForumWorkspace({
                     ) : null}
                     {!(hasAnyThreads && searchQuery.trim()) && (
                       <motion.button
-                        whileTap={{ scale: 0.98 }}
+                        whileTap={TAP}
+                        transition={TAP_TRANSITION}
                         type="button"
                         onClick={() => setIsComposingThread(true)}
                         aria-label={t('forumStartFirst')}
-                        className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+                        className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
                         <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
                         <span className="sr-only sm:not-sr-only">{t('forumStartFirst')}</span>

@@ -104,6 +104,7 @@ export const es: Messages = {
   meshSyncing: 'Trayendo…',
 
   sidebarSearch: 'Buscar charlas…',
+  sidebarClearSearch: 'Limpiar búsqueda',
   sidebarNewThread: 'Nueva charla',
   sidebarNoThreads: 'Aún no hay charlas.',
   sidebarReplies: '{n} respuesta',
@@ -272,6 +273,7 @@ export const es: Messages = {
   dmsSending: 'Enviando…',
   dmsNoOnline: 'Nadie más en la tribu ahora.',
   dmsUnread: '{n} sin leer',
+  dmsBack: 'Volver a susurros',
 
   turnRelayTitle: '¿No llegáis a conectar?',
   turnRelayHint:

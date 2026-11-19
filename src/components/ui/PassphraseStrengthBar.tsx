@@ -49,7 +49,7 @@ export function PassphraseStrengthBar({ id, score, className = '' }: PassphraseS
         {Array.from({ length: SEGMENT_COUNT }, (_, i) => (
           <span
             key={i}
-            className={`h-1.5 flex-1 rounded-full transition-colors duration-150 ${segmentTone(id, i, filled)}`}
+            className={`h-1.5 flex-1 rounded-full transition-colors duration-[var(--dur-micro)] ${segmentTone(id, i, filled)}`}
           />
         ))}
       </div>

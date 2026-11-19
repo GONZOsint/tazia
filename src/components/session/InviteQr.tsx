@@ -81,7 +81,7 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
   if (!dataUrl) {
     return (
       <div
-        className="mx-auto animate-pulse rounded-lg border border-border bg-surface"
+        className="mx-auto animate-pulse rounded-[var(--radius-ctrl)] border border-border bg-surface"
         style={{ width: size, height: size }}
         aria-hidden="true"
       />
@@ -93,7 +93,7 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
       <div className="qr-perspective">
         <div
           ref={surfaceRef}
-          className={`qr-surface-3d rounded-lg border border-border bg-surface-raised p-2 ${
+          className={`qr-surface-3d rounded-[var(--radius-ctrl)] border border-border bg-surface-raised p-2 ${
             scanning ? 'scanning' : ''
           }`}
           onPointerMove={onPointerMove}
@@ -105,7 +105,7 @@ export function InviteQr({ inviteUrl, size = 180, includesSecret = false }: Invi
             alt={t('qrAlt')}
             width={size}
             height={size}
-            className="block rounded-md"
+            className="block rounded-[calc(var(--radius-ctrl)-4px)]"
             draggable={false}
           />
         </div>

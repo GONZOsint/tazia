@@ -24,9 +24,14 @@
   --icon-sm: 16px;
   --icon-md: 20px;
 
-  --dur-micro: 120ms;
+  /* Mirror src/motion/tokens.ts DUR (seconds → ms) */
+  --dur-tap: 120ms;
+  --dur-micro: 150ms;
+  --dur-tab: 180ms;
   --dur-medium: 220ms;
+  --dur-switch: 240ms;
   --dur-burn: 380ms;
+  --dur-burn-ignition: 520ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -66,10 +71,13 @@
 
   --shadow-chrome: 0 -2px 10px color-mix(in oklab, #000 5%, transparent);
   --shadow-toast: 0 8px 24px color-mix(in oklab, #000 10%, transparent);
+  --shadow-sheet: 0 16px 40px color-mix(in oklab, #000 14%, transparent);
+  --shadow-logo: 0 1px 2px color-mix(in oklab, #000 8%, transparent);
 
-  --fire-core: #facc15;
-  --fire-mid: #f97316;
-  --fire-edge: #ef4444;
+  /* Warm amber fire — sits with warn + stone, not neon red */
+  --fire-core: #e8b84a;
+  --fire-mid: #d97706;
+  --fire-edge: #b45309;
 }
 
 html.dark {
@@ -106,10 +114,12 @@ html.dark {
 
   --shadow-chrome: 0 -2px 12px color-mix(in oklab, #000 35%, transparent);
   --shadow-toast: 0 10px 28px color-mix(in oklab, #000 45%, transparent);
+  --shadow-sheet: 0 18px 48px color-mix(in oklab, #000 55%, transparent);
+  --shadow-logo: 0 1px 3px color-mix(in oklab, #000 40%, transparent);
 
-  --fire-core: #facc15;
-  --fire-mid: #f97316;
-  --fire-edge: #ef4444;
+  --fire-core: #f0c14d;
+  --fire-mid: #e8a317;
+  --fire-edge: #c2410c;
 }
 
 @theme {
@@ -219,18 +229,178 @@ html.dark {
     }
   }
 
+  .shadow-sheet {
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .logo-mark {
+    box-shadow: var(--shadow-logo);
+  }
+
   .panel-surface {
     border-radius: var(--radius-panel);
     border: 1px solid var(--color-border);
     background-color: var(--color-surface-raised);
   }
 
+  /* Dense chrome clear/dismiss — full tap, visually compact */
+  .icon-action--dense {
+    height: 2rem;
+    width: 2rem;
+    min-height: 2rem;
+    min-width: 2rem;
+  }
+
+  /* Icon-only chrome actions — shared radius/hover, no layout shift */
+  .icon-action {
+    display: inline-flex;
+    min-height: var(--tap-min);
+    min-width: var(--tap-min);
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-ctrl);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    transition:
+      background-color var(--dur-micro) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo),
+      color var(--dur-micro) var(--ease-out-expo);
+  }
+  @media (hover: hover) {
+    .icon-action:hover {
+      background-color: var(--color-surface);
+      border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-ink));
+    }
+  }
+  .icon-action[aria-pressed='true'],
+  .icon-action.is-active {
+    border-color: color-mix(in oklab, var(--color-accent) 50%, var(--color-border));
+    background-color: var(--color-accent-soft);
+  }
+  .icon-action--ghost {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--color-muted);
+  }
+  @media (hover: hover) {
+    .icon-action--ghost:hover {
+      background-color: var(--color-surface);
+      border-color: transparent;
+      color: var(--color-ink);
+    }
+  }
+  .icon-action--danger {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--color-danger-ink);
+  }
+  @media (hover: hover) {
+    .icon-action--danger:hover {
+      border-color: var(--color-danger-border);
+      background-color: var(--color-danger-bg);
+      color: var(--color-danger-ink);
+    }
+  }
+
+  /* Disclosure chevrons — same spin everywhere */
+  .chevron-spin {
+    transition: transform var(--dur-medium) var(--ease-out-expo);
+  }
+  .chevron-spin.is-open {
+    transform: rotate(180deg);
+  }
+
+  /* List / row press feedback without Framer on every item */
+  .pressable {
+    transition:
+      background-color var(--dur-tap) var(--ease-out-expo),
+      border-color var(--dur-tap) var(--ease-out-expo),
+      transform var(--dur-tap) var(--ease-out-expo);
+  }
+  .pressable:active {
+    transform: scale(0.985);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pressable:active {
+      transform: none;
+    }
+  }
+
+  /* Plaza reply tree — continuous vertical rail + branch */
+  .thread-node {
+    position: relative;
+  }
+  .thread-node--nested {
+    padding-left: 1.15rem;
+  }
+  .thread-node--nested::before {
+    content: '';
+    position: absolute;
+    left: 0.35rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
+    border-radius: 1px;
+  }
+  .thread-node--nested.is-last::before {
+    bottom: auto;
+    height: 1.15rem;
+  }
+  .thread-node--nested::after {
+    content: '';
+    position: absolute;
+    left: 0.35rem;
+    top: 1.05rem;
+    width: 0.7rem;
+    height: 2px;
+    background: color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
+    border-radius: 1px;
+  }
+  .thread-quote {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: calc(var(--radius-ctrl) - 2px);
+    border-left: 3px solid var(--color-accent);
+    background: var(--color-bg);
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--color-muted);
+  }
+
   .list-row {
     border-radius: var(--radius-panel);
     border: 1px solid var(--color-border);
     background-color: var(--color-surface-raised);
-    transition: background-color var(--dur-micro) var(--ease-out-expo),
-      border-color var(--dur-micro) var(--ease-out-expo);
+    transition:
+      background-color var(--dur-micro) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo),
+      transform var(--dur-micro) var(--ease-out-expo);
+  }
+  /* Hover/press only on interactive rows — static list-row stays calm */
+  @media (hover: hover) {
+    button.list-row:hover,
+    a.list-row:hover,
+    .list-row.pressable:hover {
+      background-color: var(--color-bg);
+      border-color: color-mix(in oklab, var(--color-border) 75%, var(--color-ink));
+    }
+  }
+  button.list-row:active,
+  a.list-row:active,
+  .list-row.pressable:active {
+    transform: scale(0.985);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button.list-row:active,
+    a.list-row:active,
+    .list-row.pressable:active {
+      transform: none;
+    }
   }
 
   .hero-glow {
@@ -287,32 +457,32 @@ html.dark {
     inset: 0;
     background: linear-gradient(
       90deg,
-      color-mix(in oklab, var(--fire-edge) 70%, #7f1d1d) 0%,
-      var(--fire-mid) 65%,
+      color-mix(in oklab, var(--fire-edge) 55%, var(--color-danger)) 0%,
+      var(--fire-mid) 60%,
       var(--fire-core) 100%
     );
-    opacity: 0.55;
+    opacity: 0.42;
     transform: scaleX(0);
     transform-origin: left center;
     pointer-events: none;
-    transition: transform 700ms linear, opacity var(--dur-micro) ease;
+    transition: transform var(--dur-burn-ignition) linear, opacity var(--dur-micro) ease;
   }
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .burn-heat:hover {
-      border-color: color-mix(in srgb, var(--color-danger) 70%, transparent);
+      border-color: color-mix(in srgb, var(--fire-mid) 55%, var(--color-danger-border));
       box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--color-danger) 25%, transparent),
-        0 0 18px color-mix(in srgb, var(--color-danger) 22%, transparent);
+        0 0 0 1px color-mix(in srgb, var(--fire-mid) 20%, transparent),
+        0 0 14px color-mix(in srgb, var(--fire-mid) 18%, transparent);
     }
     .burn-heat:hover .burn-flame-icon {
-      animation: flame-flicker-hover 0.45s ease-in-out infinite alternate;
+      animation: flame-flicker-hover 0.7s ease-in-out infinite alternate;
       color: var(--fire-mid);
     }
   }
   .burn-heat.is-heating {
-    animation: thermal-tremor 0.11s linear infinite;
+    animation: thermal-tremor 0.18s linear infinite;
     border-color: var(--fire-mid) !important;
-    box-shadow: 0 0 26px color-mix(in oklab, var(--fire-mid) 45%, transparent) !important;
+    box-shadow: 0 0 18px color-mix(in oklab, var(--fire-mid) 32%, transparent) !important;
   }
 
   .session-burn-target {
@@ -325,8 +495,8 @@ html.dark {
   }
   .session-burn-target.burning-front {
     box-shadow:
-      0 0 32px color-mix(in oklab, var(--fire-mid) 45%, transparent),
-      inset 0 0 24px color-mix(in oklab, var(--fire-edge) 35%, transparent);
+      0 0 20px color-mix(in oklab, var(--fire-mid) 28%, transparent),
+      inset 0 0 16px color-mix(in oklab, var(--fire-edge) 18%, transparent);
     border-color: var(--fire-mid) !important;
   }
   .session-burn-target.incinerated-collapse {
@@ -338,16 +508,16 @@ html.dark {
     padding-bottom: 0 !important;
     border-width: 0 !important;
     overflow: hidden;
-    filter: blur(8px) brightness(0.4);
-    transform: scale(0.95);
+    filter: blur(5px) brightness(0.55);
+    transform: scale(0.97);
     transition:
       max-height var(--dur-burn) var(--ease-in-out-quart),
-      opacity 320ms var(--ease-exit),
+      opacity var(--dur-burn) var(--ease-exit),
       margin var(--dur-burn) var(--ease-in-out-quart),
       padding var(--dur-burn) var(--ease-in-out-quart),
-      border-width 240ms ease,
-      filter 320ms var(--ease-exit),
-      transform 320ms var(--ease-exit);
+      border-width var(--dur-medium) ease,
+      filter var(--dur-burn) var(--ease-exit),
+      transform var(--dur-burn) var(--ease-exit);
   }
 
   .tazia-check {
@@ -357,13 +527,13 @@ html.dark {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 0.35rem;
+    border-radius: calc(var(--radius-ctrl) - 4px);
     border: 1.5px solid var(--color-border);
     background: var(--color-surface-raised);
     transition:
       background-color var(--dur-micro) var(--ease-out-expo),
       border-color var(--dur-micro) var(--ease-out-expo),
-      transform 200ms var(--ease-spring);
+      transform var(--dur-medium) var(--ease-spring);
   }
   .tazia-check[data-checked='true'] {
     border-color: var(--color-accent);
@@ -377,7 +547,7 @@ html.dark {
   .tazia-check svg path {
     stroke-dasharray: 22;
     stroke-dashoffset: 22;
-    transition: stroke-dashoffset 200ms var(--ease-out-expo) 40ms;
+    transition: stroke-dashoffset var(--dur-medium) var(--ease-out-expo) 40ms;
   }
   .tazia-check[data-checked='true'] svg path {
     stroke-dashoffset: 0;
@@ -424,15 +594,6 @@ html.dark {
   scrollbar-width: none;
 }
 
-@keyframes tab-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.tab-panel-enter {
-  animation: tab-fade-in 0.18s ease-out;
-}
-
 @keyframes dice-anticipate {
   0% { transform: rotate(0deg) scale(1); }
   22% { transform: rotate(-28deg) scale(0.88); }
@@ -458,16 +619,25 @@ html.dark {
 }
 
 @keyframes flame-flicker-hover {
-  0% { transform: scale(1) rotate(-4deg); filter: drop-shadow(0 0 2px var(--fire-mid)); }
-  100% { transform: scale(1.16) rotate(4deg); filter: drop-shadow(0 0 6px var(--fire-core)); }
+  0% { transform: scale(1) rotate(-1.5deg); filter: drop-shadow(0 0 1px var(--fire-mid)); }
+  100% { transform: scale(1.06) rotate(1.5deg); filter: drop-shadow(0 0 3px var(--fire-core)); }
 }
 
 @keyframes thermal-tremor {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  20% { transform: translate(-1.8px, 1px) rotate(-0.7deg); }
-  40% { transform: translate(1.8px, -1px) rotate(0.7deg); }
-  60% { transform: translate(-1.5px, -1.2px) rotate(-0.5deg); }
-  80% { transform: translate(1.5px, 1.2px) rotate(0.5deg); }
+  25% { transform: translate(-0.6px, 0.4px) rotate(-0.25deg); }
+  50% { transform: translate(0.6px, -0.4px) rotate(0.25deg); }
+  75% { transform: translate(-0.4px, -0.3px) rotate(-0.15deg); }
+}
+
+@keyframes zone-join-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in oklab, var(--color-accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.zone-join-pulse {
+  animation: zone-join-pulse 0.7s var(--ease-out-expo) 1;
 }
 
 @keyframes toast-progress-drain {
@@ -556,8 +726,8 @@ html.dark {
   .animate-pulse { animation: none !important; }
   .animate-spin { animation: none !important; }
   .animate-ping { animation: none !important; }
-  .tab-panel-enter,
   .dice-rolling,
+  .zone-join-pulse,
   .plane-launching,
   .burn-heat.is-heating,
   .burn-heat:hover .burn-flame-icon,

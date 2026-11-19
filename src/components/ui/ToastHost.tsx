@@ -71,10 +71,10 @@ function ToastCard({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)', x: 0 }}
-      exit={{ opacity: 0, y: 8, scale: 0.96, transition: { duration: DUR.micro, ease: EASE.exit } }}
-      transition={{ duration: DUR.switch, ease: EASE.outExpo }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0, x: 0 }}
+      exit={{ opacity: 0, y: 6, transition: { duration: DUR.micro, ease: EASE.exit } }}
+      transition={{ duration: DUR.tab, ease: EASE.outExpo }}
       drag
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.72}

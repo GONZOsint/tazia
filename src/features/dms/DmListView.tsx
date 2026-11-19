@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { MessageCircle, Radio, Send } from 'lucide-react';
+import { motion } from 'motion/react';
 import { visualFromUserId } from '../../core/crypto/identity';
 import type { DirectMessage, PresenceState } from '../../core/protocol';
 import { useT } from '../../i18n';
 import { Identicon } from '../../components/content/Identicon';
+import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface DmListViewProps {
   selfUserId: string | null;
@@ -55,15 +57,17 @@ export function DmListView({
       <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <MessageCircle className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
         {onGoToRooms && (
-          <button
+          <motion.button
+            whileTap={TAP}
+            transition={TAP_TRANSITION}
             type="button"
             onClick={onGoToRooms}
             aria-label={t('dmsEmptyCta')}
-            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent"
+            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
           >
             <Radio className="h-5 w-5" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
-          </button>
+          </motion.button>
         )}
       </main>
     );
@@ -98,13 +102,13 @@ export function DmListView({
               <button
                 type="button"
                 onClick={() => onSelectPeer(id)}
-                className="list-row flex w-full min-h-[60px] items-center gap-3 px-4 py-3 text-left hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
+                className="list-row pressable flex w-full min-h-[60px] items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <div className="relative">
                   {visual ? (
                     <Identicon matrix={visual.identiconMatrix} size={36} label={alias} />
                   ) : (
-                    <div className="h-9 w-9 rounded-lg bg-surface" />
+                    <div className="h-9 w-9 rounded-[var(--radius-ctrl)] bg-surface" />
                   )}
                   {isOnline && (
                     <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-ok" />

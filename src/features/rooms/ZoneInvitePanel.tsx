@@ -3,6 +3,7 @@ import { Link2, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { buildInviteUrl } from '../../core/utils/inviteLink';
 import { useT } from '../../i18n';
+import { disclosure } from '../../motion/tokens';
 import { InviteQr } from '../../components/session/InviteQr';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { CopyButton } from '../../components/ui/CopyButton';
@@ -27,9 +28,10 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
 
   return (
     <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
+      initial={disclosure.initial}
+      animate={disclosure.animate}
+      exit={disclosure.exit}
+      transition={disclosure.transition}
       className="overflow-hidden"
     >
       <div

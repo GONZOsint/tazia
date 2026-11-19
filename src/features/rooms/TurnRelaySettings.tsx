@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, Wrench } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
-import { DUR, EASE } from '../../motion/tokens';
+import { disclosure } from '../../motion/tokens';
 
 const LS_KEY = 'tazia:turn-config';
 
@@ -94,7 +94,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
   return (
     <div
       id="turn-relay-settings"
-      className={`mt-5 rounded-xl border p-4 ${
+      className={`mt-5 rounded-[var(--radius-panel)] border p-4 ${
         forceOpen ? 'border-warn-border bg-warn-bg/40' : 'border-border bg-bg'
       }`}
     >
@@ -110,35 +110,46 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
           <span className="font-normal text-faint">· {t('turnRelayTitle')}</span>
         </span>
         <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`chevron-spin h-3.5 w-3.5 ${open ? 'is-open' : ''}`}
           aria-hidden="true"
         />
       </button>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {open && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: DUR.medium, ease: EASE.outExpo }}
+            initial={disclosure.initial}
+            animate={disclosure.animate}
+            exit={disclosure.exit}
+            transition={disclosure.transition}
             className="overflow-hidden"
           >
             <div className="space-y-3 pt-3">
               <p className="text-[11px] text-muted">{t('turnRelayHint')}</p>
 
-              <label className="flex min-h-[44px] items-center gap-3 text-xs text-ink">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 rounded accent-accent"
-                  checked={config.enabled}
-                  onChange={(e) =>
-                    update({
-                      enabled: e.target.checked,
-                      ...(e.target.checked ? {} : { relayOnly: false }),
-                    })
-                  }
-                />
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-ink">
+                <span className="relative inline-flex">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={config.enabled}
+                    onChange={(e) =>
+                      update({
+                        enabled: e.target.checked,
+                        ...(e.target.checked ? {} : { relayOnly: false }),
+                      })
+                    }
+                  />
+                  <span
+                    className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+                    data-checked={config.enabled}
+                    aria-hidden="true"
+                  >
+                    <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </span>
                 <span>{t('turnRelayEnabled')}</span>
               </label>
 
@@ -180,13 +191,24 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                     />
                   </div>
 
-                  <label className="flex min-h-[44px] items-center gap-3 text-xs text-ink">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 rounded accent-accent"
-                      checked={config.relayOnly}
-                      onChange={(e) => update({ relayOnly: e.target.checked })}
-                    />
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-ink">
+                    <span className="relative inline-flex">
+                      <input
+                        type="checkbox"
+                        className="peer sr-only"
+                        checked={config.relayOnly}
+                        onChange={(e) => update({ relayOnly: e.target.checked })}
+                      />
+                      <span
+                        className="tazia-check peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+                        data-checked={config.relayOnly}
+                        aria-hidden="true"
+                      >
+                        <svg className="h-3 w-3 text-on-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
+                          <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </span>
                     <span>{t('turnForceRelay')}</span>
                   </label>
                   <p className="text-[11px] text-muted">{t('turnForceRelayHint')}</p>

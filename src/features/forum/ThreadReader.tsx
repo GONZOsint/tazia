@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CornerDownRight, Loader2, Send, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { visualFromUserId, type LocalProfile } from '../../core/crypto/identity';
@@ -7,6 +7,8 @@ import { MAX_BODY_CHARS, type ForumMessage } from '../../core/protocol';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { Identicon } from '../../components/content/Identicon';
 import { SafeMessageBody } from '../../components/content/SafeMessageBody';
+import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
+import { DUR, TAP, TAP_TRANSITION, bubbleEnter } from '../../motion/tokens';
 import type { ThreadGroup } from './RoomSidebar';
 
 export type AuthorVisualCache = Record<
@@ -31,8 +33,7 @@ type TreeNode = {
 };
 
 const MAX_DEPTH = 4;
-const TAP = { scale: 0.97 } as const;
-const TAP_TRANSITION = { duration: 0.12 } as const;
+const INDENT_PX = 18;
 
 function buildTree(root: ForumMessage, replies: ForumMessage[]): TreeNode {
   const byParent = new Map<string, ForumMessage[]>();
@@ -90,8 +91,8 @@ function PostCard({
   onReply,
   youSuffix,
   replyLabel,
-  replySnippetLabel,
   locale,
+  animateEnter,
 }: {
   message: ForumMessage;
   alias: string;
@@ -104,44 +105,36 @@ function PostCard({
   onReply: () => void;
   youSuffix: string;
   replyLabel: string;
-  replySnippetLabel: string;
   locale: string;
+  /** False on first paint of a thread — avoids cascade flicker. */
+  animateEnter: boolean;
 }) {
-  const rail = depth > 0;
+  const nested = depth > 0;
   return (
     <motion.article
       layout={false}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18 }}
-      className={`relative rounded-[var(--radius-msg)] p-3 sm:p-4 ${
-        rail
-          ? 'border border-border/60 bg-bg'
-          : 'border border-border bg-surface-raised'
-      } ${isSelf ? 'border-l-[3px] border-l-accent' : ''} ${
-        highlighted ? 'ring-2 ring-accent/50' : ''
-      }`}
-      style={rail ? { marginLeft: Math.min(depth, MAX_DEPTH) * 10 } : undefined}
+      initial={animateEnter ? bubbleEnter.initial : false}
+      animate={bubbleEnter.animate}
+      transition={bubbleEnter.transition}
+      className={`relative rounded-[var(--radius-msg)] border p-2.5 sm:p-3 ${
+        nested ? 'border-border/70 bg-bg' : 'border-border bg-surface-raised'
+      } ${isSelf && !nested ? 'border-l-[3px] border-l-accent' : ''} ${
+        isSelf && nested ? 'ring-1 ring-accent/25' : ''
+      } ${highlighted ? 'ring-2 ring-accent/50' : ''}`}
     >
-      {rail && (
-        <span
-          aria-hidden="true"
-          className="absolute -left-2.5 top-1 bottom-4 w-2 border-l border-b border-accent/30 rounded-bl-md"
-        />
-      )}
-      <header className="flex flex-wrap items-center gap-2">
+      <header className="flex items-center gap-2">
         {visual ? (
-          <Identicon matrix={visual.identiconMatrix} size={26} label={alias} />
+          <Identicon matrix={visual.identiconMatrix} size={22} label={alias} />
         ) : (
-          <div className="h-6 w-6 rounded-lg bg-surface" />
+          <div className="h-[22px] w-[22px] rounded-[var(--radius-ctrl)] bg-surface" />
         )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-ink">
-            {alias}
-            {isSelf ? youSuffix : ''}
-          </p>
-          <p className="text-[11px] text-muted">{formatClockTime(message.createdAtMs, locale)}</p>
-        </div>
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+          {alias}
+          {isSelf ? youSuffix : ''}
+          <span className="ml-1.5 font-normal text-[11px] text-muted">
+            {formatClockTime(message.createdAtMs, locale)}
+          </span>
+        </p>
         <motion.button
           whileTap={TAP}
           transition={TAP_TRANSITION}
@@ -149,19 +142,25 @@ function PostCard({
           onClick={onReply}
           aria-label={replyLabel}
           title={replyLabel}
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-[var(--radius-ctrl)] border border-border px-2.5 py-1 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-accent sm:min-w-0"
+          className="icon-action icon-action--ghost text-muted hover:text-ink"
         >
           <CornerDownRight className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-          <span className="hidden sm:inline">{replyLabel}</span>
         </motion.button>
       </header>
+
       {parentSnippet && (
-        <p className="mt-1.5 truncate text-[11px] text-faint">
-          {parentAlias ? `${parentAlias} · ` : ''}
-          {replySnippetLabel || parentSnippet}
-        </p>
+        <div className="thread-quote">
+          <span className="min-w-0 truncate">
+            {parentAlias ? (
+              <span className="font-semibold text-ink/80">{parentAlias}</span>
+            ) : null}
+            {parentAlias ? ' · ' : ''}
+            {parentSnippet}
+          </span>
+        </div>
       )}
-      <div className="mt-2 text-sm leading-relaxed">
+
+      <div className="mt-1.5 text-sm leading-snug">
         <SafeMessageBody text={message.body} />
       </div>
     </motion.article>
@@ -182,10 +181,14 @@ export function ThreadReader({
   const { locale } = useLocale();
   const [replyBody, setReplyBody] = useState('');
   const [replyParent, setReplyParent] = useState<ForumMessage | null>(null);
-  const [planeKey, setPlaneKey] = useState(0);
-  const [planeLaunching, setPlaneLaunching] = useState(false);
+  const { planeKey, launching: planeLaunching, trigger: triggerPlane } = usePlaneLaunch();
   const [submitting, setSubmitting] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  /** After first paint, new posts may land with bubbleEnter. */
+  const enterReadyRef = useRef(false);
+  useEffect(() => {
+    enterReadyRef.current = true;
+  }, []);
 
   const posts = useMemo(
     () => [thread.rootPost, ...thread.replies],
@@ -239,9 +242,7 @@ export function ThreadReader({
     e.preventDefault();
     if (!replyBody.trim() || isBusy || submitting) return;
     setSubmitting(true);
-    setPlaneKey((k) => k + 1);
-    setPlaneLaunching(true);
-    window.setTimeout(() => setPlaneLaunching(false), 360);
+    triggerPlane();
     const parentId = replyParent ? replyParent.msgId : thread.rootPost.msgId;
     try {
       const ok = await onReplyThread(thread.threadId, parentId, replyBody.trim());
@@ -254,7 +255,7 @@ export function ThreadReader({
     }
   };
 
-  const renderNode = (node: TreeNode, depth: number): React.ReactNode => {
+  const renderNode = (node: TreeNode, depth: number, isLast: boolean): React.ReactNode => {
     const msg = node.message;
     const parent =
       msg.parentMsgId && msg.msgId !== thread.rootPost.msgId
@@ -262,8 +263,20 @@ export function ThreadReader({
         : null;
     const parentSnippet = parent && depth > 0 ? snippetOf(parent.body) : null;
     const parentAlias = parent && depth > 0 ? resolveAlias(parent.authorUserId) : null;
+    const nested = depth > 0;
+
     return (
-      <div key={msg.msgId} className="space-y-2">
+      <div
+        key={msg.msgId}
+        className={`thread-node space-y-2 ${nested ? 'thread-node--nested' : ''} ${
+          nested && isLast && node.children.length === 0 ? 'is-last' : ''
+        }`}
+        style={
+          nested && depth > 1
+            ? { marginLeft: Math.min(depth - 1, MAX_DEPTH - 1) * INDENT_PX }
+            : undefined
+        }
+      >
         <PostCard
           message={msg}
           alias={resolveAlias(msg.authorUserId)}
@@ -276,31 +289,31 @@ export function ThreadReader({
           onReply={() => handleReplyClick(msg)}
           youSuffix={t('readerYou')}
           replyLabel={t('readerReply')}
-          replySnippetLabel={
-            parentSnippet ? t('readerReplyToSnippet', { snippet: parentSnippet }) : ''
-          }
           locale={locale}
+          animateEnter={enterReadyRef.current}
         />
-        {node.children.map((child) => renderNode(child, depth + 1))}
+        {node.children.map((child, i) =>
+          renderNode(child, depth + 1, i === node.children.length - 1)
+        )}
       </div>
     );
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-border pb-2 sm:rounded-[var(--radius-sheet)] sm:border sm:border-border sm:bg-surface-raised sm:p-3">
+      <div className="shrink-0 border-b border-border pb-2 sm:rounded-[var(--radius-panel)] sm:border sm:border-border sm:bg-surface-raised sm:p-3">
         <h2 className="font-display text-lg font-semibold text-ink sm:text-xl [text-wrap:balance]">
           {thread.title}
         </h2>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto py-2 pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:space-y-3 md:pb-4">
-        {renderNode(tree, 0)}
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto py-2 pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:space-y-2.5 md:pb-4">
+        {renderNode(tree, 0, true)}
       </div>
 
       <form
         onSubmit={(e) => void handleSubmitReply(e)}
-        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-sheet)] md:border md:p-3"
+        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-panel)] md:border md:p-3"
       >
         <div className="mx-auto max-w-[1280px]">
           <AnimatePresence initial={false}>
@@ -309,20 +322,20 @@ export function ThreadReader({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15 }}
+                transition={{ duration: DUR.micro }}
                 className="overflow-hidden"
               >
-                <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-1.5 text-xs text-muted">
-                  <span className="truncate">
+                <div className="thread-quote mb-2 items-center justify-between">
+                  <span className="min-w-0 flex-1 truncate">
                     {t('readerReplyingTo', { alias: resolveAlias(replyParent.authorUserId) })}
                   </span>
                   <button
                     type="button"
                     onClick={() => setReplyParent(null)}
                     aria-label={t('readerClearQuote')}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center"
+                    className="icon-action icon-action--ghost icon-action--dense pressable shrink-0"
                   >
-                    <X className="h-4 w-4" strokeWidth={1.75} />
+                    <X className="h-3.5 w-3.5" strokeWidth={1.75} />
                   </button>
                 </div>
               </motion.div>
