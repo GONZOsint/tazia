@@ -3,7 +3,7 @@ import { Link2, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { buildInviteUrl } from '../../core/utils/inviteLink';
 import { useT } from '../../i18n';
-import { disclosure } from '../../motion/tokens';
+import { DUR, EASE, disclosure } from '../../motion/tokens';
 import { InviteQr } from '../../components/session/InviteQr';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { CopyButton } from '../../components/ui/CopyButton';
@@ -34,11 +34,7 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
       transition={disclosure.transition}
       className="overflow-hidden"
     >
-      <div
-        className={`border-t border-border bg-bg/60 ${
-          compact ? 'px-3 py-3 sm:px-3.5' : 'px-4 py-4'
-        }`}
-      >
+      <div className="invite-panel invite-panel--embedded">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-ink">{t('roomsInviteTitle')}</p>
           <CopyButton
@@ -47,16 +43,25 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
             copiedLabel={t('copiedDefault')}
             icon={Link2}
             iconOnly
-            className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+            className="icon-action focus-visible:outline-2 focus-visible:outline-accent"
           />
         </div>
 
-        <div className="mt-3 flex justify-center">
-          <InviteQr inviteUrl={inviteUrl} includesSecret={includePhrase && Boolean(phrase)} />
+        <div className="mt-2.5 flex justify-center">
+          <InviteQr
+            inviteUrl={inviteUrl}
+            size={compact ? 168 : 188}
+            includesSecret={includePhrase && Boolean(phrase)}
+          />
         </div>
 
         {phrase && (
-          <label className="mt-3 flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted">
+          <motion.label
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18, duration: DUR.tab, ease: EASE.outExpo }}
+            className="invite-opt mt-2.5 flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-muted"
+          >
             <span className="relative inline-flex">
               <input
                 type="checkbox"
@@ -79,7 +84,7 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
             </span>
             <span className="flex-1">{t('roomsIncludePhrase')}</span>
             {includePhrase && <ShieldAlert className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />}
-          </label>
+          </motion.label>
         )}
       </div>
 

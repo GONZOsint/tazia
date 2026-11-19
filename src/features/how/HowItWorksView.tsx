@@ -101,21 +101,23 @@ export function HowItWorksView() {
         </li>
       </ul>
 
-      <motion.button
-        whileTap={TAP}
-        transition={TAP_TRANSITION}
-        type="button"
-        aria-expanded={moreOpen}
-        onClick={() => setMoreOpen((v) => !v)}
-        className="mt-6 min-h-[44px] text-sm font-semibold text-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        {moreOpen ? t('helpMoreHide') : t('helpMore')}
-      </motion.button>
-      {moreOpen && (
-        <p className="mt-2 rounded-[var(--radius-panel)] border border-border bg-bg p-4 text-xs leading-relaxed text-muted">
-          {t('helpMoreBody')}
-        </p>
-      )}
+      <div className="mt-6 rounded-[var(--radius-panel)] border border-dashed border-border bg-bg/60 p-4">
+        <motion.button
+          whileTap={TAP}
+          transition={TAP_TRANSITION}
+          type="button"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((v) => !v)}
+          className="min-h-[44px] text-left text-sm font-semibold text-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          {moreOpen ? t('helpMoreHide') : t('helpMore')}
+        </motion.button>
+        {moreOpen && (
+          <p className="mt-3 font-mono text-[11px] leading-relaxed text-muted whitespace-pre-line">
+            {t('helpMoreBody')}
+          </p>
+        )}
+      </div>
 
       <div className="mt-8 panel-surface p-5">
         <motion.button

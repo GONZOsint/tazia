@@ -19,6 +19,7 @@ export interface ActiveZoneChip {
   meshStatus: MeshStatus;
   onlineUserIds: string[];
   selfUserId: string;
+  relayActive?: boolean;
 }
 
 interface TopBarProps {
@@ -33,6 +34,10 @@ interface TopBarProps {
   activeZone?: ActiveZoneChip | null;
   /** Visual ignition while burn choreography runs. */
   burnHeating?: boolean;
+  /** Zone ignite glow on the active chip (inverse of burn). */
+  igniting?: boolean;
+  /** One-beat flash when switching active zone. */
+  zoneSwitchPulse?: boolean;
 }
 
 export function TopBar({
@@ -45,6 +50,8 @@ export function TopBar({
   roomsCount = 0,
   activeZone = null,
   burnHeating = false,
+  igniting = false,
+  zoneSwitchPulse = false,
 }: TopBarProps) {
   const t = useT();
   const shortId = activeZone
@@ -92,7 +99,10 @@ export function TopBar({
                   ? `${t('roomsActiveLabel')}: ${activeZone.roomId} — ${t('navRooms')} (${roomsCount})`
                   : `${t('roomsActiveLabel')}: ${activeZone.roomId}`
               }
-              className="session-burn-target flex min-h-[36px] min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-2 py-1 hover:border-accent/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px]"
+              data-zone-id={activeZone.roomId}
+              className={`session-burn-target session-ignite-target flex min-h-[36px] min-w-0 max-w-[42vw] items-center gap-2 rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-2 py-1 hover:border-accent/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:max-w-[220px] ${
+                igniting || zoneSwitchPulse ? 'igniting-front' : ''
+              }`}
             >
               <Identicon
                 matrix={identiconMatrixFromHex(activeZone.roomId)}
@@ -112,6 +122,7 @@ export function TopBar({
                   status={activeZone.meshStatus}
                   onlineCount={countOtherPeers(activeZone.onlineUserIds, activeZone.selfUserId)}
                   compact
+                  relayActive={activeZone.relayActive}
                 />
               </span>
             </motion.button>

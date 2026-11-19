@@ -79,6 +79,7 @@ interface TurnRelaySettingsProps {
 export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps) {
   const t = useT();
   const [open, setOpen] = useState(forceOpen);
+  const [techOpen, setTechOpen] = useState(false);
   const [config, setConfig] = useState<TurnConfig>(loadTurnConfig);
 
   useEffect(() => {
@@ -164,7 +165,7 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                       value={config.url}
                       onChange={(e) => update({ url: e.target.value })}
                       placeholder="turn:turn.example.com:3478"
-                      className="input-base mt-1"
+                      className="input-base mt-1 font-mono text-xs"
                     />
                   </div>
                   <div>
@@ -214,6 +215,22 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                   <p className="text-[11px] text-muted">{t('turnForceRelayHint')}</p>
                 </div>
               )}
+
+              <div className="rounded-[var(--radius-ctrl)] border border-dashed border-border px-3 py-2">
+                <button
+                  type="button"
+                  aria-expanded={techOpen}
+                  onClick={() => setTechOpen((v) => !v)}
+                  className="min-h-[36px] text-left text-[11px] font-semibold text-muted underline-offset-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  {techOpen ? t('helpMoreHide') : t('helpMore')}
+                </button>
+                {techOpen && (
+                  <p className="mt-2 font-mono text-[10px] leading-relaxed text-faint whitespace-pre-line">
+                    {t('turnTechNote')}
+                  </p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}

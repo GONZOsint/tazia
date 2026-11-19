@@ -53,7 +53,7 @@ export function CopyButton({
             transition={{ duration: DUR.micro }}
             className="inline-flex items-center gap-1.5 text-ok"
           >
-            <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <Check className="copy-ember-check h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {!iconOnly && <span>{copiedLabel}</span>}
           </motion.span>
         ) : (

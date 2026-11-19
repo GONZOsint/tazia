@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react';
 import { deriveEmojiSafetyCode } from '../../core/trust/trustStore';
 import { useT } from '../../i18n';
 import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
@@ -27,6 +27,9 @@ export function EmojiVerifyModal({
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [code, setCode] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [emojiScope, animate] = useAnimate();
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!open || !selfKeyB64 || !peerKeyB64) return;
@@ -40,17 +43,44 @@ export function EmojiVerifyModal({
   }, [open, selfKeyB64, peerKeyB64, roomId]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setVerifying(false);
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !verifying) onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, verifying]);
 
   useEffect(() => {
     if (open) dialogRef.current?.focus();
   }, [open]);
+
+  const handleMatch = async () => {
+    if (verifying) return;
+    setVerifying(true);
+    if (!reduceMotion) {
+      try {
+        navigator.vibrate?.(10);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (emojiScope.current) {
+      await animate(
+        emojiScope.current,
+        reduceMotion
+          ? { opacity: [1, 0.55, 1], color: 'var(--color-accent)' }
+          : { opacity: [1, 0.7, 1], scale: [1, 1.06, 1], color: 'var(--color-accent)' },
+        { duration: 0.26, ease: EASE.outExpo }
+      );
+    } else {
+      await new Promise((r) => window.setTimeout(r, 220));
+    }
+    onVerify();
+  };
 
   return (
     <AnimatePresence>
@@ -64,7 +94,7 @@ export function EmojiVerifyModal({
           role="dialog"
           aria-modal="true"
           aria-label={t('trustVerifyTitle')}
-          onClick={onClose}
+          onClick={verifying ? undefined : onClose}
         >
           <motion.div
             ref={dialogRef}
@@ -86,7 +116,8 @@ export function EmojiVerifyModal({
                 transition={TAP_TRANSITION}
                 type="button"
                 onClick={onClose}
-                className="icon-action icon-action--ghost focus-visible:outline-2 focus-visible:outline-accent"
+                disabled={verifying}
+                className="icon-action icon-action--ghost focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                 aria-label={t('consentCancel')}
               >
                 <X className="h-4 w-4" />
@@ -99,6 +130,7 @@ export function EmojiVerifyModal({
 
               {code ? (
                 <p
+                  ref={emojiScope}
                   className="mx-auto mt-4 text-4xl tracking-widest"
                   role="img"
                   aria-label={t('trustEmojiLabel')}
@@ -115,16 +147,18 @@ export function EmojiVerifyModal({
                   transition={TAP_TRANSITION}
                   type="button"
                   onClick={onClose}
-                  className="flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] border border-border px-3 py-2 text-xs font-semibold text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent"
+                  disabled={verifying}
+                  className="flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] border border-border px-3 py-2 text-xs font-semibold text-muted hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                 >
                   {t('trustNoMatch')}
                 </motion.button>
                 <motion.button
-                  whileTap={TAP}
+                  whileTap={verifying ? undefined : TAP}
                   transition={TAP_TRANSITION}
                   type="button"
-                  onClick={onVerify}
-                  className="btn-accent-sheen flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
+                  onClick={() => void handleMatch()}
+                  disabled={verifying || !code}
+                  className="btn-accent-sheen flex-1 min-h-[44px] rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                 >
                   {t('trustMatch')}
                 </motion.button>

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { PassphraseStrengthId } from '../../core/crypto/passphraseWords';
 import { useT, type MessageKey } from '../../i18n';
 
@@ -11,6 +12,7 @@ const STRENGTH_COPY: Record<PassphraseStrengthId, { label: MessageKey; hint: Mes
 };
 
 const SEGMENT_COUNT = 4;
+const ACCEPTABLE = new Set<PassphraseStrengthId>(['ok', 'good', 'strong']);
 
 function filledCount(id: PassphraseStrengthId, score: 0 | 1 | 2 | 3): number {
   if (id === 'empty') return 0;
@@ -37,10 +39,22 @@ export function PassphraseStrengthBar({ id, score, className = '' }: PassphraseS
   const copy = STRENGTH_COPY[id];
   const filled = filledCount(id, score);
   const title = `${t(copy.label)}: ${t(copy.hint)}`;
+  const prevId = useRef(id);
+  const [tremor, setTremor] = useState(false);
+
+  useEffect(() => {
+    const prev = prevId.current;
+    prevId.current = id;
+    if (!ACCEPTABLE.has(prev) && ACCEPTABLE.has(id)) {
+      setTremor(true);
+      const timer = window.setTimeout(() => setTremor(false), 320);
+      return () => window.clearTimeout(timer);
+    }
+  }, [id]);
 
   return (
     <div
-      className={`mt-2 ${className}`}
+      className={`mt-2 ${tremor ? 'strength-accept-tremor' : ''} ${className}`}
       title={title}
       role="status"
       aria-label={title}

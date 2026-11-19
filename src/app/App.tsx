@@ -14,7 +14,7 @@ import { RoomEntryView } from '../features/rooms/RoomEntryView';
 import { countOtherPeers, useRoomManager } from '../hooks/useRoomManager';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useT } from '../i18n';
-import { DUR, EASE, TAP, TAP_TRANSITION, contentSwitch, enterPlaza } from '../motion/tokens';
+import { DUR, EASE, IGNITE, TAP, TAP_TRANSITION, contentSwitch, enterPlaza } from '../motion/tokens';
 import { parseInviteInput, scrubPhraseFromLocationHash } from '../core/utils/inviteLink';
 
 const ForumWorkspace = lazy(() => import('../features/forum/ForumWorkspace'));
@@ -58,6 +58,20 @@ export default function App() {
   const [burnPlaying, setBurnPlaying] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [dmPeerId, setDmPeerId] = useState<string | null>(null);
+  const [igniteRoomId, setIgniteRoomId] = useState<string | null>(null);
+  const [zoneSwitchPulse, setZoneSwitchPulse] = useState(false);
+  const skipNextZoneSwitchPulseRef = useRef(false);
+  const igniteTimerRef = useRef<number | null>(null);
+
+  const handleZoneIgnited = useCallback((roomId: string) => {
+    skipNextZoneSwitchPulseRef.current = true;
+    setIgniteRoomId(roomId);
+    if (igniteTimerRef.current !== null) window.clearTimeout(igniteTimerRef.current);
+    igniteTimerRef.current = window.setTimeout(() => {
+      setIgniteRoomId((cur) => (cur === roomId ? null : cur));
+      igniteTimerRef.current = null;
+    }, IGNITE.finishMs);
+  }, []);
 
   const {
     rooms,
@@ -90,7 +104,12 @@ export default function App() {
       dmsTabFocusedRef.current = false;
       setActiveTab(tab as ActiveTab);
     },
-    { forumTabFocusedRef, dmsTabFocusedRef, activeDmPeerIdRef }
+    {
+      forumTabFocusedRef,
+      dmsTabFocusedRef,
+      activeDmPeerIdRef,
+      onZoneIgnited: handleZoneIgnited,
+    }
   );
 
   useWakeLock(Boolean(activeRoomId));
@@ -108,11 +127,25 @@ export default function App() {
 
   const prevActiveRoomIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (prevActiveRoomIdRef.current !== activeRoomId) {
-      prevActiveRoomIdRef.current = activeRoomId;
-      setDmPeerId(null);
+    if (prevActiveRoomIdRef.current === activeRoomId) return;
+    const prev = prevActiveRoomIdRef.current;
+    prevActiveRoomIdRef.current = activeRoomId;
+    setDmPeerId(null);
+    if (!activeRoomId || prev === null) return;
+    if (skipNextZoneSwitchPulseRef.current) {
+      skipNextZoneSwitchPulseRef.current = false;
+      return;
     }
+    setZoneSwitchPulse(true);
+    const t = window.setTimeout(() => setZoneSwitchPulse(false), IGNITE.glowMs);
+    return () => window.clearTimeout(t);
   }, [activeRoomId]);
+
+  useEffect(() => {
+    return () => {
+      if (igniteTimerRef.current !== null) window.clearTimeout(igniteTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setModalOpen(ipConsentNeeded || burnConfirmOpen || burnPlaying);
@@ -215,10 +248,13 @@ export default function App() {
                   meshStatus: activeRoom.meshStatus,
                   onlineUserIds: activeRoom.onlineUserIds,
                   selfUserId: activeRoom.selfUserId,
+                  relayActive: activeRoom.relayFallbackActive,
                 }
               : null
           }
           burnHeating={burnPlaying}
+          igniting={Boolean(igniteRoomId && activeRoomId === igniteRoomId)}
+          zoneSwitchPulse={zoneSwitchPulse}
           onBurnSession={() => setBurnConfirmOpen(true)}
         />
 
@@ -298,7 +334,6 @@ export default function App() {
                         initial={enterPlaza.initial}
                         animate={enterPlaza.animate}
                         exit={enterPlaza.exit}
-                        transition={enterPlaza.transition}
                       >
                         <ForumWorkspace
                           roomId={roomId}
@@ -309,6 +344,7 @@ export default function App() {
                           presenceAliases={presenceAliases}
                           onlineCount={peerOnlineCount}
                           meshStatus={meshStatus}
+                          relayActive={Boolean(activeRoom?.relayFallbackActive)}
                           isPublishing={isPublishing}
                           isSyncing={isSyncing}
                           roomError={roomErrorMsg}
@@ -395,6 +431,7 @@ export default function App() {
                     peerOnlineCount={peerOnlineCount}
                     rejectedSyncCount={rejectedSyncCount}
                     roomId={roomId}
+                    relayActive={Boolean(activeRoom?.relayFallbackActive)}
                     onSyncNow={syncNow}
                     isSyncing={isSyncing}
                     onGoToRooms={() => selectTab('rooms')}

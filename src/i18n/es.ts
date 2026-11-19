@@ -32,7 +32,7 @@ export const es: Messages = {
   toastPublishFailed: 'No se pudo enviar',
   toastDmSent: 'Susurro enviado',
   toastDmFailed: 'No se pudo enviar',
-  toastSynced: 'Mensajes traídos',
+  toastSynced: 'Mensajes actualizados',
   dismissAlert: 'Cerrar',
   navUnreadAria: '{n} sin leer',
 
@@ -76,7 +76,7 @@ export const es: Messages = {
   roomsIpNote:
     'Quienes estén en la zona pueden ver vuestras direcciones de red. Pensado para grupos que ya se conocen.',
   roomsPhraseScrubbed:
-    'La frase se quitó de la barra de dirección. Sigue rellenada abajo; no reenvíes la URL completa.',
+    'La frase se quitó de la barra de arriba. Sigue rellenada abajo; no reenvíes el enlace completo.',
   roomsHowLink: '¿Cómo funciona?',
 
   strengthEmpty: 'Sin frase',
@@ -101,7 +101,7 @@ export const es: Messages = {
   meshConnecting: 'Conectando…',
   meshAlone: 'Solo tú en la zona — esperando',
   meshConnected: 'Conectados: {n}',
-  meshSyncing: 'Trayendo…',
+  meshSyncing: 'Actualizando…',
 
   sidebarSearch: 'Buscar charlas…',
   sidebarClearSearch: 'Limpiar búsqueda',
@@ -109,7 +109,7 @@ export const es: Messages = {
   sidebarNoThreads: 'Aún no hay charlas.',
   sidebarReplies: '{n} respuesta',
   sidebarRepliesPlural: '{n} respuestas',
-  sidebarRefresh: 'Traer mensajes',
+  sidebarRefresh: 'Actualizar',
   sidebarTopics: 'Charlas',
   sidebarCloseTopics: 'Cerrar',
 
@@ -118,7 +118,7 @@ export const es: Messages = {
   forumStartFirst: 'Empezar una charla',
   forumNoResults: 'Sin resultados',
   forumNoResultsHint: 'Nada coincide con «{q}».',
-  forumSyncing: 'Trayendo mensajes',
+  forumSyncing: 'Actualizando mensajes',
 
   composerTitle: 'Nueva charla',
   composerAs: 'Como {alias}',
@@ -147,46 +147,49 @@ export const es: Messages = {
   presenceTitle: 'Tribu',
   presenceCount: '{n} miembro en la tribu',
   presenceCountPlural: '{n} miembros en la tribu',
-  presenceRejected: '{n} mensaje no verificado ignorado',
-  presenceRejectedPlural: '{n} mensajes no verificados ignorados',
-  presenceRefresh: 'Traer mensajes',
-  presenceNoKey: 'Aún no puede verificar mensajes',
-  presenceDetails: 'Detalles',
+  presenceRejected: '{n} mensaje dudoso ignorado',
+  presenceRejectedPlural: '{n} mensajes dudosos ignorados',
+  presenceRefresh: 'Actualizar',
+  presenceNoKey: 'Aún no se puede comprobar su identidad',
+  presenceDetails: 'Detalle técnico',
   presenceHideDetails: 'Ocultar',
-  presenceKeyShort: 'Clave: {fp}',
+  presenceKeyShort: 'Huella: {fp}',
+  presencePeerId: 'ID: {id}',
   presenceYou: ' (tú)',
   presenceNoAlias: 'Sin alias',
 
   helpTitle: 'Cómo funciona',
   helpLede:
-    'TAZIA es una zona temporal en el navegador. No guardamos tus mensajes en un servidor: solo existen mientras la tribu tiene la página abierta.',
+    'TAZIA es una zona temporal en el navegador. No guardamos tus mensajes en un servidor nuestro: solo existen mientras alguien de la tribu tiene la página abierta.',
   helpDirectTitle: 'Conexión directa',
   helpDirectBody:
-    'Os conectáis entre navegadores. Unos servicios públicos solo ayudan a encontraros la primera vez; después la conversación va de persona a persona.',
+    'Os conectáis de navegador a navegador. Unos servicios públicos solo ayudan a encontraros la primera vez; después habláis de persona a persona.',
   helpGroupTitle: 'Tribu pequeña, todos online',
   helpGroupBody:
-    'Pensado para una reunión o fiesta (el mesh va mejor con ~5 miembros más como máximo). Si se cierran todas las pestañas, el historial desaparece. Quien llega tarde puede pedir una copia a quien siga conectado.',
+    'Pensado para una reunión o fiesta (mejor con unas 5 personas más como máximo). Si se cierran todas las pestañas, el historial desaparece. Quien llega tarde puede pedir una copia a quien siga conectado.',
   helpZonesTitle: 'Varias zonas',
   helpZonesBody:
-    'Puedes estar en hasta 5 zonas a la vez. Cambia o sal de una en Zonas; Plaza / Tribu / Susurros muestran la zona activa. Quemar borra todas las zonas en este dispositivo.',
-  helpRelayTitle: 'Si falla lo directo',
+    'Puedes estar en hasta 5 zonas a la vez. Cambia o sal de una en Zonas; Plaza, Tribu y Susurros muestran la zona activa. Quemar borra todas las zonas en este dispositivo.',
+  helpRelayTitle: 'Si no os conectáis directo',
   helpRelayBody:
-    'Si los navegadores no logran un camino WebRTC, los susurros y la plaza pueden seguir por un fallback cifrado vía relés (solo ciphertext). Preferid la misma Wi‑Fi o vuestro TURN para un mesh real.',
+    'A veces la red no deja hablar de navegador a navegador. En ese caso el chat puede seguir por un camino cifrado a través de servidores de ayuda. Preferid la misma Wi‑Fi; si hace falta, abrid Arreglar en Zonas.',
   helpSafetyTitle: 'Qué protege y qué no',
-  helpSafety1: 'Los demás en la zona pueden ver vuestras direcciones de red. No es Tor.',
+  helpSafety1:
+    'Los demás en la zona pueden ver vuestras direcciones de internet. TAZIA no oculta quién eres en la red.',
   helpSafety2:
-    'Cada mensaje lleva una firma digital. Así nadie puede reescribir el historial de otra persona al sincronizar.',
-  helpSafety3: 'Meter la frase en el enlace es cómodo pero arriesgado si se reenvía.',
-  helpSafety4: 'El QR se genera en tu dispositivo.',
-  helpMore: 'Más detalle técnico',
-  helpMoreHide: 'Ocultar detalle',
+    'Cada mensaje lleva una marca que solo su autor puede poner. Así nadie puede fingir ser otra persona al actualizar el historial.',
+  helpSafety3: 'Meter la frase en el enlace es cómodo, pero arriesgado si se reenvía.',
+  helpSafety4: 'El QR se genera en tu dispositivo; no se sube a ningún sitio.',
+  helpMore: 'Detalle técnico',
+  helpMoreHide: 'Ocultar detalle técnico',
   helpMoreBody:
-    'Usa WebRTC (Trystero) para el mesh. Protocolo agora-forum-v1 con firmas Ed25519. Detalle en SECURITY.md y PROTOCOL.md.',
+    '• Mesh P2P con WebRTC vía Trystero\n• Si falla ICE: fallback de datos cifrado por relés Nostr (solo ciphertext; no es P2P puro)\n• Protocolo agora-forum-v1 con firmas Ed25519\n• TURN opcional (coturn) para rescate ICE u ocultar IP\n• Confianza TOFU + código de 6 emojis ligado a roomId\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md',
   helpForgetDevice: 'Olvidar este dispositivo',
-  helpForgetDone: 'Consentimiento de red borrado en este navegador.',
-  helpForgetHint: 'Vuelve a pedir aviso de dirección la próxima vez que entres a una zona.',
+  helpForgetDone: 'Aviso de dirección borrado en este navegador.',
+  helpForgetHint: 'Volverá a pedir el aviso de dirección la próxima vez que entres a una zona.',
   helpNoServerTitle: 'Sin cuentas ni servidor nuestro',
-  helpNoServerBody: 'Hosting estático basta. Abrir zona → frase en persona → QR/enlace → quemar sesión al acabar.',
+  helpNoServerBody:
+    'No hace falta registrarse ni instalar una app. Abrir zona → decir la frase en persona → compartir QR o enlace → quemar la sesión al acabar.',
   helpStepsTitle: 'Inicio rápido',
   helpSteps1: 'Abre una zona y genera una frase.',
   helpSteps2: 'Di la frase en persona o por un canal de confianza.',
@@ -195,26 +198,28 @@ export const es: Messages = {
   helpSteps5: 'Al acabar, quema la sesión.',
   helpFixTitle: '¿No llegáis a conectar?',
   helpFixBody:
-    'Misma Wi‑Fi: permite Red local si Chrome/Brave lo pide; evita aislamiento de AP. Safari a menudo necesita TURN o el fallback cifrado en la misma Wi‑Fi. Entre redes, añade tu propio TURN en Zonas → Arreglar.',
-  browserBlockedTitle: 'Este navegador no puede ejecutar TAZIA',
+    '1) Misma Wi‑Fi: si el navegador pide permiso de «Red local», acéptalo. En el router, evita el aislamiento entre dispositivos. 2) Si seguís sin veros, abrid Zonas → Arreglar y pedid a quien sepa de redes que añada un servidor de apoyo. En Safari a veces hace falta ese paso incluso en la misma Wi‑Fi.',
+  browserBlockedTitle: 'Este navegador no puede usar TAZIA',
   browserBlockedBody:
-    'Hace falta HTTPS (o localhost), WebRTC, Web Crypto y WebSockets. Prueba Chrome, Brave, Firefox o Safari actuales.',
-  browserHttpsHint: 'Abre el sitio por HTTPS. HTTP plano bloquea WebRTC y Web Crypto.',
+    'Necesitas un navegador actual (Chrome, Brave, Firefox o Safari) y una conexión segura. Prueba a actualizar el navegador o abrir el sitio en otro.',
+  browserHttpsHint:
+    'Abre el sitio con una dirección que empiece por https:// (la versión sin candado no sirve).',
 
   errMissingFields: 'Faltan el código de zona o la frase.',
   errJoinFailed: 'No se pudo entrar a la zona.',
   errDecrypt: 'La frase no coincide. Compruébala con el grupo.',
   errRoomFull: 'La zona está llena.',
   errPeerConnect: 'No llegáis a conectar. Abre Arreglar en Zonas.',
-  errIceHint: 'No llegáis a conectar. Misma Wi‑Fi: permite Red local. Si no, usa Arreglar en Zonas.',
+  errIceHint:
+    'No llegáis a conectar. En la misma Wi‑Fi, permite «Red local» si te lo pide el navegador. Si no, usa Arreglar en Zonas.',
   errLocalNetworkDenied:
-    'Se bloqueó la red local. Permítela en ajustes del sitio y vuelve a entrar — hace falta en la misma Wi‑Fi.',
-  infoRelayPath: 'Sin ruta directa. La plaza sigue cifrada.',
-  errRelay: 'No se pudo contactar con los servicios de encuentro. Reintenta en unos segundos.',
+    'Se bloqueó el acceso a la red local. Permítelo en los ajustes del sitio y vuelve a entrar — hace falta en la misma Wi‑Fi.',
+  infoRelayPath: 'Sin conexión directa. La plaza sigue cifrada por otro camino.',
+  errRelay: 'No se pudo contactar con los servicios que os ayudan a encontraros. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes. Espera un momento.',
   errPublish: 'No se pudo enviar.',
-  errSync: 'No se pudieron traer mensajes.',
-  errGeneric: 'Error de red ({code}).',
+  errSync: 'No se pudieron actualizar los mensajes.',
+  errGeneric: 'Problema de red ({code}).',
   errMaxRooms: 'Límite de zonas alcanzado (máx. {n}).',
   errJoinBusy: 'Ya estás entrando a una zona — espera un momento.',
 
@@ -236,12 +241,13 @@ export const es: Messages = {
   trustNew: 'Nuevo',
   trustTrusted: 'Sin verificar',
   trustVerified: 'Verificado',
-  trustChanged: 'Clave cambiada',
+  trustChanged: 'Identidad cambiada',
   trustVerifyTitle: 'Verificar identidad',
   trustVerifyHint: 'Compara estos emoji con {alias} en persona o por teléfono.',
   trustMatch: 'Coinciden',
   trustNoMatch: 'No coinciden',
-  trustKeyChanged: 'La clave de identidad de {alias} cambió. Puede haberse reconectado o alguien está interceptando.',
+  trustKeyChanged:
+    'La identidad de {alias} cambió. Puede haberse reconectado… o alguien intenta hacerse pasar por esa persona.',
   trustRepin: 'Confío',
   trustDisconnect: 'Desconectar',
   trustEmojiLabel: 'Código de seguridad',
@@ -262,7 +268,7 @@ export const es: Messages = {
   roomsLeftToast: 'Zona cerrada',
   roomsCapacityAria: '{n} de {max} zonas',
   roomsMeshLargeWarn:
-    'Mesh grande ({n} más). Mejor en tribus pequeñas — la calidad puede bajar.',
+    'Hay mucha gente ({n} más). Mejor en tribus pequeñas — puede ir más lento o fallar.',
 
   navDms: 'Susurros',
   dmsTitle: 'Susurros',
@@ -277,13 +283,15 @@ export const es: Messages = {
 
   turnRelayTitle: '¿No llegáis a conectar?',
   turnRelayHint:
-    'En la misma Wi‑Fi casi nunca hace falta TURN (permite Red local; evita aislamiento de AP). Entre redes, añade tu propio TURN.',
-  turnRelayEnabled: 'Usar TURN como respaldo',
-  turnForceRelay: 'Solo retransmisión (ocultar mi IP)',
+    'En la misma Wi‑Fi casi nunca hace falta: acepta «Red local» si el navegador lo pide y asegúrate de que los móviles/portátiles pueden verse entre sí. Si estáis en redes distintas, alguien del grupo puede añadir un servidor de apoyo aquí.',
+  turnRelayEnabled: 'Usar servidor de apoyo',
+  turnForceRelay: 'Ocultar mi dirección de internet',
   turnForceRelayHint:
-    'Todo el tráfico pasa por TURN. Sin servidor válido, la conexión fallará.',
-  turnServerUrl: 'URL del servidor TURN',
+    'Todo pasa por el servidor de apoyo. Sin un servidor que funcione, no podréis conectar.',
+  turnServerUrl: 'Dirección del servidor',
   turnUsername: 'Usuario',
-  turnCredential: 'Credencial',
+  turnCredential: 'Contraseña',
   turnFixCta: 'Arreglar',
+  turnTechNote:
+    'Campos TURN/ICE (coturn u otro). URL típica: turn:host:3478 o turns:… . Activar «relay only» fuerza iceTransportPolicy=relay. Ambos lados deben usar el mismo servidor. Guía: TURN.md.',
 };

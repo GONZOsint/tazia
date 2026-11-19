@@ -30,7 +30,7 @@ export const en = {
   toastPublishFailed: 'Could not send',
   toastDmSent: 'Whisper sent',
   toastDmFailed: 'Could not send',
-  toastSynced: 'Messages pulled',
+  toastSynced: 'Messages updated',
   dismissAlert: 'Dismiss',
   navUnreadAria: '{n} unread',
 
@@ -74,7 +74,7 @@ export const en = {
   roomsIpNote:
     'People in the zone can see your network addresses. Meant for groups who already know each other.',
   roomsPhraseScrubbed:
-    'The phrase was removed from the address bar. It is still filled below — do not reshare the full URL.',
+    'The phrase was removed from the top bar. It is still filled below — do not reshare the full link.',
   roomsHowLink: 'How does it work?',
 
   strengthEmpty: 'No phrase',
@@ -99,7 +99,7 @@ export const en = {
   meshConnecting: 'Connecting…',
   meshAlone: 'Just you in the zone — waiting',
   meshConnected: 'Connected: {n}',
-  meshSyncing: 'Pulling…',
+  meshSyncing: 'Updating…',
 
   sidebarSearch: 'Search talks…',
   sidebarClearSearch: 'Clear search',
@@ -107,7 +107,7 @@ export const en = {
   sidebarNoThreads: 'No talks yet.',
   sidebarReplies: '{n} reply',
   sidebarRepliesPlural: '{n} replies',
-  sidebarRefresh: 'Pull messages',
+  sidebarRefresh: 'Refresh',
   sidebarTopics: 'Talks',
   sidebarCloseTopics: 'Close',
 
@@ -116,7 +116,7 @@ export const en = {
   forumStartFirst: 'Start a talk',
   forumNoResults: 'No results',
   forumNoResultsHint: 'Nothing matches “{q}”.',
-  forumSyncing: 'Pulling messages',
+  forumSyncing: 'Updating messages',
 
   composerTitle: 'New talk',
   composerAs: 'As {alias}',
@@ -145,46 +145,49 @@ export const en = {
   presenceTitle: 'Tribe',
   presenceCount: '{n} tribe member here',
   presenceCountPlural: '{n} tribe members here',
-  presenceRejected: '{n} unverified message ignored',
-  presenceRejectedPlural: '{n} unverified messages ignored',
-  presenceRefresh: 'Pull messages',
-  presenceNoKey: 'Cannot verify messages yet',
-  presenceDetails: 'Details',
+  presenceRejected: '{n} doubtful message ignored',
+  presenceRejectedPlural: '{n} doubtful messages ignored',
+  presenceRefresh: 'Refresh',
+  presenceNoKey: 'Identity not ready to check yet',
+  presenceDetails: 'Technical detail',
   presenceHideDetails: 'Hide',
-  presenceKeyShort: 'Key: {fp}',
+  presenceKeyShort: 'Fingerprint: {fp}',
+  presencePeerId: 'ID: {id}',
   presenceYou: ' (you)',
   presenceNoAlias: 'No alias',
 
   helpTitle: 'How it works',
   helpLede:
-    'TAZIA is a temporary browser zone. We do not store your messages on a server: they only exist while the tribe keeps the page open.',
+    'TAZIA is a temporary zone in the browser. We do not keep your messages on a server of ours: they only exist while someone in the tribe keeps the page open.',
   helpDirectTitle: 'Direct connection',
   helpDirectBody:
-    'You connect browser to browser. Public helpers only help you find each other once; then the conversation goes person to person.',
+    'You connect browser to browser. Public helpers only help you find each other once; then you talk person to person.',
   helpGroupTitle: 'Small tribe, everyone online',
   helpGroupBody:
-    'Built for a meetup or party (mesh works best under ~5 other members). If every tab closes, history disappears. Late arrivals can ask someone still online for a copy.',
+    'Built for a meetup or party (best with about 5 other people at most). If every tab closes, history disappears. Late arrivals can ask someone still online for a copy.',
   helpZonesTitle: 'Several zones',
   helpZonesBody:
-    'You can join up to 5 zones at once. Switch or leave one in Zones; Plaza / Tribe / Whispers show the active zone. Burn clears all zones on this device.',
-  helpRelayTitle: 'When direct fails',
+    'You can join up to 5 zones at once. Switch or leave one in Zones; Plaza, Tribe, and Whispers show the active zone. Burn clears all zones on this device.',
+  helpRelayTitle: "When you can't connect directly",
   helpRelayBody:
-    'If browsers cannot punch a WebRTC path, the plaza and whispers may continue over an encrypted relay fallback (ciphertext only). Prefer same Wi‑Fi or your own TURN for a real mesh.',
+    'Sometimes the network will not let browsers talk directly. Then chat can continue over an encrypted path through helper servers. Prefer the same Wi‑Fi; if needed, open Fix under Zones.',
   helpSafetyTitle: 'What it protects — and what it does not',
-  helpSafety1: 'Others in the zone can see your network addresses. This is not Tor.',
+  helpSafety1:
+    'Others in the zone can see your internet addresses. TAZIA does not hide who you are on the network.',
   helpSafety2:
-    'Each message carries a digital signature, so nobody can rewrite someone else’s history when syncing.',
-  helpSafety3: 'Putting the phrase in the link is convenient but risky if reshared.',
-  helpSafety4: 'The QR is generated on your device.',
-  helpMore: 'More technical detail',
-  helpMoreHide: 'Hide detail',
+    'Each message carries a mark only its author can make. So nobody can pretend to be someone else when history updates.',
+  helpSafety3: 'Putting the phrase in the link is convenient, but risky if reshared.',
+  helpSafety4: 'The QR is made on your device; it is not uploaded anywhere.',
+  helpMore: 'Technical detail',
+  helpMoreHide: 'Hide technical detail',
   helpMoreBody:
-    'Uses WebRTC (Trystero) for the mesh. Protocol agora-forum-v1 with Ed25519 signatures. See SECURITY.md and PROTOCOL.md.',
+    '• P2P mesh over WebRTC via Trystero\n• If ICE fails: encrypted Nostr relay data-plane fallback (ciphertext only; not true P2P)\n• Protocol agora-forum-v1 with Ed25519 signatures\n• Optional TURN (coturn) for ICE rescue or hiding IP\n• TOFU trust + 6-emoji safety code bound to roomId\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md',
   helpForgetDevice: 'Forget this device',
-  helpForgetDone: 'Network consent cleared in this browser.',
+  helpForgetDone: 'Address notice cleared in this browser.',
   helpForgetHint: 'You will see the address notice again next time you enter a zone.',
   helpNoServerTitle: 'No accounts, no message server of ours',
-  helpNoServerBody: 'Static hosting is enough. Open zone → phrase in person → QR/link → burn session when done.',
+  helpNoServerBody:
+    'No sign-up and no app install needed. Open a zone → say the phrase in person → share QR or link → burn the session when done.',
   helpStepsTitle: 'Quick start',
   helpSteps1: 'Open a zone and generate a phrase.',
   helpSteps2: 'Say the phrase in person or via a trusted channel.',
@@ -193,26 +196,28 @@ export const en = {
   helpSteps5: 'When done, burn the session.',
   helpFixTitle: "Can't reach each other?",
   helpFixBody:
-    'Same Wi‑Fi: allow Local network if Chrome/Brave asks; avoid AP isolation. Safari often needs TURN or the encrypted relay fallback on the same Wi‑Fi. Across networks, add your own TURN under Zones → Fix.',
-  browserBlockedTitle: 'This browser cannot run TAZIA',
+    '1) Same Wi‑Fi: if the browser asks for Local network permission, allow it. On the router, avoid device isolation. 2) If you still cannot see each other, open Zones → Fix and ask someone network-savvy to add a helper server. On Safari that step is often needed even on the same Wi‑Fi.',
+  browserBlockedTitle: 'This browser cannot use TAZIA',
   browserBlockedBody:
-    'Need HTTPS (or localhost), WebRTC, Web Crypto, and WebSockets. Try current Chrome, Brave, Firefox, or Safari.',
-  browserHttpsHint: 'Open the site over HTTPS. Plain HTTP blocks WebRTC and Web Crypto.',
+    'You need a current browser (Chrome, Brave, Firefox, or Safari) and a secure connection. Try updating the browser or opening the site in another one.',
+  browserHttpsHint:
+    'Open the site at an address that starts with https:// (the version without the lock will not work).',
 
   errMissingFields: 'Zone code or phrase is missing.',
   errJoinFailed: 'Could not enter the zone.',
   errDecrypt: 'The phrase does not match. Check it with the group.',
   errRoomFull: 'The zone is full.',
   errPeerConnect: "Can't reach each other. Open Fix under Zones.",
-  errIceHint: "Can't reach each other. Same Wi‑Fi: allow Local network. Else use Fix under Zones.",
+  errIceHint:
+    "Can't reach each other. On the same Wi‑Fi, allow Local network if the browser asks. Otherwise use Fix under Zones.",
   errLocalNetworkDenied:
-    'Local network was blocked. Allow it in site settings, then re-enter — needed on the same Wi‑Fi.',
-  infoRelayPath: 'No direct path. The plaza continues encrypted.',
-  errRelay: 'Could not reach discovery helpers. Try again in a few seconds.',
+    'Local network access was blocked. Allow it in site settings, then re-enter — needed on the same Wi‑Fi.',
+  infoRelayPath: 'No direct connection. The plaza continues encrypted another way.',
+  errRelay: 'Could not reach the helpers that introduce you. Try again in a few seconds.',
   errPublishRate: 'Too many messages. Wait a moment.',
   errPublish: 'Could not send.',
-  errSync: 'Could not pull messages.',
-  errGeneric: 'Network error ({code}).',
+  errSync: 'Could not update messages.',
+  errGeneric: 'Network problem ({code}).',
   errMaxRooms: 'Zone limit reached (max {n}).',
   errJoinBusy: 'Already joining a zone — wait a moment.',
 
@@ -234,12 +239,13 @@ export const en = {
   trustNew: 'New',
   trustTrusted: 'Not verified',
   trustVerified: 'Verified',
-  trustChanged: 'Key changed',
+  trustChanged: 'Identity changed',
   trustVerifyTitle: 'Verify identity',
   trustVerifyHint: 'Compare these emoji with {alias} in person or by phone.',
   trustMatch: 'They match',
   trustNoMatch: "They don't match",
-  trustKeyChanged: '{alias} identity key changed. They may have rejoined, or someone is intercepting.',
+  trustKeyChanged:
+    '{alias} identity changed. They may have rejoined… or someone is trying to impersonate them.',
   trustRepin: 'I trust this',
   trustDisconnect: 'Disconnect',
   trustEmojiLabel: 'Safety code',
@@ -260,7 +266,7 @@ export const en = {
   roomsLeftToast: 'Zone closed',
   roomsCapacityAria: '{n} of {max} zones',
   roomsMeshLargeWarn:
-    'Large mesh ({n} others). Best for small tribes — quality may drop.',
+    'Crowded ({n} others). Best for small tribes — it may get slower or fail.',
 
   navDms: 'Whispers',
   dmsTitle: 'Whispers',
@@ -275,13 +281,15 @@ export const en = {
 
   turnRelayTitle: "Can't reach each other?",
   turnRelayHint:
-    'Same Wi‑Fi usually needs no TURN (allow Local network; avoid AP isolation). Across networks, add your own TURN.',
-  turnRelayEnabled: 'Use TURN as fallback',
-  turnForceRelay: 'Force relay only (hide my IP)',
+    'On the same Wi‑Fi you rarely need this: allow Local network if the browser asks, and make sure phones/laptops can see each other. On different networks, someone in the group can add a helper server here.',
+  turnRelayEnabled: 'Use a helper server',
+  turnForceRelay: 'Hide my internet address',
   turnForceRelayHint:
-    'All traffic goes through TURN. Needs a working server; otherwise connection fails.',
-  turnServerUrl: 'TURN server URL',
+    'Everything goes through the helper server. Without a working server, you will not connect.',
+  turnServerUrl: 'Server address',
   turnUsername: 'Username',
-  turnCredential: 'Credential',
+  turnCredential: 'Password',
   turnFixCta: 'Fix',
+  turnTechNote:
+    'TURN/ICE fields (coturn or similar). Typical URL: turn:host:3478 or turns:…. Enabling relay-only forces iceTransportPolicy=relay. Both sides need the same server. Guide: TURN.md.',
 } as const;

@@ -183,8 +183,8 @@ export function RoomEntryView({
             <CapacityDots filled={joinedRooms.length} max={MAX_ROOMS} label={t('roomsCapacityAria', { n: joinedRooms.length, max: MAX_ROOMS })} />
           </div>
 
-          <ul className="mt-3 space-y-2">
-            <AnimatePresence initial={false}>
+          <ul className="relative mt-3 space-y-2">
+            <AnimatePresence mode="popLayout" initial={false}>
               {joinedRooms.map((room) => {
                 const isActive = room.roomId === activeRoomId;
                 const dmUnread = Object.values(room.dmUnread).reduce((a, b) => a + b, 0);
@@ -193,6 +193,7 @@ export function RoomEntryView({
                 return (
                   <motion.li
                     key={room.roomId}
+                    layout
                     initial={{ opacity: 0, y: 8, scale: 0.98 }}
                     animate={{
                       opacity: 1,
@@ -201,11 +202,14 @@ export function RoomEntryView({
                       transition: { duration: DUR.medium, ease: EASE.outExpo },
                     }}
                     exit={zoneCardExit.exit}
-                    className={`session-burn-target overflow-hidden rounded-[var(--radius-ctrl)] border ${
+                    data-zone-id={room.roomId}
+                    className={`session-burn-target session-ignite-target overflow-hidden rounded-[var(--radius-ctrl)] border ${
                       isActive
                         ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                         : 'border-border bg-bg'
-                    } ${justJoined ? 'zone-join-pulse' : ''}`}
+                    } ${justJoined ? 'zone-join-pulse igniting-front' : ''} ${
+                      room.relayFallbackActive ? 'relay-channel-tint' : ''
+                    }`}
                     aria-current={isActive ? 'true' : undefined}
                   >
                     <div className="flex items-stretch gap-1">
@@ -233,6 +237,7 @@ export function RoomEntryView({
                               status={room.meshStatus}
                               onlineCount={countOtherPeers(room.onlineUserIds, room.selfUserId)}
                               compact
+                              relayActive={room.relayFallbackActive}
                             />
                             {isActive && (
                               <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
@@ -255,9 +260,12 @@ export function RoomEntryView({
                               {t(room.roomError.key, room.roomError.vars)}
                             </p>
                           )}
-                          {!room.roomError && room.transportNotice && (
+                          {!room.roomError && (room.transportNotice || room.relayFallbackActive) && (
                             <p className="mt-1 truncate text-[11px] text-warn-ink">
-                              {t(room.transportNotice.key, room.transportNotice.vars)}
+                              {t(
+                                room.transportNotice?.key ?? 'infoRelayPath',
+                                room.transportNotice?.vars
+                              )}
                             </p>
                           )}
                         </div>

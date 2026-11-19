@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, Send } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, LockOpen, Send } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { DirectMessage } from '../../core/protocol';
 import { useLocale, useT } from '../../i18n';
 import { formatClockTime } from '../../core/utils/inviteLink';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
-import { TAP, TAP_TRANSITION, bubbleEnter } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION, bubbleEnter, sealIcon } from '../../motion/tokens';
 
 interface DmConversationViewProps {
   selfUserId: string;
@@ -14,6 +14,35 @@ interface DmConversationViewProps {
   messages: DirectMessage[];
   onSend: (body: string) => Promise<boolean>;
   onBack: () => void;
+}
+
+function SealedMark({ isSelf }: { isSelf: boolean }) {
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setOpen(false), isSelf ? 420 : 520);
+    return () => window.clearTimeout(id);
+  }, [isSelf]);
+
+  const Icon = isSelf ? Lock : open ? LockOpen : Lock;
+  const tone = isSelf ? 'text-on-accent/70' : 'text-muted';
+
+  return (
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.span
+          key="seal"
+          initial={sealIcon.initial}
+          animate={sealIcon.animate}
+          exit={sealIcon.exit}
+          className={`mb-1 inline-flex ${tone}`}
+          aria-hidden="true"
+        >
+          <Icon className="h-3 w-3" strokeWidth={2} />
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
 }
 
 export function DmConversationView({
@@ -71,6 +100,7 @@ export function DmConversationView({
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const isSelf = msg.fromUserId === selfUserId;
+            const sealed = msg.seal === 2;
             return (
               <motion.div
                 key={msg.msgId}
@@ -80,12 +110,9 @@ export function DmConversationView({
                 className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-[var(--radius-msg)] px-4 py-2.5 text-sm ${
-                    isSelf
-                      ? 'bg-accent text-on-accent'
-                      : 'bg-surface-raised border border-border text-ink'
-                  }`}
+                  className={`dm-bubble max-w-[80%] ${isSelf ? 'dm-bubble--self' : ''}`}
                 >
+                  {sealed && <SealedMark isSelf={isSelf} />}
                   <p className="whitespace-pre-wrap break-words">{msg.body}</p>
                   <p
                     className={`mt-1 text-[10px] ${

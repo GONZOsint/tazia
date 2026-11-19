@@ -224,7 +224,13 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       }
       const plain = await openDmBody(dm.bodyCipherB64, encIdentity, peerEnc);
       if (plain === null || !plain.trim()) return false;
-      options.onDirectMessage?.({ ...dm, body: plain.slice(0, MAX_DM_BODY_CHARS), bodyCipherB64: undefined, seal: undefined });
+      // Keep seal:2 as a UI marker; drop ciphertext from the in-memory message.
+      options.onDirectMessage?.({
+        ...dm,
+        body: plain.slice(0, MAX_DM_BODY_CHARS),
+        bodyCipherB64: undefined,
+        seal: 2,
+      });
       return true;
     }
 
@@ -686,8 +692,13 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         const bus = fallback ?? (await ensureFallback());
         await bus?.publish({ v: 1, t: 'dm', dm: signed });
       }
-      // Local echo shows plaintext for the sender UI.
-      return { ...signed, body: trimmed, bodyCipherB64: undefined, seal: undefined };
+      // Local echo: plaintext body for the sender UI; keep seal marker when sealed.
+      return {
+        ...signed,
+        body: trimmed,
+        bodyCipherB64: undefined,
+        seal: unsigned.seal === 2 ? 2 : undefined,
+      };
     },
     nudgeTransport: async () => {
       if (left) return;

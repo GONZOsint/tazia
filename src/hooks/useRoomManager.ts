@@ -52,6 +52,8 @@ export interface RoomState {
   isSyncing: boolean;
   roomError: SessionError;
   transportNotice: SessionError;
+  /** Sticky: encrypted relay path active (survives toast dismiss). */
+  relayFallbackActive: boolean;
   keyChangeAlerts: Array<{ userId: string; level: TrustLevel }>;
   unreadCount: number;
   dmMessages: Record<string, DirectMessage[]>;
@@ -89,6 +91,8 @@ export function useRoomManager(
     forumTabFocusedRef?: MutableRefObject<boolean>;
     dmsTabFocusedRef?: MutableRefObject<boolean>;
     activeDmPeerIdRef?: MutableRefObject<string | null>;
+    /** Fired once after a new zone successfully joins the map. */
+    onZoneIgnited?: (roomId: string, meta: { firstZone: boolean }) => void;
   }
 ) {
   const [rooms, setRooms] = useState<Map<string, RoomState>>(new Map());
@@ -117,6 +121,8 @@ export function useRoomManager(
   const forumFocusedRef = options?.forumTabFocusedRef;
   const dmsFocusedRef = options?.dmsTabFocusedRef;
   const activeDmPeerIdRef = options?.activeDmPeerIdRef;
+  const onZoneIgnitedRef = useRef(options?.onZoneIgnited);
+  onZoneIgnitedRef.current = options?.onZoneIgnited;
 
   const bumpJoinToken = (roomId: string) => {
     const next = (joinTokensRef.current.get(roomId) ?? 0) + 1;
@@ -320,6 +326,7 @@ export function useRoomManager(
             updateRoom(roomIdTrim, (r) => ({
               ...r,
               transportNotice: { key: 'infoRelayPath' },
+              relayFallbackActive: true,
             }));
           },
         });
@@ -361,6 +368,7 @@ export function useRoomManager(
           isSyncing: true,
           roomError: null,
           transportNotice: null,
+          relayFallbackActive: false,
           keyChangeAlerts: [],
           unreadCount: 0,
           dmMessages: {},
@@ -378,6 +386,7 @@ export function useRoomManager(
         });
         setActiveRoomId(roomIdTrim);
         onNavigateTab(isAdditionalZone ? 'rooms' : 'forum');
+        onZoneIgnitedRef.current?.(roomIdTrim, { firstZone: !isAdditionalZone });
 
         for (const delayMs of [800, 2500, 6000]) {
           window.setTimeout(async () => {

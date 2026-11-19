@@ -8,7 +8,7 @@ import { formatClockTime } from '../../core/utils/inviteLink';
 import { Identicon } from '../../components/content/Identicon';
 import { SafeMessageBody } from '../../components/content/SafeMessageBody';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
-import { DUR, TAP, TAP_TRANSITION, bubbleEnter } from '../../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION, bubbleEnter } from '../../motion/tokens';
 import type { ThreadGroup } from './RoomSidebar';
 
 export type AuthorVisualCache = Record<
@@ -116,11 +116,9 @@ function PostCard({
       initial={animateEnter ? bubbleEnter.initial : false}
       animate={bubbleEnter.animate}
       transition={bubbleEnter.transition}
-      className={`relative rounded-[var(--radius-msg)] border p-2.5 sm:p-3 ${
-        nested ? 'border-border/70 bg-bg' : 'border-border bg-surface-raised'
-      } ${isSelf && !nested ? 'border-l-[3px] border-l-accent' : ''} ${
-        isSelf && nested ? 'ring-1 ring-accent/25' : ''
-      } ${highlighted ? 'ring-2 ring-accent/50' : ''}`}
+      className={`plaza-post ${nested ? 'plaza-post--nested' : ''} ${
+        isSelf ? 'plaza-post--self' : ''
+      } ${highlighted ? 'is-highlighted' : ''}`}
     >
       <header className="flex items-center gap-2">
         {visual ? (
@@ -268,7 +266,7 @@ export function ThreadReader({
     return (
       <div
         key={msg.msgId}
-        className={`thread-node space-y-2 ${nested ? 'thread-node--nested' : ''} ${
+        className={`thread-node space-y-1.5 ${nested ? 'thread-node--nested' : ''} ${
           nested && isLast && node.children.length === 0 ? 'is-last' : ''
         }`}
         style={
@@ -301,13 +299,13 @@ export function ThreadReader({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-border pb-2 sm:rounded-[var(--radius-panel)] sm:border sm:border-border sm:bg-surface-raised sm:p-3">
+      <div className="plaza-title shrink-0">
         <h2 className="font-display text-lg font-semibold text-ink sm:text-xl [text-wrap:balance]">
           {thread.title}
         </h2>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto py-2 pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:space-y-2.5 md:pb-4">
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto py-2 pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:space-y-2 md:pb-4">
         {renderNode(tree, 0, true)}
       </div>
 
@@ -322,7 +320,7 @@ export function ThreadReader({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: DUR.micro }}
+                transition={{ duration: DUR.tab, ease: EASE.outExpo }}
                 className="overflow-hidden"
               >
                 <div className="thread-quote mb-2 items-center justify-between">

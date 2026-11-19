@@ -32,6 +32,7 @@
   --dur-switch: 240ms;
   --dur-burn: 380ms;
   --dur-burn-ignition: 520ms;
+  --dur-ignite: 280ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -341,7 +342,7 @@ html.dark {
     top: 0;
     bottom: 0;
     width: 2px;
-    background: color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
+    background: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
     border-radius: 1px;
   }
   .thread-node--nested.is-last::before {
@@ -355,9 +356,77 @@ html.dark {
     top: 1.05rem;
     width: 0.7rem;
     height: 2px;
-    background: color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
+    background: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
     border-radius: 1px;
   }
+
+  /* Plaza posts — accent rail slab, not a generic bordered card */
+  .plaza-post {
+    position: relative;
+    border-radius: var(--radius-msg);
+    border: 0;
+    background: var(--color-surface-raised);
+    padding: 0.65rem 0.85rem 0.7rem 0.95rem;
+    box-shadow:
+      inset 3px 0 0 color-mix(in oklab, var(--color-accent) 55%, var(--color-border)),
+      0 1px 0 color-mix(in oklab, var(--color-border) 55%, transparent);
+    transition:
+      box-shadow var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo);
+  }
+  @media (min-width: 640px) {
+    .plaza-post {
+      padding: 0.75rem 1rem 0.8rem 1.05rem;
+    }
+  }
+  .plaza-post--nested {
+    background: color-mix(in oklab, var(--color-bg) 70%, var(--color-surface-raised));
+    box-shadow:
+      inset 2px 0 0 color-mix(in oklab, var(--color-accent) 38%, var(--color-border)),
+      0 1px 0 color-mix(in oklab, var(--color-border) 40%, transparent);
+  }
+  .plaza-post--self {
+    box-shadow:
+      inset 3px 0 0 var(--color-accent),
+      0 1px 0 color-mix(in oklab, var(--color-accent) 28%, transparent);
+    background: color-mix(in oklab, var(--color-accent-soft) 55%, var(--color-surface-raised));
+  }
+  .plaza-post--self.plaza-post--nested {
+    box-shadow:
+      inset 2px 0 0 color-mix(in oklab, var(--color-accent) 72%, var(--color-border)),
+      0 1px 0 color-mix(in oklab, var(--color-accent) 18%, transparent);
+  }
+  .plaza-post.is-highlighted {
+    box-shadow:
+      inset 3px 0 0 var(--color-accent),
+      0 0 0 1px color-mix(in oklab, var(--color-accent) 40%, transparent),
+      0 0 18px color-mix(in oklab, var(--color-accent) 16%, transparent);
+  }
+
+  .plaza-title {
+    border: 0;
+    border-radius: var(--radius-panel);
+    background: var(--color-surface-raised);
+    padding: 0.7rem 0.9rem 0.75rem 1rem;
+    box-shadow:
+      inset 3px 0 0 var(--color-accent),
+      0 1px 0 color-mix(in oklab, var(--color-border) 50%, transparent);
+  }
+
+  .dm-bubble {
+    border-radius: var(--radius-msg);
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+    background: var(--color-surface-raised);
+    color: var(--color-ink);
+  }
+  .dm-bubble--self {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--color-on-accent) 22%, transparent);
+  }
+
   .thread-quote {
     display: flex;
     align-items: flex-start;
@@ -370,6 +439,40 @@ html.dark {
     font-size: 11px;
     line-height: 1.35;
     color: var(--color-muted);
+  }
+
+  .invite-panel {
+    border-radius: var(--radius-sheet);
+    border: 1px solid color-mix(in oklab, var(--color-accent) 22%, var(--color-border));
+    background:
+      radial-gradient(
+        ellipse at 50% 0%,
+        color-mix(in oklab, var(--color-accent) 10%, transparent),
+        transparent 58%
+      ),
+      var(--color-bg);
+    padding: 0.85rem 1rem 1rem;
+  }
+  /* Nested under panel-surface / zone card — avoid double frame */
+  .invite-panel--embedded {
+    margin-top: 0.65rem;
+    border: 0;
+    border-radius: 0;
+    border-top: 1px solid color-mix(in oklab, var(--color-accent) 18%, var(--color-border));
+    background: transparent;
+    padding: 0.75rem 0 0;
+  }
+
+  .invite-opt {
+    border-radius: var(--radius-ctrl);
+    padding-inline: 0.35rem;
+    transition: background-color var(--dur-tap) var(--ease-out-expo), color var(--dur-tap) var(--ease-out-expo);
+  }
+  @media (hover: hover) {
+    .invite-opt:hover {
+      background-color: color-mix(in oklab, var(--color-accent) 8%, transparent);
+      color: var(--color-ink);
+    }
   }
 
   .list-row {
@@ -640,6 +743,136 @@ html.dark {
   animation: zone-join-pulse 0.7s var(--ease-out-expo) 1;
 }
 
+/* --- Microinteraction one-shots (opt-in motion; final state always visible) --- */
+
+.session-ignite-target.igniting-front {
+  border-color: color-mix(in oklab, var(--color-accent) 70%, var(--color-border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent),
+    0 0 18px color-mix(in oklab, var(--color-accent) 28%, transparent),
+    inset 0 0 14px color-mix(in oklab, var(--color-accent) 12%, transparent);
+  transition:
+    border-color var(--dur-ignite) var(--ease-out-expo),
+    box-shadow var(--dur-ignite) var(--ease-out-expo);
+}
+
+@keyframes mesh-connected-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-ok) 0%, transparent);
+  }
+  35% {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-ok) 45%, transparent),
+      0 0 14px color-mix(in oklab, var(--color-ok) 28%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.mesh-connected-flash {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: mesh-connected-flash 0.38s var(--ease-out-expo) 1;
+  }
+}
+
+.relay-channel-tint {
+  border-color: color-mix(in oklab, var(--color-warn) 55%, var(--color-border)) !important;
+  background-color: color-mix(in oklab, var(--color-warn) 10%, var(--color-surface));
+  color: var(--color-warn-ink);
+}
+
+@keyframes copy-ember {
+  0% { color: var(--fire-mid); filter: drop-shadow(0 0 2px color-mix(in oklab, var(--fire-mid) 40%, transparent)); }
+  55% { color: var(--fire-core); }
+  100% { color: var(--color-ok); filter: none; }
+}
+
+.copy-ember-check {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: copy-ember 0.32s var(--ease-out-expo) 1 forwards;
+  }
+  color: var(--color-ok);
+}
+
+@keyframes qr-secret-ring {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in oklab, var(--color-warn) 50%, transparent),
+      0 14px 28px color-mix(in oklab, #000 28%, transparent);
+  }
+  55% {
+    box-shadow:
+      0 0 0 6px color-mix(in oklab, var(--color-warn) 18%, transparent),
+      0 14px 28px color-mix(in oklab, #000 28%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 transparent,
+      0 14px 28px color-mix(in oklab, #000 28%, transparent);
+  }
+}
+
+.qr-secret-ring {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: qr-secret-ring 0.55s var(--ease-out-expo) 1;
+  }
+  outline: 1px solid color-mix(in oklab, var(--color-warn) 45%, transparent);
+  outline-offset: 3px;
+}
+
+@keyframes strength-accept-tremor {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+.strength-accept-tremor {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: strength-accept-tremor 0.28s var(--ease-out-expo) 1;
+  }
+}
+
+.strength-accept-tremor [aria-hidden='true'] > span {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+
+@keyframes phrase-ignite {
+  0% { filter: blur(2.5px); opacity: 0.55; letter-spacing: 0.04em; }
+  100% { filter: none; opacity: 1; letter-spacing: normal; }
+}
+
+@keyframes phrase-douse {
+  0% { filter: none; opacity: 1; }
+  100% { filter: blur(1.5px); opacity: 0.7; }
+}
+
+.phrase-ignite {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: phrase-ignite 0.28s var(--ease-out-expo) 1;
+  }
+}
+
+.phrase-douse {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: phrase-douse 0.22s var(--ease-exit) 1;
+  }
+}
+
+@keyframes peer-join-dot {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  40% { opacity: 1; transform: scale(1.35); }
+  70% { opacity: 0.85; transform: scale(1.1); }
+}
+
+.peer-join-dot {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: peer-join-dot 0.55s var(--ease-out-expo) 2;
+  }
+  background-color: var(--color-accent) !important;
+  opacity: 1;
+}
+
 @keyframes toast-progress-drain {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
@@ -683,34 +916,99 @@ html.dark {
 .wifi-arc-2 { animation: wifi-wave-step 1.8s ease-in-out infinite 0.35s; }
 
 .qr-perspective {
-  perspective: 680px;
+  perspective: 920px;
+  perspective-origin: 50% 40%;
 }
 .qr-surface-3d {
   position: relative;
   overflow: hidden;
   transform-style: preserve-3d;
-  transition: transform 220ms var(--ease-out-expo), box-shadow 220ms var(--ease-out-expo);
+  transform: rotateX(8deg) rotateY(-7deg) translateZ(0);
+  border: 1px solid color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in oklab, var(--color-accent) 8%, var(--color-surface-raised)),
+      var(--color-surface-raised) 42%,
+      color-mix(in oklab, var(--color-ink) 6%, var(--color-surface-raised))
+    );
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 12%, transparent),
+    0 14px 28px color-mix(in oklab, #000 28%, transparent),
+    0 4px 10px color-mix(in oklab, #000 18%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #fff 10%, transparent),
+    inset 0 -10px 18px color-mix(in oklab, #000 12%, transparent);
+  transition:
+    transform var(--dur-medium) var(--ease-out-expo),
+    box-shadow var(--dur-medium) var(--ease-out-expo);
   will-change: transform;
+}
+.qr-surface-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    color-mix(in oklab, #fff 16%, transparent),
+    transparent 34%,
+    transparent 62%,
+    color-mix(in oklab, #000 14%, transparent)
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+.qr-surface-3d > img {
+  position: relative;
+  z-index: 0;
+  transform: translateZ(12px);
+  filter: drop-shadow(0 6px 10px color-mix(in oklab, #000 22%, transparent));
 }
 .qr-laser-line {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
-  box-shadow: 0 0 10px var(--color-accent);
+  left: 6%;
+  right: 6%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--color-accent) 35%, transparent) 18%,
+    var(--color-accent) 50%,
+    color-mix(in oklab, var(--color-accent) 35%, transparent) 82%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 10px color-mix(in oklab, var(--color-accent) 90%, transparent),
+    0 0 22px color-mix(in oklab, var(--color-accent) 55%, transparent),
+    0 0 36px color-mix(in oklab, var(--color-accent) 30%, transparent);
   opacity: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 3;
+}
+.qr-laser-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -14px;
+  height: 28px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklab, var(--color-accent) 22%, transparent),
+    transparent
+  );
+  pointer-events: none;
 }
 .qr-surface-3d.scanning .qr-laser-line {
-  animation: qr-scan-sweep 680ms var(--ease-in-out-quart) forwards;
+  animation: qr-scan-sweep 1.05s var(--ease-in-out-quart) infinite;
 }
 @keyframes qr-scan-sweep {
-  0% { top: 8%; opacity: 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { top: 90%; opacity: 0; }
+  0% { top: 7%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { top: 91%; opacity: 0; }
 }
 
 #burn-fire-canvas {
@@ -734,8 +1032,25 @@ html.dark {
   .mesh-radar-dot::before,
   .wifi-arc-1,
   .wifi-arc-2,
-  .qr-surface-3d.scanning .qr-laser-line {
+  .qr-surface-3d.scanning .qr-laser-line,
+  .mesh-connected-flash,
+  .copy-ember-check,
+  .qr-secret-ring,
+  .strength-accept-tremor,
+  .phrase-ignite,
+  .phrase-douse,
+  .peer-join-dot {
     animation: none !important;
+  }
+  .session-ignite-target.igniting-front {
+    box-shadow: none;
+    transition: border-color 120ms ease;
+  }
+  .phrase-ignite,
+  .phrase-douse {
+    filter: none !important;
+    letter-spacing: normal !important;
+    opacity: 1 !important;
   }
   .tazia-toast-progress {
     display: none;
@@ -753,6 +1068,10 @@ html.dark {
   }
   .qr-surface-3d {
     transition: none;
+    transform: none;
+    box-shadow:
+      0 1px 0 color-mix(in oklab, #fff 8%, transparent),
+      0 4px 12px color-mix(in oklab, #000 18%, transparent);
   }
   .burn-heat .burn-ignition-bar {
     transition: none;

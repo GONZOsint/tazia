@@ -19,6 +19,7 @@ interface ForumWorkspaceProps {
   presenceAliases: Record<string, string>;
   onlineCount: number;
   meshStatus: MeshStatus;
+  relayActive?: boolean;
   isPublishing: boolean;
   isSyncing: boolean;
   roomError: string | null;
@@ -38,6 +39,7 @@ export function ForumWorkspace({
   presenceAliases,
   onlineCount,
   meshStatus,
+  relayActive = false,
   isPublishing,
   isSyncing,
   roomError,
@@ -123,6 +125,7 @@ export function ForumWorkspace({
     },
     onlineCount,
     meshStatus,
+    relayActive,
     isSyncing,
     isBusy,
     onSyncNow: () => void onSyncNow(),
@@ -153,7 +156,7 @@ export function ForumWorkspace({
         </motion.button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-stretch lg:gap-5">
         <div className="hidden lg:block">
           <RoomSidebar {...sidebarProps} />
         </div>

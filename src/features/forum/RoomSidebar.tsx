@@ -33,6 +33,7 @@ interface RoomSidebarProps {
   onStartCompose: () => void;
   onlineCount: number;
   meshStatus: MeshStatus;
+  relayActive?: boolean;
   isSyncing: boolean;
   isBusy: boolean;
   onSyncNow: () => void;
@@ -61,6 +62,7 @@ export function RoomSidebar({
   onStartCompose,
   onlineCount,
   meshStatus,
+  relayActive = false,
   isSyncing,
   isBusy,
   onSyncNow,
@@ -95,7 +97,12 @@ export function RoomSidebar({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-semibold text-ink">{profile.alias}</p>
-              <MeshStatusBadge status={meshStatus} onlineCount={onlineCount} compact />
+              <MeshStatusBadge
+                status={meshStatus}
+                onlineCount={onlineCount}
+                compact
+                relayActive={relayActive}
+              />
             </div>
             <p className="mt-0.5 truncate font-mono text-[10px] text-muted md:block hidden">
               {selfUserId}
