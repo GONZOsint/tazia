@@ -71,15 +71,21 @@ function ToastCard({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0, x: 0 }}
-      exit={{ opacity: 0, y: 6, transition: { duration: DUR.micro, ease: EASE.exit } }}
-      transition={{ duration: DUR.tab, ease: EASE.outExpo }}
+      initial={{ opacity: 0, y: 16, scale: 0.94 }}
+      animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
+      exit={{
+        opacity: 0,
+        y: 10,
+        scale: 0.96,
+        transition: { duration: DUR.micro, ease: EASE.exit },
+      }}
+      transition={{ duration: DUR.switch, ease: EASE.outExpo }}
       drag
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.72}
       onDragEnd={onDragEnd}
       className="pointer-events-auto tazia-toast-card"
+      data-tone={item.tone}
       style={{ ['--toast-ttl' as string]: `${item.durationMs}ms` }}
     >
       <AlertBanner tone={item.tone} role="status" className="w-full">
@@ -147,7 +153,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-[420px] flex-col gap-2 px-4 md:bottom-6"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-[420px] flex-col gap-2 px-4 md:bottom-6"
         aria-live="polite"
         aria-relevant="additions removals"
       >

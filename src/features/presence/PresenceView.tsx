@@ -102,17 +102,20 @@ export function PresenceView({
     return (
       <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <Users className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
+        <h1 className="mt-4 font-display text-2xl font-bold text-ink">{t('presenceEmptyTitle')}</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+          {t('presenceEmptyBody')}
+        </p>
         {onGoToRooms && (
           <motion.button
             whileTap={TAP}
             transition={TAP_TRANSITION}
             type="button"
             onClick={onGoToRooms}
-            aria-label={t('presenceEmptyCta')}
-            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
+            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
           >
             <Users className="h-5 w-5" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
+            {t('presenceEmptyCta')}
           </motion.button>
         )}
       </main>

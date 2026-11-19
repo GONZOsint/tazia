@@ -15,6 +15,7 @@ import { CopyButton } from '../../components/ui/CopyButton';
 import { PassphraseStrengthBar } from '../../components/ui/PassphraseStrengthBar';
 import { SecretPhraseInput } from '../../components/ui/SecretPhraseInput';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { useToast } from '../../components/ui/ToastHost';
 
 interface CreateRoomFormProps {
   isJoining: boolean;
@@ -23,6 +24,7 @@ interface CreateRoomFormProps {
 
 export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
   const t = useT();
+  const toast = useToast();
   const [createRoomId] = useState(() => generateRandomHex(8));
   const [createPhrase, setCreatePhrase] = useState(() => generateMemorablePassphrase(4));
   const [showCreatePhrase, setShowCreatePhrase] = useState(true);
@@ -226,9 +228,16 @@ export function CreateRoomForm({ isJoining, onJoinRoom }: CreateRoomFormProps) {
         open={confirmOpen}
         title={t('confirmPhraseTitle')}
         body={t('confirmPhraseBody')}
+        confirmLabel={t('confirmPhraseAction')}
+        icon={ShieldAlert}
         onConfirm={() => {
           setIncludePhraseInLink(true);
           setConfirmOpen(false);
+          toast.push({
+            message: t('phraseInLinkToast'),
+            tone: 'warning',
+            dedupeKey: 'phrase-in-link',
+          });
         }}
         onCancel={() => setConfirmOpen(false)}
       />

@@ -141,7 +141,10 @@ export const en = {
   presenceEmptyTitle: 'Empty tribe',
   presenceEmptyBody: 'Open or enter a zone to see the tribe.',
   presenceEmptyCta: 'Zones',
+  dmsNeedZoneTitle: 'No whispers yet',
+  dmsNeedZoneBody: 'Open or enter a zone to whisper with the tribe.',
   dmsEmptyCta: 'Zones',
+  peerOnline: 'Online',
   presenceTitle: 'Tribe',
   presenceCount: '{n} tribe member here',
   presenceCountPlural: '{n} tribe members here',
@@ -235,6 +238,8 @@ export const en = {
   confirmPhraseTitle: 'Include phrase in link?',
   confirmPhraseBody:
     'The link will include the phrase. Anyone with that link can enter the zone.',
+  confirmPhraseAction: 'Include phrase',
+  phraseInLinkToast: 'Phrase is in the link. Treat it like a secret.',
 
   trustNew: 'New',
   trustTrusted: 'Not verified',

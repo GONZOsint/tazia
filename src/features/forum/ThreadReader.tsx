@@ -297,6 +297,10 @@ export function ThreadReader({
     );
   };
 
+  const replyAlias = replyParent ? resolveAlias(replyParent.authorUserId) : '';
+  const replyLabel = replyParent ? t('readerReplyingTo', { alias: replyAlias }) : '';
+  const replyAliasAt = replyAlias ? replyLabel.lastIndexOf(replyAlias) : -1;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="plaza-title shrink-0">
@@ -305,7 +309,13 @@ export function ThreadReader({
         </h2>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto py-2 pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:space-y-2 md:pb-4">
+      <div
+        className={`min-h-0 flex-1 space-y-1.5 overflow-y-auto py-2 md:space-y-2 md:pb-4 ${
+          replyParent
+            ? 'pb-[calc(9.5rem+env(safe-area-inset-bottom))]'
+            : 'pb-[calc(7.5rem+env(safe-area-inset-bottom))]'
+        }`}
+      >
         {renderNode(tree, 0, true)}
       </div>
 
@@ -325,10 +335,15 @@ export function ThreadReader({
               >
                 <div className="thread-quote thread-quote--composer mb-2 items-center justify-between">
                   <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
-                    {t('readerReplyingTo', { alias: '' }).trimEnd()}{' '}
-                    <span className="font-semibold text-ink">
-                      {resolveAlias(replyParent.authorUserId)}
-                    </span>
+                    {replyAliasAt < 0 ? (
+                      <span className="font-semibold text-ink">{replyLabel}</span>
+                    ) : (
+                      <>
+                        {replyLabel.slice(0, replyAliasAt)}
+                        <span className="font-semibold text-ink">{replyAlias}</span>
+                        {replyLabel.slice(replyAliasAt + replyAlias.length)}
+                      </>
+                    )}
                   </span>
                   <button
                     type="button"

@@ -30,8 +30,8 @@
   --dur-tab: 160ms;
   --dur-medium: 200ms;
   --dur-switch: 220ms;
-  --dur-burn: 360ms;
-  --dur-burn-ignition: 400ms;
+  --dur-burn: 420ms;
+  --dur-burn-ignition: 420ms;
   --dur-ignite: 240ms;
   --dur-sheen: 300ms;
   --dur-pulse: 450ms;
@@ -614,15 +614,17 @@ html.dark {
     background: linear-gradient(
       90deg,
       color-mix(in oklab, var(--fire-edge) 55%, var(--color-danger)) 0%,
-      var(--fire-mid) 60%,
+      var(--fire-mid) 55%,
       var(--fire-core) 100%
     );
-    opacity: 0.42;
+    opacity: 0.48;
     transform: scaleX(0);
     transform-origin: left center;
     pointer-events: none;
+    will-change: transform;
     transition: transform var(--dur-burn-ignition) linear, opacity var(--dur-micro) ease;
   }
+  /* Gooey rising embers — CodePen burning-button technique, TAZIA palette. */
   .burn-embers {
     position: absolute;
     inset: 0;
@@ -630,61 +632,111 @@ html.dark {
     z-index: 2;
     filter: url(#tazia-fire-goo);
     opacity: 0;
+    transition: opacity var(--dur-micro) ease;
   }
   .burn-embers span {
     position: absolute;
-    bottom: 18%;
+    bottom: 16%;
     left: 50%;
     width: 5px;
     height: 5px;
     border-radius: 50%;
     background: var(--fire-core);
-    transform: translateX(-50%) scale(0.4);
+    transform: translate(-50%, 0) scale(0.35);
     opacity: 0;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
   }
-  .burn-embers span:nth-child(1) { left: 32%; background: var(--fire-mid); }
-  .burn-embers span:nth-child(2) { left: 48%; width: 4px; height: 4px; }
-  .burn-embers span:nth-child(3) { left: 62%; background: var(--fire-edge); width: 3px; height: 3px; }
-  .burn-embers span:nth-child(4) { left: 40%; background: var(--fire-core); width: 3.5px; height: 3.5px; }
-  .burn-embers span:nth-child(5) { left: 56%; background: var(--fire-mid); }
-  @keyframes burn-ember-rise {
-    0% { opacity: 0; transform: translate(-50%, 6px) scale(0.35); }
-    22% { opacity: 0.95; }
-    100% { opacity: 0; transform: translate(-50%, -18px) scale(0.15); }
+  .burn-embers span:nth-child(1)  { left: 18%; width: 4px; height: 4px; background: var(--fire-mid); }
+  .burn-embers span:nth-child(2)  { left: 26%; width: 5px; height: 5px; }
+  .burn-embers span:nth-child(3)  { left: 34%; width: 3.5px; height: 3.5px; background: var(--fire-edge); }
+  .burn-embers span:nth-child(4)  { left: 42%; width: 4.5px; height: 4.5px; }
+  .burn-embers span:nth-child(5)  { left: 50%; width: 5.5px; height: 5.5px; background: var(--fire-core); }
+  .burn-embers span:nth-child(6)  { left: 58%; width: 4px; height: 4px; background: var(--fire-mid); }
+  .burn-embers span:nth-child(7)  { left: 66%; width: 3.5px; height: 3.5px; }
+  .burn-embers span:nth-child(8)  { left: 74%; width: 5px; height: 5px; background: var(--fire-edge); }
+  .burn-embers span:nth-child(9)  { left: 30%; width: 3px; height: 3px; background: var(--fire-core); }
+  .burn-embers span:nth-child(10) { left: 46%; width: 4px; height: 4px; background: var(--fire-mid); }
+  .burn-embers span:nth-child(11) { left: 62%; width: 3.5px; height: 3.5px; }
+  .burn-embers span:nth-child(12) { left: 78%; width: 4.5px; height: 4.5px; background: var(--fire-core); }
+
+  /* Organic rise paths with horizontal drift (compressed CodePen rise family). */
+  @keyframes burn-ember-rise-a {
+    0%   { opacity: 0; transform: translate(-50%, 4px) scale(0.4); }
+    18%  { opacity: 0.95; }
+    55%  { opacity: 0.85; transform: translate(calc(-50% - 3px), -12px) scale(0.7); }
+    100% { opacity: 0; transform: translate(calc(-50% - 9px), -26px) scale(0.08); }
   }
+  @keyframes burn-ember-rise-b {
+    0%   { opacity: 0; transform: translate(-50%, 5px) scale(0.35); }
+    16%  { opacity: 1; }
+    50%  { opacity: 0.9; transform: translate(calc(-50% + 4px), -10px) scale(0.75); }
+    100% { opacity: 0; transform: translate(calc(-50% + 11px), -24px) scale(0.1); }
+  }
+  @keyframes burn-ember-rise-c {
+    0%   { opacity: 0; transform: translate(-50%, 3px) scale(0.45); }
+    20%  { opacity: 0.9; }
+    100% { opacity: 0; transform: translate(calc(-50% - 2px), -30px) scale(0.05); }
+  }
+
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .burn-heat:hover {
       border-color: color-mix(in srgb, var(--fire-mid) 55%, var(--color-danger-border));
       box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--fire-mid) 20%, transparent),
-        0 0 14px color-mix(in srgb, var(--fire-mid) 18%, transparent);
+        0 0 0 1px color-mix(in srgb, var(--fire-mid) 22%, transparent),
+        0 0 18px color-mix(in srgb, var(--fire-mid) 22%, transparent);
     }
     .burn-heat:hover .burn-flame-icon {
-      animation: flame-flicker-hover 0.7s ease-in-out infinite alternate;
+      animation: flame-flicker-hover 0.55s ease-in-out infinite alternate;
       color: var(--fire-mid);
     }
     .burn-heat:hover .burn-embers {
       opacity: 1;
     }
-    .burn-heat:hover .burn-embers span {
-      animation: burn-ember-rise 0.7s var(--ease-out-expo) infinite;
+    .burn-heat:hover .burn-embers span:nth-child(3n+1) {
+      animation: burn-ember-rise-a 0.85s linear infinite;
     }
-    .burn-heat:hover .burn-embers span:nth-child(2) { animation-delay: 0.08s; animation-duration: 0.62s; }
-    .burn-heat:hover .burn-embers span:nth-child(3) { animation-delay: 0.16s; animation-duration: 0.78s; }
-    .burn-heat:hover .burn-embers span:nth-child(4) { animation-delay: 0.22s; animation-duration: 0.66s; }
-    .burn-heat:hover .burn-embers span:nth-child(5) { animation-delay: 0.3s; animation-duration: 0.72s; }
+    .burn-heat:hover .burn-embers span:nth-child(3n+2) {
+      animation: burn-ember-rise-b 0.72s linear infinite;
+    }
+    .burn-heat:hover .burn-embers span:nth-child(3n) {
+      animation: burn-ember-rise-c 0.96s linear infinite;
+    }
+    .burn-heat:hover .burn-embers span:nth-child(1)  { animation-delay: -0.42s; }
+    .burn-heat:hover .burn-embers span:nth-child(2)  { animation-delay: -0.18s; }
+    .burn-heat:hover .burn-embers span:nth-child(3)  { animation-delay: -0.65s; }
+    .burn-heat:hover .burn-embers span:nth-child(4)  { animation-delay: -0.08s; }
+    .burn-heat:hover .burn-embers span:nth-child(5)  { animation-delay: -0.51s; }
+    .burn-heat:hover .burn-embers span:nth-child(6)  { animation-delay: -0.29s; }
+    .burn-heat:hover .burn-embers span:nth-child(7)  { animation-delay: -0.74s; }
+    .burn-heat:hover .burn-embers span:nth-child(8)  { animation-delay: -0.12s; }
+    .burn-heat:hover .burn-embers span:nth-child(9)  { animation-delay: -0.38s; }
+    .burn-heat:hover .burn-embers span:nth-child(10) { animation-delay: -0.61s; }
+    .burn-heat:hover .burn-embers span:nth-child(11) { animation-delay: -0.22s; }
+    .burn-heat:hover .burn-embers span:nth-child(12) { animation-delay: -0.47s; }
   }
   .burn-heat.is-heating {
-    animation: thermal-tremor 0.18s linear infinite;
+    animation: thermal-tremor 0.11s linear infinite;
     border-color: var(--fire-mid) !important;
-    box-shadow: 0 0 18px color-mix(in oklab, var(--fire-mid) 32%, transparent) !important;
+    box-shadow:
+      0 0 22px color-mix(in oklab, var(--fire-mid) 40%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--fire-edge) 18%, transparent) !important;
   }
   .burn-heat.is-heating .burn-embers {
     opacity: 1;
   }
+  .burn-heat.is-heating .burn-ignition-bar {
+    opacity: 0.62;
+  }
   @media (prefers-reduced-motion: no-preference) {
-    .burn-heat.is-heating .burn-embers span {
-      animation: burn-ember-rise 0.48s var(--ease-out-expo) infinite;
+    .burn-heat.is-heating .burn-embers span:nth-child(3n+1) {
+      animation: burn-ember-rise-a 0.48s linear infinite;
+    }
+    .burn-heat.is-heating .burn-embers span:nth-child(3n+2) {
+      animation: burn-ember-rise-b 0.4s linear infinite;
+    }
+    .burn-heat.is-heating .burn-embers span:nth-child(3n) {
+      animation: burn-ember-rise-c 0.54s linear infinite;
     }
   }
 
@@ -698,8 +750,9 @@ html.dark {
   }
   .session-burn-target.burning-front {
     box-shadow:
-      0 0 20px color-mix(in oklab, var(--fire-mid) 28%, transparent),
-      inset 0 0 16px color-mix(in oklab, var(--fire-edge) 18%, transparent);
+      0 0 28px color-mix(in oklab, var(--fire-mid) 38%, transparent),
+      0 0 48px color-mix(in oklab, var(--fire-edge) 16%, transparent),
+      inset 0 0 22px color-mix(in oklab, var(--fire-edge) 22%, transparent);
     border-color: var(--fire-mid) !important;
   }
   .session-burn-target.incinerated-collapse {
@@ -711,8 +764,8 @@ html.dark {
     padding-bottom: 0 !important;
     border-width: 0 !important;
     overflow: hidden;
-    filter: blur(5px) brightness(0.55);
-    transform: scale(0.97);
+    filter: blur(8px) brightness(0.4);
+    transform: scale(0.95);
     transition:
       max-height var(--dur-burn) var(--ease-in-out-quart),
       opacity var(--dur-burn) var(--ease-exit),
@@ -779,6 +832,15 @@ html.dark {
     transform-origin: left center;
     animation: toast-progress-drain var(--toast-ttl, 4500ms) linear forwards;
   }
+  .tazia-toast-card[data-tone='warning'] .tazia-toast-progress > span {
+    background: var(--color-warn);
+  }
+  .tazia-toast-card[data-tone='error'] .tazia-toast-progress > span {
+    background: var(--color-danger);
+  }
+  .tazia-toast-card[data-tone='success'] .tazia-toast-progress > span {
+    background: var(--color-ok);
+  }
   .tazia-toast-card:hover .tazia-toast-progress > span {
     animation-play-state: paused;
   }
@@ -822,15 +884,16 @@ html.dark {
 }
 
 @keyframes flame-flicker-hover {
-  0% { transform: scale(1) rotate(-1.5deg); filter: drop-shadow(0 0 1px var(--fire-mid)); }
-  100% { transform: scale(1.06) rotate(1.5deg); filter: drop-shadow(0 0 3px var(--fire-core)); }
+  0% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 2px var(--fire-mid)); }
+  100% { transform: scale(1.12) rotate(3deg); filter: drop-shadow(0 0 6px var(--fire-core)); }
 }
 
 @keyframes thermal-tremor {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(-0.6px, 0.4px) rotate(-0.25deg); }
-  50% { transform: translate(0.6px, -0.4px) rotate(0.25deg); }
-  75% { transform: translate(-0.4px, -0.3px) rotate(-0.15deg); }
+  20% { transform: translate(-1.4px, 0.8px) rotate(-0.55deg); }
+  40% { transform: translate(1.5px, -0.9px) rotate(0.55deg); }
+  60% { transform: translate(-1.2px, -1px) rotate(-0.4deg); }
+  80% { transform: translate(1.3px, 1px) rotate(0.4deg); }
 }
 
 @keyframes zone-join-pulse {
@@ -940,10 +1003,11 @@ html.dark {
   outline: 1px solid color-mix(in oklab, var(--color-warn) 34%, transparent);
   outline-offset: 2px;
 }
+/* Glow pulse only — never touch transform (JS owns the 3D tilt lerp). */
 @keyframes qr-secret-ignite {
-  0% { transform: scale(1); opacity: 1; }
-  40% { transform: scale(1.03); opacity: 0.92; }
-  100% { transform: scale(1); opacity: 1; }
+  0% { filter: brightness(1); }
+  40% { filter: brightness(1.06); }
+  100% { filter: brightness(1); }
 }
 .qr-surface-3d.qr-secret-ring {
   @media (prefers-reduced-motion: no-preference) {
@@ -1048,14 +1112,14 @@ html.dark {
 .wifi-arc-2 { animation: wifi-wave-step 1.8s ease-in-out infinite 0.35s; }
 
 .qr-perspective {
-  perspective: 920px;
-  perspective-origin: 50% 40%;
+  perspective: 1100px;
+  perspective-origin: 50% 42%;
 }
 .qr-surface-3d {
   position: relative;
   overflow: hidden;
   transform-style: preserve-3d;
-  transform: rotateX(8deg) rotateY(-7deg) translateZ(0);
+  transform: rotateX(6.5deg) rotateY(-5.5deg) translateZ(0);
   border: 1px solid color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
   background:
     linear-gradient(
@@ -1066,13 +1130,11 @@ html.dark {
     );
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 12%, transparent),
-    0 14px 28px color-mix(in oklab, #000 28%, transparent),
-    0 4px 10px color-mix(in oklab, #000 18%, transparent),
+    0 12px 26px color-mix(in oklab, #000 24%, transparent),
+    0 4px 10px color-mix(in oklab, #000 16%, transparent),
     inset 0 1px 0 color-mix(in oklab, #fff 10%, transparent),
     inset 0 -10px 18px color-mix(in oklab, #000 12%, transparent);
-  transition:
-    transform var(--dur-medium) var(--ease-out-expo),
-    box-shadow var(--dur-medium) var(--ease-out-expo);
+  transition: box-shadow var(--dur-medium) var(--ease-out-expo);
   will-change: transform;
 }
 .qr-surface-3d::before {
@@ -1082,19 +1144,20 @@ html.dark {
   border-radius: inherit;
   background: linear-gradient(
     125deg,
-    color-mix(in oklab, #fff 16%, transparent),
-    transparent 34%,
-    transparent 62%,
-    color-mix(in oklab, #000 14%, transparent)
+    color-mix(in oklab, #fff 14%, transparent),
+    transparent 36%,
+    transparent 64%,
+    color-mix(in oklab, #000 12%, transparent)
   );
   pointer-events: none;
   z-index: 1;
+  transition: opacity var(--dur-medium) var(--ease-out-expo);
 }
 .qr-surface-3d > img {
   position: relative;
   z-index: 0;
-  transform: translateZ(12px);
-  filter: drop-shadow(0 6px 10px color-mix(in oklab, #000 22%, transparent));
+  transform: translateZ(10px);
+  filter: drop-shadow(0 5px 9px color-mix(in oklab, #000 20%, transparent));
 }
 .qr-laser-line {
   position: absolute;
@@ -1133,13 +1196,13 @@ html.dark {
   pointer-events: none;
 }
 .qr-surface-3d.scanning .qr-laser-line {
-  animation: qr-scan-sweep 1.15s var(--ease-in-out-quart) infinite;
+  animation: qr-scan-sweep 1.35s var(--ease-in-out-quart) infinite;
 }
 @keyframes qr-scan-sweep {
-  0% { top: 8%; opacity: 0; transform: scaleX(0.92); }
-  10% { opacity: 0.95; transform: scaleX(1); }
-  88% { opacity: 0.85; transform: scaleX(1); }
-  100% { top: 90%; opacity: 0; transform: scaleX(0.94); }
+  0% { top: 8%; opacity: 0; transform: scaleX(0.94); }
+  12% { opacity: 0.88; transform: scaleX(1); }
+  88% { opacity: 0.72; transform: scaleX(1); }
+  100% { top: 90%; opacity: 0; transform: scaleX(0.96); }
 }
 
 #burn-fire-canvas {

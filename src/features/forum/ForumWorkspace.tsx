@@ -261,18 +261,21 @@ export function ForumWorkspace({
                       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
                         {t('forumNoResultsHint', { q: searchQuery.trim() })}
                       </p>
-                    ) : null}
+                    ) : (
+                      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+                        {t('forumEmptyHint')}
+                      </p>
+                    )}
                     {!(hasAnyThreads && searchQuery.trim()) && (
                       <motion.button
                         whileTap={TAP}
                         transition={TAP_TRANSITION}
                         type="button"
                         onClick={() => setIsComposingThread(true)}
-                        aria-label={t('forumStartFirst')}
                         className="btn-accent-sheen mt-5 inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
                         <MessageSquarePlus className="h-5 w-5" aria-hidden="true" />
-                        <span className="sr-only sm:not-sr-only">{t('forumStartFirst')}</span>
+                        {t('forumStartFirst')}
                       </motion.button>
                     )}
                   </div>

@@ -140,7 +140,7 @@ export function RoomEntryView({
                 type="button"
                 disabled={browserBlocked}
                 onClick={() => openEntry('create')}
-                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
                   entryTab === 'create'
                     ? 'bg-accent text-on-accent'
                     : 'border border-border bg-bg text-ink hover:border-ink/30 hover:bg-surface'
@@ -155,7 +155,7 @@ export function RoomEntryView({
                 type="button"
                 disabled={browserBlocked}
                 onClick={() => openEntry('join')}
-                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
                   entryTab === 'join'
                     ? 'bg-accent text-on-accent'
                     : 'border border-border bg-bg text-ink hover:border-ink/30 hover:bg-surface'
@@ -325,7 +325,7 @@ export function RoomEntryView({
                 disabled={atCap || browserBlocked}
                 onClick={() => openEntry('create')}
                 aria-pressed={entryTab === 'create'}
-                className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
                   entryTab === 'create'
                     ? 'bg-accent text-on-accent'
                     : 'border border-border bg-bg text-ink hover:bg-surface'
@@ -341,7 +341,7 @@ export function RoomEntryView({
                 disabled={atCap || browserBlocked}
                 onClick={() => openEntry('join')}
                 aria-pressed={entryTab === 'join'}
-                className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
                   entryTab === 'join'
                     ? 'bg-accent text-on-accent'
                     : 'border border-border bg-bg text-ink hover:bg-surface'

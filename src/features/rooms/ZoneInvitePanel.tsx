@@ -7,6 +7,7 @@ import { DUR, EASE, disclosure } from '../../motion/tokens';
 import { InviteQr } from '../../components/session/InviteQr';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { CopyButton } from '../../components/ui/CopyButton';
+import { useToast } from '../../components/ui/ToastHost';
 
 interface ZoneInvitePanelProps {
   roomId: string;
@@ -18,6 +19,7 @@ interface ZoneInvitePanelProps {
 /** Local invite QR + copy link for an already-open zone. */
 export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInvitePanelProps) {
   const t = useT();
+  const toast = useToast();
   const [includePhrase, setIncludePhrase] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -92,9 +94,16 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
         open={confirmOpen}
         title={t('confirmPhraseTitle')}
         body={t('confirmPhraseBody')}
+        confirmLabel={t('confirmPhraseAction')}
+        icon={ShieldAlert}
         onConfirm={() => {
           setIncludePhrase(true);
           setConfirmOpen(false);
+          toast.push({
+            message: t('phraseInLinkToast'),
+            tone: 'warning',
+            dedupeKey: 'phrase-in-link',
+          });
         }}
         onCancel={() => setConfirmOpen(false)}
       />

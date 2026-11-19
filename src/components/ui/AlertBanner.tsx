@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, ShieldAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 type AlertTone = 'error' | 'warning' | 'success' | 'info';
@@ -13,7 +13,7 @@ const TONE: Record<
   },
   warning: {
     wrap: 'border-warn-border bg-warn-bg text-warn-ink',
-    Icon: AlertCircle,
+    Icon: ShieldAlert,
   },
   success: {
     wrap: 'border-ok-border bg-ok-bg text-ok-ink',

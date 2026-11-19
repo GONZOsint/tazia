@@ -143,7 +143,10 @@ export const es: Messages = {
   presenceEmptyTitle: 'Tribu vacía',
   presenceEmptyBody: 'Abre o entra a una zona para ver a la tribu.',
   presenceEmptyCta: 'Zonas',
+  dmsNeedZoneTitle: 'Aún no hay susurros',
+  dmsNeedZoneBody: 'Abre o entra a una zona para susurrar con la tribu.',
   dmsEmptyCta: 'Zonas',
+  peerOnline: 'En línea',
   presenceTitle: 'Tribu',
   presenceCount: '{n} miembro en la tribu',
   presenceCountPlural: '{n} miembros en la tribu',
@@ -237,6 +240,8 @@ export const es: Messages = {
   confirmPhraseTitle: '¿Incluir frase en el enlace?',
   confirmPhraseBody:
     'El enlace incluirá la frase. Cualquiera con ese enlace podrá entrar a la zona.',
+  confirmPhraseAction: 'Incluir frase',
+  phraseInLinkToast: 'Frase metida en el enlace. Trátalo como un secreto.',
 
   trustNew: 'Nuevo',
   trustTrusted: 'Sin verificar',

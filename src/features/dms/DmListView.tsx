@@ -56,17 +56,20 @@ export function DmListView({
     return (
       <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
         <MessageCircle className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
+        <h1 className="mt-4 font-display text-2xl font-bold text-ink">{t('dmsNeedZoneTitle')}</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+          {t('dmsNeedZoneBody')}
+        </p>
         {onGoToRooms && (
           <motion.button
             whileTap={TAP}
             transition={TAP_TRANSITION}
             type="button"
             onClick={onGoToRooms}
-            aria-label={t('dmsEmptyCta')}
-            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
+            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
           >
             <Radio className="h-5 w-5" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
+            {t('dmsEmptyCta')}
           </motion.button>
         )}
       </main>
@@ -102,6 +105,7 @@ export function DmListView({
               <button
                 type="button"
                 onClick={() => onSelectPeer(id)}
+                aria-label={isOnline ? `${alias} — ${t('peerOnline')}` : alias}
                 className="list-row pressable flex w-full min-h-[60px] items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <div className="relative">
@@ -111,7 +115,11 @@ export function DmListView({
                     <div className="h-9 w-9 rounded-[var(--radius-ctrl)] bg-surface" />
                   )}
                   {isOnline && (
-                    <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-ok" />
+                    <span
+                      className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-surface-raised bg-ok"
+                      title={t('peerOnline')}
+                      aria-hidden="true"
+                    />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">

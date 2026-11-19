@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { BURN } from '../../motion/tokens';
 
+type ParticleKind = 'flame' | 'spark' | 'ash';
+
 interface Particle {
   x: number;
   y: number;
@@ -11,7 +13,7 @@ interface Particle {
   decay: number;
   wobble: number;
   stretch: number;
-  type: 'spark' | 'flame';
+  type: ParticleKind;
 }
 
 interface FirePalette {
@@ -78,9 +80,22 @@ function markTargets(phase: 'front' | 'collapse' | 'clear') {
   }
 }
 
+function collectTargetRects(): DOMRect[] {
+  const targets = document.querySelectorAll('.session-burn-target');
+  if (targets.length) {
+    return Array.from(targets, (el) => el.getBoundingClientRect());
+  }
+  return [
+    new DOMRect(window.innerWidth * 0.2, window.innerHeight * 0.25, window.innerWidth * 0.6, 120),
+  ];
+}
+
+type BurstMode = 'seed' | 'peak' | 'ember';
+
 /**
- * Full-viewport canvas fire burst for burn-session choreography.
- * Subtle teardrop flames + lime sparks; targets `.session-burn-target`.
+ * Full-viewport canvas fire for burn-session choreography.
+ * Phases: seed ignition → peak crest → ember collapse.
+ * Blends motion-guide radial flames with CodePen-style rising sparks.
  */
 export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,46 +158,72 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       };
     }
 
-    const spawnBurst = (rect: DOMRect, count: number) => {
+    const spawnBurst = (rect: DOMRect, count: number, mode: BurstMode) => {
       for (let i = 0; i < count; i++) {
-        const isSpark = Math.random() > 0.42;
+        const roll = Math.random();
+        let type: ParticleKind;
+        if (mode === 'ember') {
+          type = roll > 0.55 ? 'spark' : roll > 0.22 ? 'ash' : 'flame';
+        } else if (mode === 'peak') {
+          type = roll > 0.58 ? 'spark' : roll > 0.12 ? 'flame' : 'ash';
+        } else {
+          type = roll > 0.5 ? 'spark' : 'flame';
+        }
+
+        const along = 0.08 + Math.random() * 0.84;
+        const fromBottom =
+          mode === 'seed'
+            ? 0.62 + Math.random() * 0.34
+            : mode === 'peak'
+              ? 0.35 + Math.random() * 0.55
+              : 0.5 + Math.random() * 0.45;
+
+        const sparkish = type === 'spark';
+        const ashy = type === 'ash';
+
         particlesRef.current.push({
-          x: rect.left + rect.width * (0.12 + Math.random() * 0.76),
-          y: rect.top + rect.height * (0.55 + Math.random() * 0.4),
-          vx: (Math.random() - 0.5) * (isSpark ? 0.9 : 0.55),
-          vy: -(1.2 + Math.random() * (isSpark ? 2.8 : 1.6)),
-          size: isSpark ? 1.1 + Math.random() * 1.6 : 4.5 + Math.random() * 7,
+          x: rect.left + rect.width * along,
+          y: rect.top + rect.height * fromBottom,
+          vx: (Math.random() - 0.5) * (sparkish ? 2.4 : ashy ? 1.1 : 1.35),
+          vy: -(
+            (sparkish ? 2.2 : ashy ? 0.7 : 1.55) +
+            Math.random() * (sparkish ? 3.6 : ashy ? 1.4 : 2.4)
+          ),
+          size: sparkish
+            ? 1.4 + Math.random() * 2.2
+            : ashy
+              ? 3 + Math.random() * 5
+              : 6 + Math.random() * 11,
           life: 1,
-          decay: isSpark ? 0.012 + Math.random() * 0.014 : 0.02 + Math.random() * 0.022,
+          decay: sparkish
+            ? 0.011 + Math.random() * 0.016
+            : ashy
+              ? 0.008 + Math.random() * 0.012
+              : 0.016 + Math.random() * 0.02,
           wobble: Math.random() * Math.PI * 2,
-          stretch: isSpark ? 1.05 : 1.5 + Math.random() * 0.85,
-          type: isSpark ? 'spark' : 'flame',
+          stretch: sparkish ? 1.05 : ashy ? 1.2 + Math.random() * 0.4 : 1.55 + Math.random() * 0.9,
+          type,
         });
       }
     };
 
-    const targets = document.querySelectorAll('.session-burn-target');
-    const rects: DOMRect[] = [];
-    if (targets.length) {
-      for (const el of targets) rects.push(el.getBoundingClientRect());
-    } else {
-      rects.push(
-        new DOMRect(window.innerWidth * 0.2, window.innerHeight * 0.25, window.innerWidth * 0.6, 120)
-      );
-    }
+    const ensureLoop = () => {
+      if (rafRef.current === null) rafRef.current = requestAnimationFrame(tick);
+    };
 
-    markTargets('front');
-    for (const r of rects) spawnBurst(r, 28);
-
-    const drawTeardrop = (p: Particle, fill: string | CanvasGradient) => {
-      const s = p.size * p.life;
+    const drawFlame = (p: Particle, fill: string | CanvasGradient) => {
+      const s = p.size * Math.max(0.15, p.life);
       ctx.save();
       ctx.translate(p.x, p.y);
-      ctx.rotate(Math.sin(p.wobble) * 0.12);
+      ctx.rotate(Math.sin(p.wobble) * 0.18);
       ctx.scale(1, p.stretch);
       ctx.fillStyle = fill;
       ctx.beginPath();
-      ctx.ellipse(0, 0, s * 0.55, s, 0, 0, Math.PI * 2);
+      // Teardrop: wide base, pointed tip upward (CodePen rise feel + guide teardrop).
+      ctx.moveTo(0, -s);
+      ctx.bezierCurveTo(s * 0.7, -s * 0.35, s * 0.65, s * 0.55, 0, s * 0.75);
+      ctx.bezierCurveTo(-s * 0.65, s * 0.55, -s * 0.7, -s * 0.35, 0, -s);
+      ctx.closePath();
       ctx.fill();
       ctx.restore();
     };
@@ -192,31 +233,50 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.globalCompositeOperation = 'lighter';
       const list = particlesRef.current;
+
       for (let i = list.length - 1; i >= 0; i--) {
         const p = list[i]!;
-        p.wobble += 0.08;
-        p.x += p.vx + Math.sin(p.wobble) * (p.type === 'spark' ? 0.55 : 0.32);
-        // Embers rise with light drag; flames settle a touch faster.
-        p.vy += p.type === 'spark' ? 0.008 : 0.022;
+        p.wobble += p.type === 'spark' ? 0.16 : 0.11;
+        const sway = Math.sin(p.wobble) * (p.type === 'spark' ? 0.72 : p.type === 'ash' ? 0.95 : 0.42);
+        p.x += p.vx + sway;
+        // Sparks keep lift; flames drag; ash drifts and slows.
+        p.vy += p.type === 'spark' ? 0.012 : p.type === 'ash' ? 0.004 : 0.028;
         p.y += p.vy;
         p.life -= p.decay;
         if (p.life <= 0) {
           list.splice(i, 1);
           continue;
         }
-        const a = p.life * 0.55;
+
+        const a = p.life;
         if (p.type === 'flame') {
           const s = p.size * p.life;
-          const grad = ctx.createRadialGradient(p.x, p.y + s * 0.2, 0, p.x, p.y, s * 1.15);
+          const grad = ctx.createRadialGradient(p.x, p.y + s * 0.15, 0, p.x, p.y, s * 1.25);
           grad.addColorStop(0, rgba(palette.core, a * 0.95));
-          grad.addColorStop(0.45, rgba(palette.mid, a * 0.7));
+          grad.addColorStop(0.4, rgba(palette.mid, a * 0.78));
           grad.addColorStop(1, rgba(palette.edge, 0));
-          drawTeardrop(p, grad);
+          drawFlame(p, grad);
+        } else if (p.type === 'spark') {
+          const sparkHex = p.life > 0.55 ? palette.accent : p.life > 0.28 ? palette.core : palette.mid;
+          const r = p.size * p.life;
+          ctx.fillStyle = rgba(sparkHex, a * 0.95);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fill();
         } else {
-          const sparkHex = p.life > 0.45 ? palette.accent : palette.core;
-          drawTeardrop(p, rgba(sparkHex, a * 0.85));
+          // Soft ash / smoke — lower alpha, no hard edge.
+          const s = p.size * p.life;
+          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, s);
+          grad.addColorStop(0, rgba(palette.edge, a * 0.28));
+          grad.addColorStop(0.55, rgba(palette.mid, a * 0.12));
+          grad.addColorStop(1, rgba(palette.edge, 0));
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
+
       ctx.globalCompositeOperation = 'source-over';
       if (list.length > 0) {
         rafRef.current = requestAnimationFrame(tick);
@@ -224,14 +284,30 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
         rafRef.current = null;
       }
     };
-    rafRef.current = requestAnimationFrame(tick);
 
+    const rects = collectTargetRects();
+
+    // Phase 1 — ignition front + seed burst
+    markTargets('front');
+    for (const r of rects) spawnBurst(r, 42, 'seed');
+    ensureLoop();
+
+    // Phase 2 — peak crest
     timeouts.push(
       window.setTimeout(() => {
         if (abortedRef.current) return;
-        for (const r of rects) spawnBurst(r, 16);
-        if (rafRef.current === null) rafRef.current = requestAnimationFrame(tick);
+        for (const r of rects) spawnBurst(r, 58, 'peak');
+        ensureLoop();
+      }, BURN.peakAtMs)
+    );
+
+    // Phase 3 — collapse + residual embers
+    timeouts.push(
+      window.setTimeout(() => {
+        if (abortedRef.current) return;
+        for (const r of rects) spawnBurst(r, 36, 'ember');
         markTargets('collapse');
+        ensureLoop();
       }, BURN.collapseAtMs)
     );
 

@@ -135,14 +135,7 @@ export function TopBar({
         >
           {DESKTOP_NAV_ITEMS.map(({ id, labelKey, Icon }) => {
             const isActive = activeTab === id;
-            const badge =
-              id === 'forum'
-                ? forumUnread
-                : id === 'dms'
-                  ? dmUnread
-                  : id === 'rooms' && roomsCount > 1
-                    ? roomsCount
-                    : 0;
+            const badge = id === 'forum' ? forumUnread : id === 'dms' ? dmUnread : 0;
             return (
               <motion.button
                 key={id}
@@ -152,9 +145,7 @@ export function TopBar({
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={
                   badge > 0
-                    ? id === 'rooms'
-                      ? `${t(labelKey)} — ${badge}`
-                      : `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
+                    ? `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
                     : undefined
                 }
                 onClick={() => onSelectTab(id)}
@@ -217,7 +208,8 @@ export function TopBar({
                 aria-hidden="true"
               />
               <span className="burn-embers" aria-hidden="true">
-                <span /><span /><span /><span /><span />
+                <span /><span /><span /><span /><span /><span />
+                <span /><span /><span /><span /><span /><span />
               </span>
               <Flame className="burn-flame-icon relative z-10 h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="relative z-10 hidden sm:inline">{t('leaveTab')}</span>

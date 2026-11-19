@@ -6,7 +6,7 @@ export const DUR = {
   tab: 0.16,
   medium: 0.2,
   switch: 0.22,
-  burn: 0.36,
+  burn: 0.42,
   modal: 0.22,
   plane: 0.26,
 } as const;
@@ -22,11 +22,20 @@ export const EASE = {
   bubbleSpring: { type: 'spring' as const, stiffness: 440, damping: 30 },
 };
 
-/** Shared burn choreography — keep TopBar / overlay / CSS collapse in sync. */
+/**
+ * Shared burn choreography — keep TopBar / overlay / CSS collapse in sync.
+ *
+ * Timeline (full motion):
+ *   0ms     ignition front + seed burst
+ *   peakAt  secondary peak burst (flames crest)
+ *   collapse card incinerates while residual embers rise
+ *   finish  teardown + session wipe
+ */
 export const BURN = {
-  ignitionMs: 400,
-  collapseAtMs: 200,
-  finishMs: 620,
+  ignitionMs: 420,
+  peakAtMs: 150,
+  collapseAtMs: 300,
+  finishMs: 820,
   reducedFrontMs: 80,
   reducedCollapseMs: 140,
 } as const;

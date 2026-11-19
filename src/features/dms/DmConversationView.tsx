@@ -78,8 +78,8 @@ export function DmConversationView({
   };
 
   return (
-    <main className="mx-auto flex max-w-[720px] flex-col px-4 py-6 sm:px-8 sm:py-8">
-      <div className="flex items-center gap-3 border-b border-border pb-4">
+    <main className="mx-auto flex max-w-[720px] flex-col px-4 py-4 sm:px-8 sm:py-6 md:pb-6">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border pb-4">
         <motion.button
           whileTap={TAP}
           transition={TAP_TRANSITION}
@@ -93,7 +93,7 @@ export function DmConversationView({
         <h1 className="truncate font-display text-lg font-semibold text-ink">{peerAlias}</h1>
       </div>
 
-      <div className="mt-4 flex-1 space-y-2 overflow-y-auto">
+      <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-4">
         {messages.length === 0 && (
           <p className="py-10 text-center text-sm text-muted">{t('dmsEmpty')}</p>
         )}
@@ -142,7 +142,7 @@ export function DmConversationView({
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
-        className="mt-4 flex gap-2 border-t border-border pt-4"
+        className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 flex gap-2 border-t border-border bg-surface-raised/95 p-3 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-4 md:rounded-[var(--radius-panel)] md:border md:p-3"
       >
         <label className="sr-only" htmlFor="dm-body">
           {t('dmsSend')}
@@ -160,7 +160,7 @@ export function DmConversationView({
           type="submit"
           disabled={!body.trim() || sending}
           aria-label={sending ? t('dmsSending') : t('dmsSend')}
-          className="btn-accent-sheen inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
+          className="btn-accent-sheen inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-[var(--radius-ctrl)] bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
         >
           {sending && !planeLaunching ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

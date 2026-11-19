@@ -8,18 +8,15 @@ interface BottomNavProps {
   onSelectTab: (tab: ActiveTab) => void;
   forumUnread?: number;
   dmUnread?: number;
-  /** Open zone count — badge on Zonas when > 1. */
+  /** Open zone count — reserved for callers; multi-zone signal lives on TopBar chip. */
   roomsCount?: number;
 }
-
-const LIFT = { type: 'spring' as const, stiffness: 520, damping: 34, mass: 0.7 };
 
 export function BottomNav({
   activeTab,
   onSelectTab,
   forumUnread = 0,
   dmUnread = 0,
-  roomsCount = 0,
 }: BottomNavProps) {
   const t = useT();
 
@@ -32,59 +29,37 @@ export function BottomNav({
       <ul className="mx-auto flex max-w-[1280px] items-stretch justify-around px-1">
         {MOBILE_NAV_ITEMS.map(({ id, labelKey, Icon }) => {
           const active = activeTab === id;
-          const badge =
-            id === 'forum'
-              ? forumUnread
-              : id === 'dms'
-                ? dmUnread
-                : id === 'rooms' && roomsCount > 1
-                  ? roomsCount
-                  : 0;
+          const badge = id === 'forum' ? forumUnread : id === 'dms' ? dmUnread : 0;
           return (
             <li key={id} className="flex-1">
               <motion.button
-                whileTap={{ ...TAP, transition: TAP_TRANSITION }}
+                whileTap={TAP}
+                transition={TAP_TRANSITION}
                 type="button"
                 aria-current={active ? 'page' : undefined}
                 aria-label={
                   badge > 0
-                    ? id === 'rooms'
-                      ? `${t(labelKey)} — ${badge}`
-                      : `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
+                    ? `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
                     : t(labelKey)
                 }
                 onClick={() => onSelectTab(id)}
-                animate={{ y: active ? -3 : 0 }}
-                transition={LIFT}
-                className={`relative flex w-full min-h-[48px] flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
+                className={`relative flex w-full min-h-[48px] flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
                   active ? 'text-ink' : 'text-muted'
                 }`}
               >
-                <span className="relative inline-flex h-8 w-8 items-center justify-center">
-                  <AnimatePresence initial={false}>
-                    {active && (
-                      <motion.span
-                        key="disc"
-                        initial={{ scale: 0.55, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.75, opacity: 0 }}
-                        transition={{ duration: 0.16, ease: EASE.outExpo }}
-                        className="absolute inset-0 rounded-full bg-accent/18"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </AnimatePresence>
+                <span className="relative inline-flex h-7 w-7 items-center justify-center">
                   <Icon
-                    className={`relative z-[1] h-5 w-5 ${active ? 'text-ink' : 'text-faint'}`}
+                    className={`h-5 w-5 ${active ? 'text-ink' : 'text-faint'}`}
                     aria-hidden="true"
                     strokeWidth={1.75}
                   />
                   <AnimateBadge count={badge} />
                 </span>
+                <span className="max-w-full truncate px-0.5 leading-tight">{t(labelKey)}</span>
                 {active && (
                   <motion.span
                     layoutId="bottomnav-active-dot"
-                    className="absolute bottom-1 h-0.5 w-4 rounded-full bg-accent"
+                    className="absolute bottom-0.5 h-0.5 w-4 rounded-full bg-accent"
                     transition={{ duration: DUR.tab, ease: EASE.outExpo }}
                   />
                 )}

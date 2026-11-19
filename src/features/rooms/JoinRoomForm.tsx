@@ -43,10 +43,12 @@ export function JoinRoomForm({
     const parsed = parseInviteInput(raw);
     if (parsed) {
       setJoinRoomId(parsed.roomId);
-      if (parsed.phrase) setJoinPhrase(parsed.phrase);
+      setJoinPhrase(parsed.phrase ?? '');
+      setShowJoinPhrase(Boolean(parsed.phrase));
     }
   };
 
+  const canJoin = Boolean(joinRoomId.trim() && joinPhrase.trim());
   const phraseNeeded = !!joinRoomId && !joinPhrase.trim();
   const joinStrength = evaluatePassphraseStrength(joinPhrase);
   const showStrength =
@@ -81,7 +83,11 @@ export function JoinRoomForm({
         transition={TAP_TRANSITION}
         type="button"
         onClick={() => setScannerOpen(true)}
-        className="btn-accent-sheen inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className={
+          canJoin
+            ? 'inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-3 text-sm font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+            : 'btn-accent-sheen inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+        }
       >
         <QrCode className="h-5 w-5" aria-hidden="true" />
         {t('qrScanTitle')}
@@ -200,11 +206,15 @@ export function JoinRoomForm({
       )}
 
       <motion.button
-        whileTap={joinRoomId.trim() && joinPhrase.trim() && !isJoining ? TAP : undefined}
+        whileTap={canJoin && !isJoining ? TAP : undefined}
         transition={TAP_TRANSITION}
         type="submit"
-        disabled={!joinRoomId.trim() || !joinPhrase.trim() || isJoining}
-        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 text-sm font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        disabled={!canJoin || isJoining}
+        className={
+          canJoin
+            ? 'btn-accent-sheen inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+            : 'inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-5 py-2.5 text-sm font-semibold text-ink hover:bg-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+        }
       >
         {isJoining ? (
           <>
@@ -227,7 +237,8 @@ export function JoinRoomForm({
             onScan={(parsed) => {
               setJoinRoomId(parsed.roomId);
               setJoinInviteInput(buildInviteUrl(parsed.roomId, parsed.phrase ?? undefined));
-              if (parsed.phrase) setJoinPhrase(parsed.phrase);
+              setJoinPhrase(parsed.phrase ?? '');
+              setShowJoinPhrase(Boolean(parsed.phrase));
               setPasteOpen(true);
               setScannerOpen(false);
             }}

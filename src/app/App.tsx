@@ -242,15 +242,15 @@ export default function App() {
         ref={mainRef}
         className="min-h-screen bg-bg text-ink pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0"
       >
-        {/* Gooey filter for burn-button embers — scoped via CSS url(#tazia-fire-goo) */}
+        {/* Gooey metaball fire (CodePen burning-button) — CSS url(#tazia-fire-goo) */}
         <svg width="0" height="0" className="absolute" aria-hidden="true" focusable="false">
           <defs>
             <filter id="tazia-fire-goo">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="blur" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3.6" result="blur" />
               <feColorMatrix
                 in="blur"
                 mode="matrix"
-                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"
                 result="goo"
               />
               <feBlend in="SourceGraphic" in2="goo" />
@@ -404,16 +404,21 @@ export default function App() {
                   ) : (
                     <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
                       <Radio className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
+                      <h1 className="mt-4 font-display text-2xl font-bold text-ink">
+                        {t('forumEmptyTitle')}
+                      </h1>
+                      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+                        {t('forumEmptyBody')}
+                      </p>
                       <motion.button
                         whileTap={TAP}
                         transition={TAP_TRANSITION}
                         type="button"
                         onClick={() => selectTab('rooms')}
-                        aria-label={t('forumEmptyCta')}
-                        className="btn-accent-sheen mt-6 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        className="btn-accent-sheen mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
                         <Radio className="h-5 w-5" aria-hidden="true" />
-                        <span className="sr-only sm:not-sr-only">{t('navRooms')}</span>
+                        {t('forumEmptyCta')}
                       </motion.button>
                     </main>
                   ))}

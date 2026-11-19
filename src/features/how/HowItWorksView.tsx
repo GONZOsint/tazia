@@ -18,11 +18,18 @@ export function HowItWorksView() {
     t('helpSteps5'),
   ] as const;
 
+  const infoBlocks = [
+    { icon: Radio, titleKey: 'helpDirectTitle' as const, bodyKey: 'helpDirectBody' as const },
+    { icon: Users, titleKey: 'helpGroupTitle' as const, bodyKey: 'helpGroupBody' as const },
+    { icon: Radio, titleKey: 'helpZonesTitle' as const, bodyKey: 'helpZonesBody' as const },
+    { icon: WifiOff, titleKey: 'helpRelayTitle' as const, bodyKey: 'helpRelayBody' as const },
+    { icon: WifiOff, titleKey: 'helpNoServerTitle' as const, bodyKey: 'helpNoServerBody' as const },
+    { icon: Wrench, titleKey: 'helpFixTitle' as const, bodyKey: 'helpFixBody' as const },
+  ];
+
   return (
-    <main className="mx-auto max-w-[720px] px-4 py-6 sm:px-8 sm:py-8">
-      <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-[28px]">
-        {t('helpTitle')}
-      </h1>
+    <main className="mx-auto max-w-[720px] px-4 py-4 sm:px-8 sm:py-6">
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{t('helpTitle')}</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted">{t('helpLede')}</p>
 
       <section className="mt-8" aria-labelledby="help-steps-title">
@@ -44,35 +51,16 @@ export function HowItWorksView() {
         </ol>
       </section>
 
-      <ul className="mt-8 space-y-4">
-        <li className="panel-surface p-5">
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <Radio className="h-4 w-4 text-muted" aria-hidden="true" />
-            {t('helpDirectTitle')}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpDirectBody')}</p>
-        </li>
-        <li className="panel-surface p-5">
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <Users className="h-4 w-4 text-muted" aria-hidden="true" />
-            {t('helpGroupTitle')}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpGroupBody')}</p>
-        </li>
-        <li className="panel-surface p-5">
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <Radio className="h-4 w-4 text-muted" aria-hidden="true" />
-            {t('helpZonesTitle')}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpZonesBody')}</p>
-        </li>
-        <li className="panel-surface p-5">
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <WifiOff className="h-4 w-4 text-muted" aria-hidden="true" />
-            {t('helpRelayTitle')}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpRelayBody')}</p>
-        </li>
+      <ul className="mt-8 space-y-6">
+        {infoBlocks.map(({ icon: Icon, titleKey, bodyKey }) => (
+          <li key={titleKey}>
+            <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+              <Icon className="h-4 w-4 text-muted" aria-hidden="true" />
+              {t(titleKey)}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{t(bodyKey)}</p>
+          </li>
+        ))}
         <li className="rounded-[var(--radius-panel)] border border-warn-border bg-warn-bg p-5">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-warn-ink">
             <ShieldAlert className="h-4 w-4 text-warn" aria-hidden="true" />
@@ -84,20 +72,6 @@ export function HowItWorksView() {
             <li>{t('helpSafety3')}</li>
             <li>{t('helpSafety4')}</li>
           </ul>
-        </li>
-        <li className="panel-surface p-5">
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <WifiOff className="h-4 w-4 text-muted" aria-hidden="true" />
-            {t('helpNoServerTitle')}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpNoServerBody')}</p>
-        </li>
-        <li className="panel-surface p-5">
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <Wrench className="h-4 w-4 text-muted" aria-hidden="true" />
-            {t('helpFixTitle')}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">{t('helpFixBody')}</p>
         </li>
       </ul>
 
