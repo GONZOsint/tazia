@@ -6,7 +6,11 @@ export interface ParsedInvite {
 
 /** Enlace público: solo roomId. La frase va fuera de banda o tras ~ en el #. */
 export function buildInviteUrl(roomId: string, phrase?: string): string {
-  const base = `${window.location.origin}${window.location.pathname}#${encodeURIComponent(roomId)}`;
+  // Keep a trailing slash so relative assets (scrub-phrase.js) resolve under /tazia/
+  // when the shared link is opened at …/tazia#… instead of …/tazia/#….
+  let path = window.location.pathname;
+  if (!path.endsWith('/')) path = `${path}/`;
+  const base = `${window.location.origin}${path}#${encodeURIComponent(roomId)}`;
   if (phrase && phrase.trim()) {
     return `${base}~${encodeURIComponent(phrase.trim())}`;
   }

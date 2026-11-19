@@ -5,6 +5,7 @@ import { useSwipeTabs } from '../hooks/useSwipeTabs';
 import { BottomNav } from '../components/layout/BottomNav';
 import { TopBar, type ActiveTab } from '../components/layout/TopBar';
 import { AlertBanner } from '../components/ui/AlertBanner';
+import { EmptyZoneCta } from '../components/ui/AccentButton';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useToast } from '../components/ui/ToastHost';
 import { BurnFireOverlay } from '../components/session/BurnFireOverlay';
@@ -27,20 +28,18 @@ const PresenceView = lazy(() => import('../features/presence/PresenceView'));
 const DmListView = lazy(() => import('../features/dms/DmListView'));
 const DmConversationView = lazy(() => import('../features/dms/DmConversationView'));
 
+const ALL_TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const satisfies readonly ActiveTab[];
+
 function TabSkeleton() {
   return (
-    <motion.div
-      className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16"
-      initial={contentSwitch.initial}
-      animate={contentSwitch.animate}
-      transition={contentSwitch.transition}
-    >
+    <div className="mx-auto flex max-w-[1280px] items-center justify-center px-4 py-16">
       <Loader2 className="h-6 w-6 animate-spin text-faint" />
-    </motion.div>
+    </div>
   );
 }
 
-function readInitialInvite() {
+/** Parse #room[~phrase], prefer live hash phrase, else early-boot stash; scrub secret from URL. */
+function consumeInviteFromLocation() {
   const parsed = parseInviteInput(window.location.hash);
   if (!parsed) return null;
   if (parsed.phrase) {
@@ -56,7 +55,9 @@ export default function App() {
   const t = useT();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<ActiveTab>('rooms');
-  const [initialInvite] = useState(readInitialInvite);
+  const [initialInvite, setInitialInvite] = useState(consumeInviteFromLocation);
+  /** Bumps when a new invite arrives mid-session (hashchange / same-tab open). */
+  const [inviteNonce, setInviteNonce] = useState(0);
   const relayToastShownRef = useRef<string | null>(null);
   const forumTabFocusedRef = useRef(false);
   const dmsTabFocusedRef = useRef(false);
@@ -70,6 +71,10 @@ export default function App() {
   const [zoneSwitchPulse, setZoneSwitchPulse] = useState(false);
   const skipNextZoneSwitchPulseRef = useRef(false);
   const igniteTimerRef = useRef<number | null>(null);
+  /** Keep visited tabs mounted — avoids Suspense/hero remount flicker on return. */
+  const [mountedTabs, setMountedTabs] = useState<ReadonlySet<ActiveTab>>(
+    () => new Set<ActiveTab>(['rooms'])
+  );
 
   const handleZoneIgnited = useCallback((roomId: string) => {
     skipNextZoneSwitchPulseRef.current = true;
@@ -159,17 +164,43 @@ export default function App() {
     setModalOpen(ipConsentNeeded || burnConfirmOpen || burnPlaying);
   }, [ipConsentNeeded, burnConfirmOpen, burnPlaying]);
 
+  // Same-tab / PWA: opening #room~phrase only fires hashchange (no scrub-phrase.js re-run).
+  useEffect(() => {
+    const onHashChange = () => {
+      const next = consumeInviteFromLocation();
+      if (!next?.roomId) return;
+      setInitialInvite(next);
+      setInviteNonce((n) => n + 1);
+      setActiveTab('rooms');
+      setMountedTabs((prev) => {
+        if (prev.has('rooms')) return prev;
+        const copy = new Set(prev);
+        copy.add('rooms');
+        return copy;
+      });
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   const finishBurnChoreography = useCallback(() => {
-    setDmPeerId(null);
-    setBurnPlaying(false);
+    // Keep burnPlaying true through teardown/reload so the overlay veil
+    // never unmounts (that snap-back was the session flicker).
     void burnSession();
   }, [burnSession]);
 
   const selectTab = (tab: ActiveTab) => {
+    if (tab === activeTab) return;
     forumTabFocusedRef.current = tab === 'forum';
     dmsTabFocusedRef.current = tab === 'dms';
     if (tab === 'forum' && activeRoomId) clearForumUnread(activeRoomId);
     if (tab === 'dms' && dmPeerId) clearDmUnread(dmPeerId);
+    setMountedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
     setActiveTab(tab);
     window.requestAnimationFrame(() => {
       mainContentRef.current?.focus({ preventScroll: true });
@@ -226,21 +257,31 @@ export default function App() {
     dismissTransportNotice();
   }, [transportNotice, activeRoomId, dismissTransportNotice, t, toast]);
 
-  const TABS = ['rooms', 'forum', 'presence', 'dms', 'how'] as const;
   useSwipeTabs(mainRef, {
-    tabs: TABS,
-    activeTab: activeTab as (typeof TABS)[number],
-    onSwipe: (tab) => selectTab(tab as ActiveTab),
-    disabled: modalOpen,
+    tabs: ALL_TABS,
+    activeTab,
+    onSwipe: (tab) => selectTab(tab),
+    disabled: modalOpen || burnPlaying,
   });
 
   const roomList = [...rooms.values()];
+  const plazaLocked = activeTab === 'forum' && isInRoom;
+
+  // Also mount tabs navigated via join/switchRoom (bypasses selectTab).
+  useEffect(() => {
+    setMountedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   return (
     <MotionConfig reducedMotion="user">
       <div
         ref={mainRef}
-        className="min-h-screen bg-bg text-ink pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0"
+        className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0"
       >
         {/* Gooey metaball fire (CodePen burning-button) — CSS url(#tazia-fire-goo) */}
         <svg width="0" height="0" className="absolute" aria-hidden="true" focusable="false">
@@ -327,6 +368,7 @@ export default function App() {
                 peerAlias={presence[alert.userId]?.alias || alert.userId}
                 onRepin={() => {
                   trustStore?.repin(alert.userId);
+                  void activeRoom?.session.invalidatePeerKey(alert.userId);
                   dismissKeyChange(activeRoomId, alert.userId);
                 }}
                 onDisconnect={() => {
@@ -339,169 +381,221 @@ export default function App() {
           </div>
         )}
 
-        <div ref={mainContentRef} id="main-content" tabIndex={-1} className="outline-none">
-          <Suspense fallback={<TabSkeleton />}>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={activeTab}
-                initial={contentSwitch.initial}
-                animate={contentSwitch.animate}
-                exit={contentSwitch.exit}
-                transition={contentSwitch.transition}
-              >
-                {activeTab === 'forum' &&
-                  (isInRoom && roomId && profile && selfUserId ? (
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.div
-                        key={roomId}
-                        initial={enterPlaza.initial}
-                        animate={enterPlaza.animate}
-                        exit={enterPlaza.exit}
-                      >
-                        <ForumWorkspace
-                          roomId={roomId}
-                          phrase={phrase}
-                          profile={profile}
-                          selfUserId={selfUserId}
-                          messages={messages}
-                          presenceAliases={presenceAliases}
-                          onlineCount={peerOnlineCount}
-                          meshStatus={meshStatus}
-                          relayActive={Boolean(activeRoom?.relayFallbackActive)}
-                          isPublishing={isPublishing}
-                          isSyncing={isSyncing}
-                          roomError={roomErrorMsg}
-                          roomErrorTone="error"
-                          onDismissRoomError={dismissRoomError}
-                          onSyncNow={async () => {
-                            await syncNow();
-                          }}
-                          onCreateThread={async (title, body) => {
-                            const ok = await publish({
-                              type: 'NEW_THREAD',
-                              threadId: crypto.randomUUID(),
-                              parentMsgId: null,
-                              title,
-                              body,
-                            });
-                            if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                            return ok;
-                          }}
-                          onReplyThread={async (threadId, parentMsgId, body) => {
-                            const ok = await publish({
-                              type: 'REPLY',
-                              threadId,
-                              parentMsgId,
-                              title: '',
-                              body,
-                            });
-                            if (!ok) toast.push(t('toastPublishFailed'), 'error');
-                            return ok;
-                          }}
-                        />
-                      </motion.div>
-                    </AnimatePresence>
-                  ) : (
-                    <main className="mx-auto max-w-[560px] px-4 py-10 text-center sm:px-8">
-                      <Radio className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-                      <h1 className="mt-4 font-display text-2xl font-bold text-ink">
-                        {t('forumEmptyTitle')}
-                      </h1>
-                      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-                        {t('forumEmptyBody')}
-                      </p>
-                      <motion.button
-                        whileTap={TAP}
-                        transition={TAP_TRANSITION}
-                        type="button"
-                        onClick={() => selectTab('rooms')}
-                        className="btn-accent-sheen mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      >
-                        <Radio className="h-5 w-5" aria-hidden="true" />
-                        {t('forumEmptyCta')}
-                      </motion.button>
-                    </main>
-                  ))}
+        <div
+          ref={mainContentRef}
+          id="main-content"
+          tabIndex={-1}
+          className={`flex min-h-0 flex-1 flex-col outline-none ${
+            plazaLocked ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
+        >
+          {mountedTabs.has('rooms') && (
+            <div
+              className="tab-panel"
+              data-active={activeTab === 'rooms' ? 'true' : 'false'}
+              aria-hidden={activeTab !== 'rooms'}
+              inert={activeTab !== 'rooms' ? true : undefined}
+            >
+              <RoomEntryView
+                initialRoomId={initialInvite?.roomId}
+                initialPhrase={initialInvite?.phrase}
+                inviteNonce={inviteNonce}
+                isJoining={isJoining}
+                errorMsg={joinErrorMsg}
+                showIceHint={showIceHint}
+                activeRoomId={roomId}
+                joinedRooms={roomList}
+                onJoinRoom={joinRoom}
+                onSwitchRoom={switchRoom}
+                onLeaveRoom={async (id) => {
+                  const wasActive = id === activeRoomId;
+                  await leaveRoom(id);
+                  if (wasActive) {
+                    toast.push({
+                      message: t('roomsLeftToast'),
+                      tone: 'info',
+                      dedupeKey: 'leave-zone',
+                    });
+                  }
+                }}
+              />
+            </div>
+          )}
 
-                {activeTab === 'rooms' && (
-                  <RoomEntryView
-                    initialRoomId={initialInvite?.roomId}
-                    initialPhrase={initialInvite?.phrase}
-                    isJoining={isJoining}
-                    errorMsg={joinErrorMsg}
-                    showIceHint={showIceHint}
-                    activeRoomId={roomId}
-                    joinedRooms={roomList}
-                    onJoinRoom={joinRoom}
-                    onSwitchRoom={switchRoom}
-                    onLeaveRoom={async (id) => {
-                      const wasActive = id === activeRoomId;
-                      await leaveRoom(id);
-                      if (wasActive) {
-                        toast.push({
-                          message: t('roomsLeftToast'),
-                          tone: 'info',
-                          dedupeKey: 'leave-zone',
-                        });
-                      }
-                    }}
+          {mountedTabs.has('forum') && (
+            <div
+              className="tab-panel"
+              data-active={activeTab === 'forum' ? 'true' : 'false'}
+              data-fill={activeTab === 'forum' && isInRoom ? 'true' : undefined}
+              aria-hidden={activeTab !== 'forum'}
+              inert={activeTab !== 'forum' ? true : undefined}
+            >
+              <Suspense fallback={<TabSkeleton />}>
+                {isInRoom && roomId && profile && selfUserId ? (
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={roomId}
+                      initial={enterPlaza.initial}
+                      animate={enterPlaza.animate}
+                      exit={enterPlaza.exit}
+                      className="flex h-full min-h-0 flex-1 flex-col"
+                    >
+                      <ForumWorkspace
+                        roomId={roomId}
+                        phrase={phrase}
+                        profile={profile}
+                        selfUserId={selfUserId}
+                        messages={messages}
+                        presenceAliases={presenceAliases}
+                        onlineCount={peerOnlineCount}
+                        meshStatus={meshStatus}
+                        relayActive={Boolean(activeRoom?.relayFallbackActive)}
+                        isPublishing={isPublishing}
+                        isSyncing={isSyncing}
+                        roomError={roomErrorMsg}
+                        roomErrorTone="error"
+                        onDismissRoomError={dismissRoomError}
+                        onSyncNow={async () => {
+                          await syncNow();
+                        }}
+                        onCreateThread={async (title, body) => {
+                          const ok = await publish({
+                            type: 'NEW_THREAD',
+                            threadId: crypto.randomUUID(),
+                            parentMsgId: null,
+                            title,
+                            body,
+                          });
+                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                          return ok;
+                        }}
+                        onReplyThread={async (threadId, parentMsgId, body) => {
+                          const ok = await publish({
+                            type: 'REPLY',
+                            threadId,
+                            parentMsgId,
+                            title: '',
+                            body,
+                          });
+                          if (!ok) toast.push(t('toastPublishFailed'), 'error');
+                          return ok;
+                        }}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                ) : (
+                  <EmptyZoneCta
+                    icon={<Radio className="h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />}
+                    title={t('forumEmptyTitle')}
+                    body={t('forumEmptyBody')}
+                    actionLabel={t('forumEmptyCta')}
+                    onAction={() => selectTab('rooms')}
                   />
                 )}
+              </Suspense>
+            </div>
+          )}
 
-                {activeTab === 'presence' && (
-                  <PresenceView
-                    selfUserId={selfUserId}
-                    selfSignPubKeyB64={selfSignPubKeyB64}
-                    trustStore={trustStore}
-                    presence={presence}
-                    onlineUserIds={onlineUserIds}
-                    meshStatus={meshStatus}
-                    peerOnlineCount={peerOnlineCount}
-                    rejectedSyncCount={rejectedSyncCount}
-                    roomId={roomId}
-                    relayActive={Boolean(activeRoom?.relayFallbackActive)}
-                    onSyncNow={syncNow}
-                    isSyncing={isSyncing}
-                    onGoToRooms={() => selectTab('rooms')}
-                  />
-                )}
+          {mountedTabs.has('presence') && (
+            <div
+              className="tab-panel"
+              data-active={activeTab === 'presence' ? 'true' : 'false'}
+              aria-hidden={activeTab !== 'presence'}
+              inert={activeTab !== 'presence' ? true : undefined}
+            >
+              <Suspense fallback={<TabSkeleton />}>
+                <PresenceView
+                  key={roomId ?? 'no-zone'}
+                  selfUserId={selfUserId}
+                  selfSignPubKeyB64={selfSignPubKeyB64}
+                  trustStore={trustStore}
+                  presence={presence}
+                  onlineUserIds={onlineUserIds}
+                  meshStatus={meshStatus}
+                  peerOnlineCount={peerOnlineCount}
+                  rejectedSyncCount={rejectedSyncCount}
+                  roomId={roomId}
+                  relayActive={Boolean(activeRoom?.relayFallbackActive)}
+                  onSyncNow={syncNow}
+                  isSyncing={isSyncing}
+                  onGoToRooms={() => selectTab('rooms')}
+                />
+              </Suspense>
+            </div>
+          )}
 
-                {activeTab === 'dms' &&
-                  (dmPeerId && selfUserId ? (
-                    <DmConversationView
-                      selfUserId={selfUserId}
-                      peerId={dmPeerId}
-                      peerAlias={presence[dmPeerId]?.alias || dmPeerId}
-                      messages={dmMessages[dmPeerId] ?? []}
-                      onSend={async (body) => {
-                        const ok = await sendDm(dmPeerId, body);
-                        if (!ok) toast.push(t('toastDmFailed'), 'error');
-                        return ok;
-                      }}
-                      onBack={() => {
-                        clearDmUnread(dmPeerId);
-                        setDmPeerId(null);
-                      }}
-                    />
+          {mountedTabs.has('dms') && (
+            <div
+              className="tab-panel"
+              data-active={activeTab === 'dms' ? 'true' : 'false'}
+              aria-hidden={activeTab !== 'dms'}
+              inert={activeTab !== 'dms' ? true : undefined}
+            >
+              <Suspense fallback={<TabSkeleton />}>
+                <AnimatePresence mode="wait" initial={false}>
+                  {dmPeerId && selfUserId ? (
+                    <motion.div
+                      key={`dm-${dmPeerId}`}
+                      initial={contentSwitch.initial}
+                      animate={contentSwitch.animate}
+                      exit={contentSwitch.exit}
+                      transition={contentSwitch.transition}
+                    >
+                      <DmConversationView
+                        selfUserId={selfUserId}
+                        peerId={dmPeerId}
+                        peerAlias={presence[dmPeerId]?.alias || dmPeerId}
+                        messages={dmMessages[dmPeerId] ?? []}
+                        onSend={async (body) => {
+                          const ok = await sendDm(dmPeerId, body);
+                          if (!ok) toast.push(t('toastDmFailed'), 'error');
+                          return ok;
+                        }}
+                        onBack={() => {
+                          clearDmUnread(dmPeerId);
+                          setDmPeerId(null);
+                        }}
+                      />
+                    </motion.div>
                   ) : (
-                    <DmListView
-                      selfUserId={selfUserId}
-                      presence={presence}
-                      onlineUserIds={onlineUserIds}
-                      dmMessages={dmMessages}
-                      dmUnread={dmUnread}
-                      onGoToRooms={() => selectTab('rooms')}
-                      onSelectPeer={(peerId) => {
-                        clearDmUnread(peerId);
-                        setDmPeerId(peerId);
-                      }}
-                    />
-                  ))}
+                    <motion.div
+                      key="dm-list"
+                      initial={contentSwitch.initial}
+                      animate={contentSwitch.animate}
+                      exit={contentSwitch.exit}
+                      transition={contentSwitch.transition}
+                    >
+                      <DmListView
+                        selfUserId={selfUserId}
+                        presence={presence}
+                        onlineUserIds={onlineUserIds}
+                        dmMessages={dmMessages}
+                        dmUnread={dmUnread}
+                        onGoToRooms={() => selectTab('rooms')}
+                        onSelectPeer={(peerId) => {
+                          clearDmUnread(peerId);
+                          setDmPeerId(peerId);
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Suspense>
+            </div>
+          )}
 
-                {activeTab === 'how' && <HowItWorksView />}
-              </motion.div>
-            </AnimatePresence>
-          </Suspense>
+          {mountedTabs.has('how') && (
+            <div
+              className="tab-panel"
+              data-active={activeTab === 'how' ? 'true' : 'false'}
+              aria-hidden={activeTab !== 'how'}
+              inert={activeTab !== 'how' ? true : undefined}
+            >
+              <Suspense fallback={<TabSkeleton />}>
+                <HowItWorksView />
+              </Suspense>
+            </div>
+          )}
         </div>
 
         <BottomNav

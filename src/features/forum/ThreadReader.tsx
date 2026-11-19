@@ -310,10 +310,8 @@ export function ThreadReader({
       </div>
 
       <div
-        className={`min-h-0 flex-1 space-y-1.5 overflow-y-auto py-2 md:space-y-2 md:pb-4 ${
-          replyParent
-            ? 'pb-[calc(9.5rem+env(safe-area-inset-bottom))]'
-            : 'pb-[calc(7.5rem+env(safe-area-inset-bottom))]'
+        className={`min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain py-2 md:space-y-2 md:pb-4 ${
+          replyParent ? 'max-md:pb-32' : 'max-md:pb-24'
         }`}
       >
         {renderNode(tree, 0, true)}

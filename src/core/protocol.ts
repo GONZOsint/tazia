@@ -1,13 +1,14 @@
 /**
- * Protocolo agora-forum-v1 (P2P / Trystero).
+ * Protocolo agora-forum-v2 (P2P / Trystero).
  *
- * - En vivo: authorUserId se fuerza al userId Trystero del peer.
- * - Sync: solo se aceptan eventos con firma Ed25519 válida frente a la
- *   clave publicada en presencia (o vista en vivo).
+ * Breaking vs v1:
+ * - PROTOCOL_VERSION = 2
+ * - Susurros sealed-only (seal:2 + bodyCipherB64; empty body)
+ * - Presence requires encPubKeyRawB64
  */
 
-export const PROTOCOL_NAME = 'agora-forum-v1';
-export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_NAME = 'agora-forum-v2';
+export const PROTOCOL_VERSION = 2 as const;
 
 export type ForumMessageType = 'NEW_THREAD' | 'REPLY';
 
@@ -32,13 +33,17 @@ export interface PresenceState {
   alias: string;
   /** Clave pública de firma (SPKI) en base64. */
   signPubKeySpkiB64: string;
-  /** Optional X25519 raw public key (base64) for Susurro pairwise seal. */
-  encPubKeyRawB64?: string;
+  /** X25519 raw public key (base64) — required in v2 for Susurro seal. */
+  encPubKeyRawB64: string;
 }
 
 export const APP_ID = 'tazia.app';
 
-export const MAX_USERS = 48;
+export const MAX_USERS = 50;
+/** Soft UX warn: full mesh degrades past ~4–6 peers (SnoW / WebRTC scale). */
+export const MESH_SOFT_WARN_PEERS = 6;
+/** Cap WebRTC sync fan-out so large rooms do not N×N snapshot storms. */
+export const MAX_SYNC_PEER_TARGETS = 8;
 export const MAX_BODY_CHARS = 8000;
 export const MAX_TITLE_CHARS = 200;
 export const MAX_ALIAS_CHARS = 40;
@@ -57,21 +62,19 @@ export const MAX_SYNC_TOTAL_BYTES = 2 * 1024 * 1024;
 
 export type MeshStatus = 'connecting' | 'alone' | 'mesh' | 'syncing';
 
-/** Direct message between two peers (not broadcast to the room). */
+/** Direct message between two peers (sealed-only in v2). */
 export interface DirectMessage {
   protocolVersion: typeof PROTOCOL_VERSION;
   msgId: string;
   fromUserId: string;
   toUserId: string;
-  /**
-   * Plaintext body for legacy peers, or empty string when `bodyCipherB64` is set (v2 seal).
-   */
+  /** Always empty on the wire in v2; plaintext only after local open. */
   body: string;
   createdAtMs: number;
-  /** AES-GCM ciphertext (base64) sealed with pairwise X25519 (Susurro v2). */
-  bodyCipherB64?: string;
-  /** Seal version; `2` when body is pairwise-encrypted. */
-  seal?: 2;
+  /** AES-GCM ciphertext (base64) sealed with pairwise X25519 + room AAD. */
+  bodyCipherB64: string;
+  /** Seal version; always `2` in v2. */
+  seal: 2;
   /** Ed25519 signature over canonical DM payload. */
   sig: string;
 }
@@ -87,8 +90,8 @@ export function canonicalDmPayload(dm: Omit<DirectMessage, 'sig'>): string {
     dm.toUserId,
     dm.body,
     dm.createdAtMs,
-    dm.bodyCipherB64 ?? '',
-    dm.seal ?? 0,
+    dm.bodyCipherB64,
+    dm.seal,
   ]);
 }
 
@@ -97,25 +100,21 @@ export function isValidDirectMessage(value: unknown): value is DirectMessage {
   const v = value as Record<string, unknown>;
   if (v.protocolVersion !== PROTOCOL_VERSION) return false;
   if (typeof v.msgId !== 'string' || v.msgId.length < 8 || v.msgId.length > 80) return false;
-  if (typeof v.fromUserId !== 'string' || v.fromUserId.length < 4 || v.fromUserId.length > MAX_USER_ID_CHARS) return false;
-  if (typeof v.toUserId !== 'string' || v.toUserId.length < 4 || v.toUserId.length > MAX_USER_ID_CHARS) return false;
-  if (typeof v.body !== 'string' || v.body.length > MAX_DM_BODY_CHARS) return false;
-  const sealed =
-    typeof v.bodyCipherB64 === 'string' &&
-    v.bodyCipherB64.length > 0 &&
-    v.bodyCipherB64.length <= MAX_DM_CIPHER_B64_CHARS &&
-    v.seal === 2;
-  if (sealed) {
-    if (v.body.length !== 0) return false;
-  } else if (v.body.length === 0) {
+  if (typeof v.fromUserId !== 'string' || v.fromUserId.length < 4 || v.fromUserId.length > MAX_USER_ID_CHARS) {
     return false;
   }
-  if (v.bodyCipherB64 !== undefined) {
-    if (typeof v.bodyCipherB64 !== 'string' || v.bodyCipherB64.length > MAX_DM_CIPHER_B64_CHARS) {
-      return false;
-    }
+  if (typeof v.toUserId !== 'string' || v.toUserId.length < 4 || v.toUserId.length > MAX_USER_ID_CHARS) {
+    return false;
   }
-  if (v.seal !== undefined && v.seal !== 2) return false;
+  if (typeof v.body !== 'string' || v.body.length !== 0) return false;
+  if (v.seal !== 2) return false;
+  if (
+    typeof v.bodyCipherB64 !== 'string' ||
+    v.bodyCipherB64.length < 16 ||
+    v.bodyCipherB64.length > MAX_DM_CIPHER_B64_CHARS
+  ) {
+    return false;
+  }
   if (typeof v.createdAtMs !== 'number' || !Number.isFinite(v.createdAtMs)) return false;
   if (typeof v.sig !== 'string' || v.sig.length < 16 || v.sig.length > MAX_SIG_B64_CHARS) return false;
   return true;
@@ -180,10 +179,12 @@ export function isValidPresenceState(value: unknown): value is PresenceState {
     return false;
   }
   if (typeof v.signPubKeySpkiB64 !== 'string' || v.signPubKeySpkiB64.length < 32) return false;
-  if (v.encPubKeyRawB64 !== undefined) {
-    if (typeof v.encPubKeyRawB64 !== 'string' || v.encPubKeyRawB64.length < 32 || v.encPubKeyRawB64.length > 128) {
-      return false;
-    }
+  if (
+    typeof v.encPubKeyRawB64 !== 'string' ||
+    v.encPubKeyRawB64.length < 32 ||
+    v.encPubKeyRawB64.length > 128
+  ) {
+    return false;
   }
   return true;
 }

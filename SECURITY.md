@@ -1,6 +1,6 @@
 # Seguridad — TAZIA
 
-Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=tazia.app`). Wire format: [`PROTOCOL.md`](PROTOCOL.md). TURN / ICE: [`TURN.md`](TURN.md).
+Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v2`, `APP_ID=tazia.app`). Wire format: [`PROTOCOL.md`](PROTOCOL.md). TURN / ICE: [`TURN.md`](TURN.md). Papers locales: [`docs/papers/`](docs/papers/).
 
 ## Qué es (y qué no)
 
@@ -19,21 +19,21 @@ Modelo de amenaza y mitigaciones del foro P2P TAZIA (`agora-forum-v1`, `APP_ID=t
 
 ## Mitigaciones actuales
 
-1. **Frase de zona** — Trystero deriva cifrado del handshake de descubrimiento (`password`). Sin frase no hay mesh útil. Puedes mantener hasta **5 zonas** concurrentes en un navegador (una vista activa).
+1. **Frase de zona** — Trystero deriva cifrado del handshake de descubrimiento (`password`). Sin frase no hay mesh útil. Hasta **3 zonas** concurrentes; tope blando **50** peers/zona (`MAX_USERS`).
 2. **Identidad efímera** — `identity: 'none'`: cada pestaña/zona es un `userId` nuevo; **quemar sesión** cierra todos los meshes locales.
-3. **Autoría en vivo** — `forumMsg` solo se acepta si `authorUserId` coincide con el `userId` Trystero del peer (handshake de identidad de la librería).
-4. **Sync verificable** — Cada evento lleva firma **Ed25519** sobre el payload canónico. La pubkey se publica en `makeUserState('presence')`. Snapshots sin firma válida o sin clave conocida se **descartan** (contador discreto en Presentes).
-5. **Reloj** — mensajes en vivo ±5 min (`LIVE_CLOCK_SKEW_MS`); sync histórico ±24 h (`SYNC_CLOCK_SKEW_MS`).
-6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer (local), con `pruneStale` en sesiones largas; máx. 12 respuestas sync/minuto por peer.
-7. **Límite de sync** — respuestas sync > 2 MB se rechazan (`MAX_SYNC_TOTAL_BYTES`), también en el path Nostr fallback.
-8. **TOFU + SAS emoji** — se pinnea la clave de firma al primer uso; código de **6 emojis** (pool de 256 → ~48 bits; SHA-256 de claves ordenadas + `roomId`) para verificación OOB; alerta si la clave cambia. Alineado con [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) / [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826).
-9. **Consentimiento IP** — Modal la primera vez (`localStorage` `tazia-ip-consent`). Quemar sesión **no** borra el consentimiento; «Olvidar este dispositivo» en Ayuda sí.
-10. **Scrub de frase en URL** — `public/scrub-phrase.js` (antes del bundle) + React: tras `#zona~frase`, el hash queda en `#zona` antes/durante el boot. El `roomId` en `#` no es secreto.
-11. **TURN opcional** — STUN por defecto; TURN self-hosted como fallback ICE o `relay`-only ([`TURN.md`](TURN.md)). Credenciales solo en `localStorage` del navegador.
-12. **CSP / fuentes** — Meta CSP en `index.html` + [`public/_headers`](public/_headers); `connect-src 'self' wss:`; `font-src 'self' data:`; sin Google Fonts. `frame-ancestors` solo aplica por cabecera HTTP.
-13. **Fallback Nostr** — AES-GCM con material PBKDF2 (210k) + HKDF (`tazia.fallback.v2`) + padding de blob `0x02`; topic derivado por KDF (no `SHA-256(frase)` crudo). Relés ven metadatos y ciphertext.
-14. **Susurros (`directMsg`)** — firmados Ed25519; cuando ambos peers publican clave X25519 en presencia, el cuerpo va cifrado pairwise (AES-GCM, `seal: 2`). Sin esa clave, el cuerpo viaja en claro sobre DTLS / bajo AES de sala en fallback.
-15. **Quemar sesión** — cierra meshes, limpia trust, intenta wipe de secretos `@noble` en claro, `sessionStorage.clear`, y **recarga** la pestaña. No es borrado seguro de `CryptoKey` SubtleCrypto ni wipe de disco.
+3. **Autoría en vivo** — `forumMsg` solo se acepta si `authorUserId` coincide con el `userId` Trystero del peer. DTLS **no** cuenta como autoría ([ePrint 2026/584](https://eprint.iacr.org/2026/584)).
+4. **Sync verificable** — Cada evento lleva firma **Ed25519** sobre el payload canónico. Snapshots sin firma válida o sin clave conocida se **descartan**.
+5. **Reloj** — mensajes en vivo ±5 min; sync histórico ±24 h.
+6. **Rate-limit blando** — Máx. 30 publicaciones/minuto por peer; máx. 12 respuestas sync/minuto; sync WebRTC muestreado a 8 peers.
+7. **Límite de sync** — respuestas sync > 2 MB se rechazan (`MAX_SYNC_TOTAL_BYTES`).
+8. **TOFU + SAS emoji** — pin de clave; código de **6 emojis** (pool 256 → ~48 bits ≈ ε=2⁻⁴⁸; SHA-256 + `roomId`) OOB ([ePrint 2025/1598](https://eprint.iacr.org/2025/1598)). Cache de VerifyKey se invalida en rotación / `repin`.
+9. **Consentimiento IP** — Modal la primera vez. Quemar **no** borra consentimiento; «Olvidar este dispositivo» sí.
+10. **Scrub de frase en URL** — `public/scrub-phrase.js` + React.
+11. **TURN opcional** — STUN por defecto; TURN self-hosted ([`TURN.md`](TURN.md)).
+12. **CSP / fuentes** — Meta CSP + [`public/_headers`](public/_headers).
+13. **Fallback Nostr** — PBKDF2 210k (una vez) + HKDF dual; blob **solo** `0x03` + AAD `roomId`; envelope `v: 2`; jitter publish/presencia.
+14. **Susurros** — **sealed-only** (`seal: 2`); AAD `roomId‖from‖to‖msgId` ([ePrint 2025/554](https://eprint.iacr.org/2025/554)); presence exige X25519; sin plaintext en el wire.
+15. **Quemar sesión** — cierra meshes, limpia trust, wipe noble + refs de enc, `sessionStorage.clear`, recarga.
 
 ## Límites honestos (no-goals)
 
@@ -65,7 +65,7 @@ Los relés Nostr de Trystero usan `wss:`; no hace falta `https:` en `connect-src
 
 **Misma LAN desde GitHub Pages:** el origen es público (`https://…github.io`), así que Chrome puede pedir permiso **Red local** (`local-network`) para candidatos host/mDNS. TAZIA hace priming ICE al unirse y deja `iceTransportPolicy: 'all'` salvo force-relay. Aislamiento de AP/clientes o LNA denegado bloquean LAN aunque no haga falta TURN.
 
-**Fallback Nostr (Pages / CGNAT):** si ICE falla tras intercambiar SDP, el chat/presencia/DM siguen por eventos Nostr **cifrados AES-GCM** con la frase de zona (además de la firma Ed25519). Los operadores de relé ven metadatos y ciphertext, no el texto en claro. No es P2P puro; TURN propio sigue siendo el camino para mesh WebRTC. El mesh completo degrada con muchos peers ([SnoW](https://arxiv.org/pdf/2206.12762)); TAZIA está pensada para grupos pequeños.
+**Fallback Nostr (Pages / CGNAT):** chat/presencia/DM por Nostr cifrado AES-GCM (firma Ed25519 aparte). Relés ven metadatos y ciphertext. No es P2P puro. Mesh degrada ~4–6 peers ([SnoW](https://arxiv.org/pdf/2206.12762)); tope 50, aviso desde 6.
 
 ## Navegadores y APIs (SOTA)
 

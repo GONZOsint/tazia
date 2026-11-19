@@ -1,29 +1,14 @@
-/** Room-phrase AES-GCM helpers for the Nostr data-plane fallback (v2 KDF + padding). */
+/** Room-phrase AES-GCM helpers for the Nostr data-plane fallback (v2 KDF + AAD). */
+
+import { b64ToBytes, bytesToB64, bytesToHex, toArrayBuffer } from '../crypto/bytes';
 
 const te = new TextEncoder();
 const td = new TextDecoder();
 
 const PBKDF2_ITERATIONS = 210_000;
 const PAD_BLOCK = 256;
-/** Wire blob: version byte + IV(12) + ciphertext(+pad). */
-const BLOB_VERSION = 0x02;
-
-function b64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-function bytesToB64(bytes: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
-  return btoa(s);
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-}
+/** Wire blob: version byte + IV(12) + ciphertext(+pad). v3 = AAD bound to roomId. */
+const BLOB_VERSION = 0x03;
 
 async function deriveMasterBits(roomId: string, password: string): Promise<ArrayBuffer> {
   const material = await crypto.subtle.importKey('raw', te.encode(password), 'PBKDF2', false, [
@@ -59,30 +44,24 @@ async function hkdfExpand(
   );
 }
 
-export async function deriveRoomKey(roomId: string, password: string): Promise<CryptoKey> {
-  const master = await deriveMasterBits(roomId, password);
-  const bits = await hkdfExpand(master, 'tazia.app/room-key', 256);
-  return crypto.subtle.importKey('raw', bits, { name: 'AES-GCM', length: 256 }, false, [
-    'encrypt',
-    'decrypt',
-  ]);
-}
-
-export async function fallbackTopic(roomId: string, password: string): Promise<string> {
-  const master = await deriveMasterBits(roomId, password);
-  const bits = await hkdfExpand(master, 'tazia.app/topic', 256);
-  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
-}
-
-/** Unified session material (room AES key + Nostr topic id). */
+/** Unified session material (room AES key + Nostr topic id). One PBKDF2, then dual HKDF. */
 export async function deriveSessionMaterial(
   roomId: string,
   phrase: string
 ): Promise<{ roomKey: CryptoKey; topicId: string }> {
-  const [roomKey, topicId] = await Promise.all([
-    deriveRoomKey(roomId, phrase),
-    fallbackTopic(roomId, phrase),
+  const master = await deriveMasterBits(roomId, phrase);
+  const [keyBits, topicBits] = await Promise.all([
+    hkdfExpand(master, 'tazia.app/room-key', 256),
+    hkdfExpand(master, 'tazia.app/topic', 256),
   ]);
+  const roomKey = await crypto.subtle.importKey(
+    'raw',
+    keyBits,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+  const topicId = bytesToHex(new Uint8Array(topicBits)).slice(0, 32);
   return { roomKey, topicId };
 }
 
@@ -103,11 +82,24 @@ function unpadPlaintext(padded: Uint8Array): Uint8Array {
   return padded.subarray(2, 2 + len);
 }
 
-export async function encryptJson(key: CryptoKey, value: unknown): Promise<string> {
+function aadBytes(roomId: string): Uint8Array {
+  return te.encode(`tazia.fallback.aad.v3:${roomId}`);
+}
+
+export async function encryptJson(
+  key: CryptoKey,
+  value: unknown,
+  roomId: string
+): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plain = padPlaintext(te.encode(JSON.stringify(value)));
+  const aad = aadBytes(roomId);
   const cipher = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, toArrayBuffer(plain))
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: toArrayBuffer(aad) },
+      key,
+      toArrayBuffer(plain)
+    )
   );
   const packed = new Uint8Array(1 + iv.length + cipher.length);
   packed[0] = BLOB_VERSION;
@@ -116,14 +108,23 @@ export async function encryptJson(key: CryptoKey, value: unknown): Promise<strin
   return bytesToB64(packed);
 }
 
-export async function decryptJson<T>(key: CryptoKey, payloadB64: string): Promise<T | null> {
+export async function decryptJson<T>(
+  key: CryptoKey,
+  payloadB64: string,
+  roomId: string
+): Promise<T | null> {
   try {
     const packed = b64ToBytes(payloadB64);
     if (packed.length < 14 || packed[0] !== BLOB_VERSION) return null;
     const iv = packed.slice(1, 13);
     const cipher = packed.slice(13);
+    const aad = aadBytes(roomId);
     const plain = new Uint8Array(
-      await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, toArrayBuffer(cipher))
+      await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv, additionalData: toArrayBuffer(aad) },
+        key,
+        toArrayBuffer(cipher)
+      )
     );
     return JSON.parse(td.decode(unpadPlaintext(plain))) as T;
   } catch {

@@ -520,11 +520,36 @@ html.dark {
     pointer-events: none;
     position: absolute;
     inset: 0;
-    background: radial-gradient(
-      ellipse at 30% 18%,
-      color-mix(in oklab, var(--color-accent) 16%, transparent),
-      transparent 55%
-    );
+    background:
+      radial-gradient(
+        ellipse at 28% 12%,
+        color-mix(in oklab, var(--color-accent) 22%, transparent),
+        transparent 52%
+      ),
+      radial-gradient(
+        ellipse at 78% 88%,
+        color-mix(in oklab, var(--color-accent) 10%, transparent),
+        transparent 48%
+      );
+  }
+  .hero-landing {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-sheet);
+    border: 1px solid color-mix(in oklab, var(--color-accent) 22%, var(--color-border));
+    background:
+      linear-gradient(
+        165deg,
+        color-mix(in oklab, var(--color-accent-soft) 70%, var(--color-surface-raised)) 0%,
+        var(--color-surface-raised) 45%,
+        var(--color-bg) 100%
+      );
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+  .hero-landing-mark {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-accent) 28%, transparent),
+      0 12px 28px color-mix(in oklab, var(--color-accent) 14%, transparent);
   }
 
   /* Accent CTA: expand rings on hover (behind control; no orbiting dots) */
@@ -1033,14 +1058,43 @@ html.dark {
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent);
 }
 
+/* Opacity/tracking only — CSS filter blur flickers on Windows GPUs. */
 @keyframes phrase-ignite {
-  0% { filter: blur(2.5px); opacity: 0.55; letter-spacing: 0.04em; }
-  100% { filter: none; opacity: 1; letter-spacing: normal; }
+  0% { opacity: 0.55; letter-spacing: 0.04em; }
+  100% { opacity: 1; letter-spacing: normal; }
 }
 
 @keyframes phrase-douse {
-  0% { filter: none; opacity: 1; }
-  100% { filter: blur(1.5px); opacity: 0.7; }
+  0% { opacity: 1; letter-spacing: normal; }
+  100% { opacity: 0.7; letter-spacing: 0.02em; }
+}
+
+@keyframes tab-panel-show {
+  from { opacity: 0.9; }
+  to { opacity: 1; }
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel[data-active='true'] {
+  display: block;
+}
+
+/* Plaza (in-zone): fill the shell and scroll inside the workspace. */
+.tab-panel[data-active='true'][data-fill='true'] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tab-panel[data-active='true'] {
+    animation: tab-panel-show var(--dur-tab) var(--ease-out-expo);
+  }
 }
 
 .phrase-ignite {
@@ -1205,12 +1259,88 @@ html.dark {
   100% { top: 90%; opacity: 0; transform: scaleX(0.96); }
 }
 
+/* --- Verify emoji tiles: Tazia palette chrome + 3D stage (glyphs stay Unicode) --- */
+.verify-emoji-stage {
+  perspective: 920px;
+  perspective-origin: 50% 42%;
+}
+.verify-emoji-grid {
+  transform-style: preserve-3d;
+  transform: rotateX(7deg) rotateY(-5deg);
+  will-change: transform;
+}
+.verify-emoji-cell {
+  position: relative;
+  display: flex;
+  height: 2.85rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-ctrl);
+  border: 1px solid color-mix(in oklab, var(--verify-tint, var(--color-accent)) 32%, var(--color-border));
+  background:
+    linear-gradient(
+      150deg,
+      color-mix(in oklab, var(--verify-tint, var(--color-accent)) 16%, var(--color-surface-raised)),
+      var(--color-surface-raised) 48%,
+      color-mix(in oklab, var(--color-ink) 5%, var(--color-surface-raised))
+    );
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 10%, transparent),
+    0 8px 16px color-mix(in oklab, #000 16%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent);
+  transform-style: preserve-3d;
+  transform: translateZ(0);
+  overflow: hidden;
+}
+.verify-emoji-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    color-mix(in oklab, #fff 14%, transparent),
+    transparent 40%,
+    transparent 62%,
+    color-mix(in oklab, #000 10%, transparent)
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+.verify-emoji-cell[data-tint='accent'] { --verify-tint: var(--color-accent); }
+.verify-emoji-cell[data-tint='ok'] { --verify-tint: var(--color-ok); }
+.verify-emoji-cell[data-tint='warn'] { --verify-tint: var(--color-warn); }
+.verify-emoji-cell[data-tint='info'] { --verify-tint: var(--color-info); }
+.verify-emoji-glyph {
+  position: relative;
+  z-index: 2;
+  font-size: 1.45rem;
+  line-height: 1;
+  transform: translateZ(12px);
+  filter: drop-shadow(0 3px 5px color-mix(in oklab, #000 22%, transparent));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .verify-emoji-cell.is-idle .verify-emoji-glyph {
+    animation: verify-emoji-float 2.8s var(--ease-in-out-quart) infinite;
+  }
+  .verify-emoji-cell.is-idle:nth-child(2) .verify-emoji-glyph { animation-delay: 0.18s; }
+  .verify-emoji-cell.is-idle:nth-child(3) .verify-emoji-glyph { animation-delay: 0.36s; }
+  .verify-emoji-cell.is-idle:nth-child(4) .verify-emoji-glyph { animation-delay: 0.12s; }
+  .verify-emoji-cell.is-idle:nth-child(5) .verify-emoji-glyph { animation-delay: 0.48s; }
+  .verify-emoji-cell.is-idle:nth-child(6) .verify-emoji-glyph { animation-delay: 0.28s; }
+}
+@keyframes verify-emoji-float {
+  0%, 100% { transform: translateZ(12px) translateY(0); }
+  50% { transform: translateZ(14px) translateY(-1.5px); }
+}
+
 #burn-fire-canvas {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  pointer-events: none;
+  /* Block clicks under the burn veil during choreography → reload. */
+  pointer-events: auto;
   z-index: 9500;
 }
 
@@ -1236,7 +1366,8 @@ html.dark {
   .strength-accept-tremor,
   .phrase-ignite,
   .phrase-douse,
-  .peer-join-dot {
+  .peer-join-dot,
+  .verify-emoji-cell.is-idle .verify-emoji-glyph {
     animation: none !important;
   }
   .session-ignite-target.igniting-front {
@@ -1253,9 +1384,12 @@ html.dark {
   }
   .phrase-ignite,
   .phrase-douse {
-    filter: none !important;
     letter-spacing: normal !important;
     opacity: 1 !important;
+  }
+
+  .tab-panel[data-active='true'] {
+    animation: none;
   }
   .tazia-toast-progress {
     display: none;
@@ -1277,6 +1411,13 @@ html.dark {
     box-shadow:
       0 1px 0 color-mix(in oklab, #fff 8%, transparent),
       0 4px 12px color-mix(in oklab, #000 18%, transparent);
+  }
+  .verify-emoji-grid {
+    transform: none !important;
+  }
+  .verify-emoji-glyph {
+    transform: none !important;
+    filter: none;
   }
   .burn-heat .burn-ignition-bar {
     transition: none;

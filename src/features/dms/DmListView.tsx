@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { MessageCircle, Radio, Send } from 'lucide-react';
+import { MessageCircle, Send } from 'lucide-react';
 import { motion } from 'motion/react';
 import { visualFromUserId } from '../../core/crypto/identity';
 import type { DirectMessage, PresenceState } from '../../core/protocol';
 import { useT } from '../../i18n';
+import { EmptyZoneCta } from '../../components/ui/AccentButton';
 import { Identicon } from '../../components/content/Identicon';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
@@ -54,25 +55,13 @@ export function DmListView({
 
   if (!selfUserId) {
     return (
-      <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
-        <MessageCircle className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-        <h1 className="mt-4 font-display text-2xl font-bold text-ink">{t('dmsNeedZoneTitle')}</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-          {t('dmsNeedZoneBody')}
-        </p>
-        {onGoToRooms && (
-          <motion.button
-            whileTap={TAP}
-            transition={TAP_TRANSITION}
-            type="button"
-            onClick={onGoToRooms}
-            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
-          >
-            <Radio className="h-5 w-5" aria-hidden="true" />
-            {t('dmsEmptyCta')}
-          </motion.button>
-        )}
-      </main>
+      <EmptyZoneCta
+        icon={<MessageCircle className="h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />}
+        title={t('dmsNeedZoneTitle')}
+        body={t('dmsNeedZoneBody')}
+        actionLabel={t('dmsEmptyCta')}
+        onAction={() => onGoToRooms?.()}
+      />
     );
   }
 

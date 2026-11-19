@@ -36,6 +36,8 @@ export interface JoinedP2pRoom {
   getPresenceMap: () => Record<string, PresenceState>;
   getOnlineUserIds: () => string[];
   getRejectedSyncCount: () => number;
+  /** After TrustStore.repin — reload VerifyKey for that peer. */
+  invalidatePeerKey: (userId: string) => Promise<void>;
 }
 
 export interface JoinP2pRoomOptions {

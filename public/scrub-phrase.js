@@ -1,5 +1,6 @@
 /** Scrub invite phrase from location.hash before the app bundle runs (CSP: script-src 'self').
- *  Stashes phrase in sessionStorage so React can autofill Join without leaving secrets in the URL. */
+ *  Stashes phrase in sessionStorage so React can autofill Join without leaving secrets in the URL.
+ *  Only scrubs after a successful stash — otherwise React still sees #room~phrase. */
 (function scrubInvitePhrase() {
   try {
     var hash = location.hash.replace(/^#/, '');
@@ -21,15 +22,15 @@
       phrase = phraseRaw.trim();
     }
     if (!roomId || roomId.length < 4) return;
-    if (phrase) {
-      try {
-        sessionStorage.setItem(
-          'tazia-invite-boot',
-          JSON.stringify({ roomId: roomId, phrase: phrase })
-        );
-      } catch (e) {
-        /* ignore quota / private mode */
-      }
+    if (!phrase) return;
+    try {
+      sessionStorage.setItem(
+        'tazia-invite-boot',
+        JSON.stringify({ roomId: roomId, phrase: phrase })
+      );
+    } catch (e) {
+      /* quota / private mode: leave hash intact for React */
+      return;
     }
     history.replaceState(
       null,

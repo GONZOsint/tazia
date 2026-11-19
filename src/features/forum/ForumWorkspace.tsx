@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
 import type { ForumMessage, MeshStatus } from '../../core/protocol';
-import { DUR, EASE, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { DUR, EASE, TAP, TAP_TRANSITION, contentSwitch } from '../../motion/tokens';
 import { RoomSidebar, type ThreadGroup } from './RoomSidebar';
 import { ThreadComposer } from './ThreadComposer';
 import { ThreadReader, type AuthorVisualCache } from './ThreadReader';
@@ -132,7 +132,7 @@ export function ForumWorkspace({
   };
 
   return (
-    <main className="card-container mx-auto flex max-w-[1280px] flex-col px-4 pt-2 sm:px-8 sm:pt-4 lg:min-h-0 lg:py-5">
+    <main className="card-container mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col overflow-hidden px-4 pt-2 sm:px-8 sm:pt-4 lg:py-5">
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3 lg:hidden">
         <motion.button
           whileTap={TAP}
@@ -157,7 +157,7 @@ export function ForumWorkspace({
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-stretch lg:gap-5">
-        <div className="hidden lg:block">
+        <div className="hidden min-h-0 lg:block lg:overflow-y-auto">
           <RoomSidebar {...sidebarProps} />
         </div>
 
@@ -185,14 +185,17 @@ export function ForumWorkspace({
               exit={{ x: '-100%' }}
               transition={EASE.spring}
               className="shadow-sheet fixed inset-y-0 left-0 z-50 w-[min(100%,360px)] overflow-y-auto border-r border-border bg-bg p-4 lg:hidden"
-              style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+              style={{
+                paddingTop: 'max(1rem, env(safe-area-inset-top))',
+                paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+              }}
             >
               <RoomSidebar {...sidebarProps} mobileSheet onCloseSheet={() => setTopicsOpen(false)} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {roomError && (
             <AlertBanner tone={roomErrorTone} role="status" className="mb-3 shrink-0">
               <div className="flex items-start justify-between gap-3">
@@ -214,11 +217,11 @@ export function ForumWorkspace({
             {isComposingThread ? (
               <motion.div
                 key="composer"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: DUR.tab, ease: EASE.outExpo }}
-                className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+                initial={contentSwitch.initial}
+                animate={contentSwitch.animate}
+                exit={contentSwitch.exit}
+                transition={contentSwitch.transition}
+                className="min-h-0 flex-1 overflow-y-auto"
               >
                 <ThreadComposer
                   identity={profile}
@@ -230,10 +233,11 @@ export function ForumWorkspace({
             ) : (
               <motion.div
                 key={activeThread?.threadId ?? 'idle'}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: DUR.tab, ease: EASE.outExpo }}
+                initial={contentSwitch.initial}
+                animate={contentSwitch.animate}
+                exit={contentSwitch.exit}
+                transition={contentSwitch.transition}
+                className="flex min-h-0 flex-1 flex-col overflow-hidden"
               >
                 {isSyncing && messages.length === 0 ? (
                   <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>

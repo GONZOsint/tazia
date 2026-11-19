@@ -44,7 +44,7 @@ export const en = {
   roomsActiveHint: 'You can open several zones and switch here.',
   roomsBackToChat: 'Back to plaza',
   roomsHeroTitle: 'No accounts. While it lasts.',
-  roomsHeroBody: 'While it lasts.',
+  roomsHeroBody: 'Share a phrase, talk while the tribe is online, burn the session when done.',
   roomsCreate: 'Open',
   roomsJoin: 'Enter',
   roomsPhraseLabel: 'Phrase',
@@ -167,10 +167,10 @@ export const en = {
     'You connect browser to browser. Public helpers only help you find each other once; then you talk person to person.',
   helpGroupTitle: 'Small tribe, everyone online',
   helpGroupBody:
-    'Built for a meetup or party (best with about 5 other people at most). If every tab closes, history disappears. Late arrivals can ask someone still online for a copy.',
+    'Soft cap 50 people per zone. WebRTC mesh works best around ~6 peers; larger rooms may slow down or fall back to encrypted relay. If every tab closes, history disappears.',
   helpZonesTitle: 'Several zones',
   helpZonesBody:
-    'You can join up to 5 zones at once. Switch or leave one in Zones; Plaza, Tribe, and Whispers show the active zone. Burn clears all zones on this device.',
+    'You can join up to 3 zones at once. Switch or leave one in Zones; Plaza, Tribe, and Whispers show the active zone. Burn clears all zones on this device.',
   helpRelayTitle: "When you can't connect directly",
   helpRelayBody:
     'Sometimes the network will not let browsers talk directly. Then chat can continue over an encrypted path through helper servers. Prefer the same Wi‑Fi; if needed, open Fix under Zones.',
@@ -184,7 +184,7 @@ export const en = {
   helpMore: 'Technical detail',
   helpMoreHide: 'Hide technical detail',
   helpMoreBody:
-    '• P2P mesh over WebRTC via Trystero\n• If ICE fails: encrypted Nostr relay data-plane fallback (ciphertext only; not true P2P)\n• Protocol agora-forum-v1 with Ed25519 signatures\n• Optional TURN (coturn) for ICE rescue or hiding IP\n• TOFU trust + 6-emoji safety code bound to roomId\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md',
+    '• P2P mesh over WebRTC via Trystero\n• If ICE fails: encrypted Nostr relay data-plane fallback (ciphertext only; not true P2P)\n• Protocol agora-forum-v2 with Ed25519 + sealed-only Susurros (X25519)\n• Optional TURN (coturn) for ICE rescue or hiding IP\n• TOFU trust + 6-emoji safety code bound to roomId (~48-bit SAS)\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md, docs/papers/',
   helpForgetDevice: 'Forget this device',
   helpForgetDone: 'Address notice cleared in this browser.',
   helpForgetHint: 'You will see the address notice again next time you enter a zone.',
@@ -271,7 +271,7 @@ export const en = {
   roomsLeftToast: 'Zone closed',
   roomsCapacityAria: '{n} of {max} zones',
   roomsMeshLargeWarn:
-    'Crowded ({n} others). Best for small tribes — it may get slower or fail.',
+    'Crowded ({n} others; soft cap {max}). Mesh degrades past ~6 peers — may slow down or use fallback.',
 
   navDms: 'Whispers',
   dmsTitle: 'Whispers',

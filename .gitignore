@@ -8,3 +8,5 @@ coverage/
 *.log
 .env*
 !.env.example
+docs/papers/*.pdf
+!docs/papers/README.md

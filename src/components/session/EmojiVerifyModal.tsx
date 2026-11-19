@@ -15,6 +15,18 @@ interface EmojiVerifyModalProps {
   onClose: () => void;
 }
 
+const TINTS = ['accent', 'ok', 'warn', 'info', 'accent', 'ok'] as const;
+
+const GRID_REST = { rotX: 7, rotY: -5, z: 0 } as const;
+const TILT_RANGE = 7;
+const FOLLOW = 0.14;
+
+type GridPose = { rotX: number; rotY: number; z: number };
+
+function writeGridPose(el: HTMLElement, p: GridPose) {
+  el.style.transform = `rotateX(${p.rotX.toFixed(2)}deg) rotateY(${p.rotY.toFixed(2)}deg) translateZ(${p.z.toFixed(1)}px)`;
+}
+
 export function EmojiVerifyModal({
   open,
   peerAlias,
@@ -45,6 +57,7 @@ export function EmojiVerifyModal({
   useEffect(() => {
     if (!open) {
       setVerifying(false);
+      setCode(null);
       return;
     }
     const onKey = (e: KeyboardEvent) => {
@@ -57,6 +70,76 @@ export function EmojiVerifyModal({
   useEffect(() => {
     if (open) dialogRef.current?.focus();
   }, [open]);
+
+  // Soft 3D tilt on the emoji stage — palette chrome stays CSS; JS only owns transform.
+  useEffect(() => {
+    if (!open || !code || reduceMotion) return;
+    const el = emojiScope.current;
+    if (!el) return;
+    if (window.matchMedia('(hover: none)').matches) return;
+
+    let raf = 0;
+    let running = true;
+    const current: GridPose = { ...GRID_REST };
+    let target: GridPose = { ...GRID_REST };
+    let lastTs = performance.now();
+
+    el.style.transition = 'none';
+    writeGridPose(el, current);
+
+    const tick = (ts: number) => {
+      if (!running) return;
+      const dt = Math.min(32, ts - lastTs);
+      lastTs = ts;
+      const k = 1 - Math.pow(1 - FOLLOW, dt / 16.67);
+      current.rotX += (target.rotX - current.rotX) * k;
+      current.rotY += (target.rotY - current.rotY) * k;
+      current.z += (target.z - current.z) * k;
+      writeGridPose(el, current);
+      const settled =
+        Math.abs(current.rotX - target.rotX) < 0.03 &&
+        Math.abs(current.rotY - target.rotY) < 0.03 &&
+        Math.abs(current.z - target.z) < 0.05;
+      if (!settled) raf = requestAnimationFrame(tick);
+      else raf = 0;
+    };
+
+    const kick = () => {
+      if (raf) return;
+      lastTs = performance.now();
+      raf = requestAnimationFrame(tick);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      const nx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      const ny = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      const cx = Math.max(-1, Math.min(1, nx));
+      const cy = Math.max(-1, Math.min(1, ny));
+      target = {
+        rotX: GRID_REST.rotX - cy * TILT_RANGE,
+        rotY: GRID_REST.rotY + cx * TILT_RANGE,
+        z: 4,
+      };
+      kick();
+    };
+
+    const onLeave = () => {
+      target = { ...GRID_REST };
+      kick();
+    };
+
+    el.addEventListener('pointermove', onMove, { passive: true });
+    el.addEventListener('pointerleave', onLeave);
+    return () => {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerleave', onLeave);
+      el.style.transition = '';
+      el.style.transform = '';
+    };
+  }, [open, code, reduceMotion, emojiScope]);
 
   const glyphs = code ? Array.from(code) : [];
 
@@ -76,18 +159,20 @@ export function EmojiVerifyModal({
         reduceMotion
           ? { opacity: [1, 0.55, 1] }
           : {
-              opacity: [1, 0.85, 1],
-              scale: [1, 1.08, 1],
-              backgroundColor: [
-                'var(--color-surface)',
-                'color-mix(in oklab, var(--color-accent) 35%, var(--color-surface))',
-                'var(--color-surface)',
+              opacity: [1, 1, 1],
+              scale: [1, 1.1, 1],
+              y: [0, -3, 0],
+              rotateX: [0, -8, 0],
+              boxShadow: [
+                '0 8px 16px color-mix(in oklab, #000 16%, transparent)',
+                '0 0 0 1px color-mix(in oklab, var(--color-accent) 55%, transparent), 0 12px 22px color-mix(in oklab, var(--color-accent) 28%, transparent)',
+                '0 8px 16px color-mix(in oklab, #000 16%, transparent)',
               ],
             },
-        { duration: 0.2, delay: stagger(0.035), ease: EASE.outExpo }
+        { duration: 0.26, delay: stagger(0.04), ease: EASE.outExpo }
       );
     } else {
-      await new Promise((r) => window.setTimeout(r, 220));
+      await new Promise((r) => window.setTimeout(r, 260));
     }
     onVerify();
   };
@@ -109,9 +194,9 @@ export function EmojiVerifyModal({
           <motion.div
             ref={dialogRef}
             tabIndex={-1}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.97 }}
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 4 }}
             transition={{ duration: DUR.modal, ease: EASE.outExpo }}
             className="panel-surface shadow-sheet relative w-full max-w-xs overflow-hidden outline-none"
             onClick={(e) => e.stopPropagation()}
@@ -139,28 +224,38 @@ export function EmojiVerifyModal({
               <p className="mt-1 text-xs font-semibold text-ink">{peerAlias}</p>
 
               {code ? (
-                <div
-                  ref={emojiScope}
-                  className="mx-auto mt-4 grid max-w-[14rem] grid-cols-3 gap-2"
-                  role="img"
-                  aria-label={t('trustEmojiLabel')}
-                >
-                  {glyphs.map((glyph, i) => (
-                    <motion.span
-                      key={`${glyph}-${i}`}
-                      data-emoji-cell
-                      initial={reduceMotion ? false : { opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        delay: reduceMotion ? 0 : i * 0.035,
-                        duration: DUR.micro,
-                        ease: EASE.outExpo,
-                      }}
-                      className="flex h-11 items-center justify-center rounded-[var(--radius-ctrl)] bg-surface text-2xl"
-                    >
-                      {glyph}
-                    </motion.span>
-                  ))}
+                <div className="verify-emoji-stage mx-auto mt-4 max-w-[14rem]">
+                  <div
+                    ref={emojiScope}
+                    className="verify-emoji-grid grid grid-cols-3 gap-2"
+                    role="img"
+                    aria-label={t('trustEmojiLabel')}
+                  >
+                    {glyphs.map((glyph, i) => (
+                      <motion.span
+                        key={`${glyph}-${i}`}
+                        data-emoji-cell
+                        data-tint={TINTS[i]!}
+                        initial={
+                          reduceMotion
+                            ? false
+                            : { opacity: 0, scale: 0.82, rotateX: 48, z: -24 }
+                        }
+                        animate={{ opacity: 1, scale: 1, rotateX: 0, z: 0 }}
+                        transition={{
+                          delay: reduceMotion ? 0 : 0.04 + i * 0.045,
+                          duration: DUR.switch,
+                          ease: EASE.outExpo,
+                        }}
+                        className={`verify-emoji-cell ${verifying ? '' : 'is-idle'}`}
+                        style={{ transformStyle: 'preserve-3d' }}
+                      >
+                        <span className="verify-emoji-glyph" aria-hidden="true">
+                          {glyph}
+                        </span>
+                      </motion.span>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-muted">…</p>

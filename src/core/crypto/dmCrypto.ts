@@ -1,4 +1,6 @@
-/** Pairwise Susurro sealing: X25519 ECDH + AES-GCM (optional; falls back to plaintext). */
+/** Pairwise Susurro sealing: X25519 ECDH + AES-GCM with room-bound AAD (v2). */
+
+import { b64ToBytes, bytesToB64, toArrayBuffer } from './bytes';
 
 const te = new TextEncoder();
 const td = new TextDecoder();
@@ -7,23 +9,6 @@ export interface EncryptionIdentity {
   publicKeyRawB64: string;
   privateKey: CryptoKey;
   publicKey: CryptoKey;
-}
-
-function bytesToB64(bytes: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
-  return btoa(s);
-}
-
-function b64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 let x25519Ok: boolean | null = null;
@@ -62,6 +47,14 @@ export async function generateEncryptionIdentity(): Promise<EncryptionIdentity |
   };
 }
 
+/** Best-effort wipe of non-extractable key material references. */
+export function wipeEncryptionIdentity(identity: EncryptionIdentity | null): void {
+  if (!identity) return;
+  // CryptoKey is non-extractable; drop references so GC can reclaim.
+  (identity as { privateKey?: CryptoKey | null }).privateKey = null;
+  (identity as { publicKey?: CryptoKey | null }).publicKey = null;
+}
+
 async function importPeerPublic(rawB64: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     'raw',
@@ -74,11 +67,11 @@ async function importPeerPublic(rawB64: string): Promise<CryptoKey> {
 
 async function sharedAesKey(
   privateKey: CryptoKey,
-  peerPublicRawB64: string
+  peerPublicRawB64: string,
+  roomId: string
 ): Promise<CryptoKey> {
   const peerPub = await importPeerPublic(peerPublicRawB64);
   const bits = await crypto.subtle.deriveBits(
-    // X25519 is not yet in all TS DOM libs.
     { name: 'X25519', public: peerPub } as unknown as AlgorithmIdentifier,
     privateKey,
     256
@@ -88,7 +81,7 @@ async function sharedAesKey(
     {
       name: 'HKDF',
       hash: 'SHA-256',
-      salt: new Uint8Array(0),
+      salt: te.encode(`tazia.app/dm-v2:${roomId}`),
       info: te.encode('tazia.app/dm-v2'),
     },
     hkdfKey,
@@ -98,17 +91,32 @@ async function sharedAesKey(
   );
 }
 
+function dmAad(roomId: string, fromUserId: string, toUserId: string, msgId: string): Uint8Array {
+  return te.encode(`tazia.dm.aad.v2:${roomId}|${fromUserId}|${toUserId}|${msgId}`);
+}
+
+export interface SealDmParams {
+  plaintext: string;
+  selfEnc: EncryptionIdentity;
+  peerEncPubB64: string;
+  roomId: string;
+  fromUserId: string;
+  toUserId: string;
+  msgId: string;
+}
+
 /** Returns base64(iv||ciphertext) or null if sealing unavailable. */
-export async function sealDmBody(
-  plaintext: string,
-  selfEnc: EncryptionIdentity,
-  peerEncPubB64: string
-): Promise<string | null> {
+export async function sealDmBody(params: SealDmParams): Promise<string | null> {
   try {
-    const key = await sharedAesKey(selfEnc.privateKey, peerEncPubB64);
+    const key = await sharedAesKey(params.selfEnc.privateKey, params.peerEncPubB64, params.roomId);
     const iv = crypto.getRandomValues(new Uint8Array(12));
+    const aad = dmAad(params.roomId, params.fromUserId, params.toUserId, params.msgId);
     const cipher = new Uint8Array(
-      await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(plaintext))
+      await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv, additionalData: toArrayBuffer(aad) },
+        key,
+        te.encode(params.plaintext)
+      )
     );
     const packed = new Uint8Array(iv.length + cipher.length);
     packed.set(iv, 0);
@@ -119,18 +127,29 @@ export async function sealDmBody(
   }
 }
 
-export async function openDmBody(
-  sealedB64: string,
-  selfEnc: EncryptionIdentity,
-  peerEncPubB64: string
-): Promise<string | null> {
+export interface OpenDmParams {
+  sealedB64: string;
+  selfEnc: EncryptionIdentity;
+  peerEncPubB64: string;
+  roomId: string;
+  fromUserId: string;
+  toUserId: string;
+  msgId: string;
+}
+
+export async function openDmBody(params: OpenDmParams): Promise<string | null> {
   try {
-    const key = await sharedAesKey(selfEnc.privateKey, peerEncPubB64);
-    const packed = b64ToBytes(sealedB64);
+    const key = await sharedAesKey(params.selfEnc.privateKey, params.peerEncPubB64, params.roomId);
+    const packed = b64ToBytes(params.sealedB64);
     if (packed.length < 13) return null;
     const iv = packed.slice(0, 12);
     const cipher = packed.slice(12);
-    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+    const aad = dmAad(params.roomId, params.fromUserId, params.toUserId, params.msgId);
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv, additionalData: toArrayBuffer(aad) },
+      key,
+      toArrayBuffer(cipher)
+    );
     return td.decode(plain);
   } catch {
     return null;

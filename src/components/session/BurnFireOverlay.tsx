@@ -130,13 +130,21 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
     resize();
     window.addEventListener('resize', resize);
 
+    const holdVeil = () => {
+      // Opaque page-bg veil so leave()/reload never flash session chrome.
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = cssColor('--color-bg', '#0c0e0a');
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    };
+
     const finish = () => {
       if (doneRef.current || abortedRef.current) return;
       doneRef.current = true;
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
       particlesRef.current = [];
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      holdVeil();
       window.removeEventListener('resize', resize);
       onComplete();
     };
@@ -154,7 +162,8 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
         abortedRef.current = true;
         for (const id of timeouts) window.clearTimeout(id);
         window.removeEventListener('resize', resize);
-        markTargets('clear');
+        // Only snap targets back if burn was cancelled mid-flight.
+        if (!doneRef.current) markTargets('clear');
       };
     }
 
@@ -318,7 +327,8 @@ export function BurnFireOverlay({ play, onComplete }: BurnFireOverlayProps) {
       for (const id of timeouts) window.clearTimeout(id);
       window.removeEventListener('resize', resize);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      markTargets('clear');
+      // Keep incinerated-collapse through successful finish → reload.
+      if (!doneRef.current) markTargets('clear');
     };
   }, [play, onComplete]);
 

@@ -3,12 +3,18 @@ import { RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { visualFromUserId } from '../../core/crypto/identity';
 import { useT } from '../../i18n';
-import type { MeshStatus, PresenceState } from '../../core/protocol';
+import {
+  MAX_USERS,
+  MESH_SOFT_WARN_PEERS,
+  type MeshStatus,
+  type PresenceState,
+} from '../../core/protocol';
 import type { TrustStore } from '../../core/trust/trustStore';
 import { Identicon } from '../../components/content/Identicon';
 import { MeshStatusBadge } from '../../components/session/MeshStatusBadge';
 import { TrustBadge } from '../../components/session/TrustBadge';
 import { EmojiVerifyModal } from '../../components/session/EmojiVerifyModal';
+import { EmptyZoneCta } from '../../components/ui/AccentButton';
 import { peerRowEnter, peerRowExit, TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 function shortKeyFp(spkiB64: string): string {
@@ -100,25 +106,13 @@ export function PresenceView({
 
   if (!selfUserId) {
     return (
-      <main className="mx-auto max-w-[720px] px-4 py-10 text-center sm:px-8">
-        <Users className="mx-auto h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />
-        <h1 className="mt-4 font-display text-2xl font-bold text-ink">{t('presenceEmptyTitle')}</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-          {t('presenceEmptyBody')}
-        </p>
-        {onGoToRooms && (
-          <motion.button
-            whileTap={TAP}
-            transition={TAP_TRANSITION}
-            type="button"
-            onClick={onGoToRooms}
-            className="btn-accent-sheen mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
-          >
-            <Users className="h-5 w-5" aria-hidden="true" />
-            {t('presenceEmptyCta')}
-          </motion.button>
-        )}
-      </main>
+      <EmptyZoneCta
+        icon={<Users className="h-12 w-12 text-faint" aria-hidden="true" strokeWidth={1.5} />}
+        title={t('presenceEmptyTitle')}
+        body={t('presenceEmptyBody')}
+        actionLabel={t('presenceEmptyCta')}
+        onAction={() => onGoToRooms?.()}
+      />
     );
   }
 
@@ -132,44 +126,42 @@ export function PresenceView({
       ? t('presenceRejected', { n: rejectedSyncCount })
       : t('presenceRejectedPlural', { n: rejectedSyncCount });
 
+  const meshPeers = peerOnlineCount ?? Math.max(0, onlineUserIds.length - 1);
+
   return (
     <main className="mx-auto max-w-[720px] px-4 py-4 sm:px-8 sm:py-6">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-ink">{t('presenceTitle')}</h1>
-          <p className="mt-1 text-sm text-muted">{countLabel}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <MeshStatusBadge
-              status={meshStatus}
-              onlineCount={peerOnlineCount ?? Math.max(0, onlineUserIds.length - 1)}
-              relayActive={relayActive}
-            />
-            {rejectedSyncCount > 0 && (
-              <p className="text-[11px] text-muted">{rejectedLabel}</p>
-            )}
-          </div>
-          {(peerOnlineCount ?? Math.max(0, onlineUserIds.length - 1)) >= 5 && (
-            <p className="mt-2 text-[11px] text-warn-ink" role="status">
-              {t('roomsMeshLargeWarn', {
-                n: peerOnlineCount ?? Math.max(0, onlineUserIds.length - 1),
-              })}
-            </p>
+      <header className="border-b border-border pb-3">
+        <h1 className="font-display text-2xl font-bold text-ink">{t('presenceTitle')}</h1>
+        <p className="mt-0.5 text-sm text-muted">{countLabel}</p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <MeshStatusBadge
+            status={meshStatus}
+            onlineCount={meshPeers}
+            relayActive={relayActive}
+          />
+          {rejectedSyncCount > 0 && (
+            <p className="text-[11px] text-muted">{rejectedLabel}</p>
           )}
+          <motion.button
+            whileTap={isSyncing ? undefined : TAP}
+            transition={TAP_TRANSITION}
+            type="button"
+            onClick={() => void onSyncNow()}
+            disabled={isSyncing}
+            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-3 text-xs font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            {t('presenceRefresh')}
+          </motion.button>
         </div>
-        <motion.button
-          whileTap={isSyncing ? undefined : TAP}
-          transition={TAP_TRANSITION}
-          type="button"
-          onClick={() => void onSyncNow()}
-          disabled={isSyncing}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-ctrl)] border border-border bg-surface-raised px-4 py-2 text-xs font-semibold text-ink hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
-          {t('presenceRefresh')}
-        </motion.button>
-      </div>
+        {meshPeers >= MESH_SOFT_WARN_PEERS && (
+          <p className="mt-2 text-[11px] text-warn-ink" role="status">
+            {t('roomsMeshLargeWarn', { n: meshPeers, max: MAX_USERS })}
+          </p>
+        )}
+      </header>
 
-      <ul className="relative mt-3 space-y-2">
+      <ul className="relative mt-3 space-y-1.5">
         <AnimatePresence mode="popLayout" initial={false}>
         {onlineUserIds.map((id) => {
           const alias =
@@ -178,6 +170,15 @@ export function PresenceView({
           const visual = visuals[id];
           const details = openDetails[id];
           const justJoined = justJoinedIds.has(id);
+          const isSelf = id === selfUserId;
+          const trustLevel = !isSelf && trustStore ? trustStore.get(id)?.level : undefined;
+          const canVerify = !isSelf && hasKey && Boolean(selfSignPubKeyB64);
+          const trustActionLabel =
+            trustLevel === 'verified'
+              ? t('trustVerified')
+              : trustLevel === 'changed'
+                ? t('trustChanged')
+                : t('trustVerifyTitle');
           return (
             <motion.li
               key={id}
@@ -185,14 +186,14 @@ export function PresenceView({
               initial={peerRowEnter.initial}
               animate={peerRowEnter.animate}
               exit={peerRowExit}
-              className="list-row px-4 py-3"
+              className="list-row px-3 py-2"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="relative shrink-0">
                   {visual ? (
-                    <Identicon matrix={visual.identiconMatrix} size={32} label={alias} />
+                    <Identicon matrix={visual.identiconMatrix} size={28} label={alias} />
                   ) : (
-                    <div className="h-8 w-8 rounded-[var(--radius-ctrl)] bg-surface" />
+                    <div className="h-7 w-7 rounded-[var(--radius-ctrl)] bg-surface" />
                   )}
                   {justJoined && (
                     <span
@@ -202,20 +203,15 @@ export function PresenceView({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">
+                  <p className="truncate text-sm font-semibold leading-tight text-ink">
                     {alias}
-                    {id === selfUserId ? t('presenceYou') : ''}
+                    {isSelf ? t('presenceYou') : ''}
                   </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {!hasKey && id !== selfUserId && (
-                      <p className="text-[10px] text-warn">{t('presenceNoKey')}</p>
-                    )}
-                    {trustStore && id !== selfUserId && trustStore.get(id) && (
-                      <TrustBadge key={`${id}-${trustTick}`} level={trustStore.get(id)!.level} />
-                    )}
-                  </div>
+                  {!hasKey && !isSelf && (
+                    <p className="mt-0.5 text-[10px] leading-tight text-warn">{t('presenceNoKey')}</p>
+                  )}
                 </div>
-                {id !== selfUserId && hasKey && selfSignPubKeyB64 && (
+                {canVerify && (
                   <motion.button
                     whileTap={TAP}
                     transition={TAP_TRANSITION}
@@ -227,11 +223,15 @@ export function PresenceView({
                         keyB64: presence[id].signPubKeySpkiB64,
                       })
                     }
-                    className="icon-action icon-action--ghost text-ok focus-visible:outline-2 focus-visible:outline-accent"
-                    title={t('trustVerifyTitle')}
-                    aria-label={t('trustVerifyTitle')}
+                    className="icon-action icon-action--ghost icon-action--dense shrink-0 focus-visible:outline-2 focus-visible:outline-accent"
+                    title={trustActionLabel}
+                    aria-label={trustActionLabel}
                   >
-                    <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                    {trustLevel ? (
+                      <TrustBadge key={`${id}-${trustTick}`} level={trustLevel} />
+                    ) : (
+                      <ShieldCheck className="h-4 w-4 text-ok" aria-hidden="true" />
+                    )}
                   </motion.button>
                 )}
                 <motion.button
@@ -242,7 +242,7 @@ export function PresenceView({
                   onClick={() =>
                     setOpenDetails((prev) => ({ ...prev, [id]: !prev[id] }))
                   }
-                  className="min-h-[44px] rounded-[var(--radius-ctrl)] px-2 text-[11px] font-medium text-muted hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                  className="shrink-0 rounded-[var(--radius-ctrl)] px-2 py-1.5 text-[11px] font-medium text-muted hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   {details ? t('presenceHideDetails') : t('presenceDetails')}
                 </motion.button>

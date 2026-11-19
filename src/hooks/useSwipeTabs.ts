@@ -34,7 +34,9 @@ export function useSwipeTabs<T extends string>(
       const target = e.target;
       if (
         target instanceof Element &&
-        target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')
+        target.closest(
+          'input, textarea, select, [contenteditable="true"], [role="dialog"], [data-no-swipe]'
+        )
       ) {
         return;
       }
@@ -43,6 +45,18 @@ export function useSwipeTabs<T extends string>(
       startX = touch.clientX;
       startY = touch.clientY;
       tracking = true;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!tracking) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      // Vertical scroll wins early — avoids tab flicker mid-scroll.
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+        tracking = false;
+      }
     };
 
     const onTouchEnd = (e: TouchEvent) => {
@@ -69,9 +83,11 @@ export function useSwipeTabs<T extends string>(
     };
 
     el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
     return () => {
       el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
     };
   }, [ref]);

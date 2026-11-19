@@ -1,19 +1,15 @@
 import { joinRoom, type Room, type Unsubscribe } from 'trystero';
 import {
   generateSigningIdentity,
-  importVerifyKey,
   signDirectMessage,
   signForumEvent,
-  verifyDirectMessage,
-  verifyForumEvent,
   wipeSigningIdentity,
   type SigningIdentity,
-  type VerifyKey,
 } from '../crypto/messageSigning';
 import {
   generateEncryptionIdentity,
-  openDmBody,
   sealDmBody,
+  wipeEncryptionIdentity,
   type EncryptionIdentity,
 } from '../crypto/dmCrypto';
 import {
@@ -21,11 +17,8 @@ import {
   MAX_DM_BODY_CHARS,
   MAX_PUBLISH_PER_MINUTE,
   MAX_SYNC_ANSWERS_PER_MINUTE,
-  MAX_SYNC_MESSAGES,
-  MAX_SYNC_TOTAL_BYTES,
   MAX_USERS,
   PROTOCOL_VERSION,
-  isValidDirectMessage,
   isValidForumEvent,
   isValidPresenceState,
   type DirectMessage,
@@ -40,55 +33,93 @@ import {
   type JoinP2pRoomOptions,
   type JoinedP2pRoom,
 } from './p2pTypes';
+import { VerifyKeyRegistry } from './verifyKeyRegistry';
+import { ForumIngest } from './forumIngest';
+import { DmIngest } from './dmIngest';
+import {
+  clampSyncEvents,
+  sampleSyncTargets,
+  snapshotForSync,
+  syncPayloadTooLarge,
+} from './syncCoordinator';
 
 export type { JoinedP2pRoom, JoinP2pRoomOptions, P2pRoomErrorCode } from './p2pTypes';
 export { P2pActionError } from './p2pTypes';
 
-function emptyPresence(): PresenceState {
-  return { alias: '', signPubKeySpkiB64: '' };
-}
-
-const PENDING_TTL_MS = 60_000;
 const FALLBACK_PEER_TTL_MS = 45_000;
 const NOSTR_SYNC_TIMEOUT_MS = 8_000;
 
+function emptyPresence(): PresenceState {
+  return { alias: '', signPubKeySpkiB64: '', encPubKeyRawB64: '' };
+}
+
 export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2pRoom> {
+  const roomId = options.roomId.trim();
+  const password = options.password.trim();
+
   const signing: SigningIdentity = await generateSigningIdentity();
   const encIdentity: EncryptionIdentity | null = await generateEncryptionIdentity();
-  const verifyKeyCache = new Map<string, VerifyKey>();
-  const knownPubKeys = new Map<string, string>();
-  const knownEncPubKeys = new Map<string, string>();
+  if (!encIdentity) {
+    wipeSigningIdentity(signing);
+    throw new P2pActionError('unknown', 'X25519 required for agora-forum-v2 Susurros');
+  }
+
+  const trustStore = new TrustStore();
   const rateLimiter = new PeerRateLimiter();
   const syncAnswerLimiter = new PeerRateLimiter();
   const localMessages = new Map<string, ForumEvent>();
-  /** Reserved while verify is in flight — blocks dual-path double emit. */
-  const ingestingIds = new Set<string>();
-  const pendingLive = new Map<string, ForumEvent[]>();
-  const pendingDms = new Map<string, DirectMessage[]>();
-  const trustStore = new TrustStore();
+  const knownEncPubKeys = new Map<string, string>();
+  const selfRef = { userId: '' };
   const unsubs: Unsubscribe[] = [];
   const fallbackPeers = new Map<string, number>();
   const pendingSync = new Map<
     string,
     { resolve: (n: number) => void; added: number; timer: number }
   >();
+
   let fallback: NostrFallbackBus | null = null;
   let fallbackStarting: Promise<void> | null = null;
-  let fallbackPresenceTimer: ReturnType<typeof setInterval> | null = null;
+  let fallbackPresenceTimer: ReturnType<typeof setTimeout> | null = null;
   let rejectedSyncCount = 0;
   let left = false;
   let pruneTimer: ReturnType<typeof setInterval> | null = null;
   let relayFallbackNotified = false;
   let lastPresence: PresenceState | null = null;
+  let room!: Room;
 
-  const buildPresenceState = (alias: string): PresenceState => {
-    const state: PresenceState = {
-      alias: alias.slice(0, 40),
-      signPubKeySpkiB64: signing.publicKeySpkiB64,
-    };
-    if (encIdentity) state.encPubKeyRawB64 = encIdentity.publicKeyRawB64;
-    return state;
-  };
+  const registry = new VerifyKeyRegistry({
+    trustStore,
+    onKeyChange: options.onKeyChange,
+    onKeysReady: (userId) => {
+      void forumIngest.flushPendingForUser(userId);
+      void dmIngest.flushPendingForUser(userId);
+    },
+  });
+
+  const forumIngest = new ForumIngest({
+    rateLimiter,
+    registry,
+    localMessages,
+    onForumMessage: options.onForumMessage,
+    onRejectedSync: () => {
+      rejectedSyncCount += 1;
+    },
+  });
+
+  const dmIngest = new DmIngest({
+    roomId,
+    self: selfRef,
+    encIdentity,
+    knownEncPubKeys,
+    registry,
+    onDirectMessage: options.onDirectMessage,
+  });
+
+  const buildPresenceState = (alias: string): PresenceState => ({
+    alias: alias.slice(0, 40),
+    signPubKeySpkiB64: signing.publicKeySpkiB64,
+    encPubKeyRawB64: encIdentity.publicKeyRawB64,
+  });
 
   pruneTimer = setInterval(() => {
     rateLimiter.pruneStale();
@@ -100,177 +131,28 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     options.onPeerPresence([...ids]);
   };
 
-  const cachePubKey = async (userId: string, spkiB64: string): Promise<VerifyKey | null> => {
-    if (!userId || !spkiB64 || spkiB64.length < 32) return null;
-    knownPubKeys.set(userId, spkiB64);
-
-    const trustLevel = trustStore.observe(userId, spkiB64);
-    if (trustLevel === 'changed') {
-      options.onKeyChange?.(userId, trustLevel);
-    }
-
-    const existing = verifyKeyCache.get(userId);
-    if (existing) {
-      await flushPendingForUser(userId);
-      return existing;
-    }
-    try {
-      const key = await importVerifyKey(spkiB64);
-      verifyKeyCache.set(userId, key);
-      await flushPendingForUser(userId);
-      return key;
-    } catch {
-      return null;
-    }
-  };
-
-  const getVerifyKey = async (userId: string): Promise<VerifyKey | null> => {
-    const cached = verifyKeyCache.get(userId);
-    if (cached) return cached;
-    const spki = knownPubKeys.get(userId);
-    if (!spki) return null;
-    return cachePubKey(userId, spki);
-  };
-
-  const queuePendingLive = (event: ForumEvent) => {
-    const list = pendingLive.get(event.authorUserId) ?? [];
-    if (list.some((e) => e.msgId === event.msgId)) return;
-    list.push(event);
-    if (list.length > 40) list.shift();
-    pendingLive.set(event.authorUserId, list);
-    window.setTimeout(() => {
-      const cur = pendingLive.get(event.authorUserId);
-      if (!cur) return;
-      const next = cur.filter((e) => e.msgId !== event.msgId);
-      if (next.length) pendingLive.set(event.authorUserId, next);
-      else pendingLive.delete(event.authorUserId);
-    }, PENDING_TTL_MS);
-  };
-
-  const queuePendingDm = (dm: DirectMessage) => {
-    const list = pendingDms.get(dm.fromUserId) ?? [];
-    if (list.some((d) => d.msgId === dm.msgId)) return;
-    list.push(dm);
-    if (list.length > 20) list.shift();
-    pendingDms.set(dm.fromUserId, list);
-  };
-
-  const ingestSigned = async (
-    event: ForumEvent,
-    opts: { liveUserId: string | null; source: 'live' | 'sync' }
-  ): Promise<boolean> => {
-    if (!isValidForumEvent(event, { clockSource: opts.source })) {
-      if (opts.source === 'sync') rejectedSyncCount += 1;
-      return false;
-    }
-
-    if (opts.liveUserId) {
-      if (event.authorUserId !== opts.liveUserId) return false;
-      if (!rateLimiter.allow(opts.liveUserId, MAX_PUBLISH_PER_MINUTE)) {
-        return false;
-      }
-    }
-
-    if (localMessages.has(event.msgId) || ingestingIds.has(event.msgId)) return false;
-    ingestingIds.add(event.msgId);
-
-    try {
-      const verifyKey = await getVerifyKey(event.authorUserId);
-      if (!verifyKey) {
-        ingestingIds.delete(event.msgId);
-        if (opts.source === 'sync') {
-          rejectedSyncCount += 1;
-          return false;
-        }
-        queuePendingLive(event);
-        return false;
-      }
-
-      const ok = await verifyForumEvent(event, verifyKey);
-      if (!ok) {
-        if (opts.source === 'sync') rejectedSyncCount += 1;
-        return false;
-      }
-
-      if (localMessages.has(event.msgId)) return false;
-      localMessages.set(event.msgId, event);
-      options.onForumMessage(event);
-      return true;
-    } finally {
-      ingestingIds.delete(event.msgId);
-    }
-  };
-
-  const acceptDm = async (dm: DirectMessage, transportUserId: string | null): Promise<boolean> => {
-    if (!isValidDirectMessage(dm)) return false;
-    if (transportUserId && dm.fromUserId !== transportUserId) return false;
-    if (dm.toUserId !== self.userId) return false;
-    const verifyKey = await getVerifyKey(dm.fromUserId);
-    if (!verifyKey) {
-      queuePendingDm(dm);
-      return false;
-    }
-    const ok = await verifyDirectMessage(dm, verifyKey);
-    if (!ok) return false;
-
-    const peerEnc = knownEncPubKeys.get(dm.fromUserId);
-    const selfCanSeal = Boolean(encIdentity);
-    const peerCanSeal = Boolean(peerEnc);
-
-    if (dm.seal === 2 && dm.bodyCipherB64) {
-      if (!encIdentity || !peerEnc) {
-        queuePendingDm(dm);
-        return false;
-      }
-      const plain = await openDmBody(dm.bodyCipherB64, encIdentity, peerEnc);
-      if (plain === null || !plain.trim()) return false;
-      // Keep seal:2 as a UI marker; drop ciphertext from the in-memory message.
-      options.onDirectMessage?.({
-        ...dm,
-        body: plain.slice(0, MAX_DM_BODY_CHARS),
-        bodyCipherB64: undefined,
-        seal: 2,
-      });
-      return true;
-    }
-
-    // New peers that advertise enc keys reject cleartext Susurros.
-    if (selfCanSeal && peerCanSeal && dm.body.length > 0) return false;
-
-    if (!dm.body.trim()) return false;
-    options.onDirectMessage?.(dm);
-    return true;
-  };
-
-  async function flushPendingForUser(userId: string) {
-    const events = pendingLive.get(userId);
-    if (events?.length) {
-      pendingLive.delete(userId);
-      for (const ev of events) {
-        await ingestSigned(ev, { liveUserId: ev.authorUserId, source: 'live' });
-      }
-    }
-    const dms = pendingDms.get(userId);
-    if (dms?.length) {
-      pendingDms.delete(userId);
-      for (const dm of dms) {
-        await acceptDm(dm, null);
-      }
-    }
-  }
-
   const rememberPresenceKeys = (userId: string, state: PresenceState) => {
-    void cachePubKey(userId, state.signPubKeySpkiB64);
-    if (state.encPubKeyRawB64) {
-      const prev = knownEncPubKeys.get(userId);
-      knownEncPubKeys.set(userId, state.encPubKeyRawB64);
-      if (prev !== state.encPubKeyRawB64) {
-        void flushPendingForUser(userId);
-      }
+    void registry.observe(userId, state.signPubKeySpkiB64);
+    const prev = knownEncPubKeys.get(userId);
+    knownEncPubKeys.set(userId, state.encPubKeyRawB64);
+    if (prev !== state.encPubKeyRawB64) {
+      void dmIngest.flushPendingForUser(userId);
     }
   };
 
-  let room: Room;
+  const touchFallbackPeer = (userId: string) => {
+    if (userId === selfRef.userId) return;
+    fallbackPeers.set(userId, Date.now());
+    mergeOnline();
+  };
+
+  const dropFallbackPeer = (userId: string) => {
+    if (!fallbackPeers.has(userId)) return;
+    fallbackPeers.delete(userId);
+    options.onPresenceChange(userId, null, true);
+    mergeOnline();
+  };
+
   try {
     const rtcConfig: RTCConfiguration = {
       iceCandidatePoolSize: 8,
@@ -281,16 +163,18 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     room = joinRoom(
       {
         appId: APP_ID,
-        password: options.password.trim(),
+        password,
         identity: 'none',
         maxUsers: MAX_USERS,
         trickleIce: true,
         rtcConfig,
         ...(options.turnConfig?.length ? { turnConfig: options.turnConfig } : {}),
       },
-      options.roomId.trim()
+      roomId
     );
   } catch (err) {
+    wipeSigningIdentity(signing);
+    wipeEncryptionIdentity(encIdentity);
     throw new P2pActionError(
       'unknown',
       err instanceof Error ? err.message : 'Failed to open Trystero room'
@@ -299,8 +183,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
 
   await room.ready;
   const self = await room.getSelf();
-  knownPubKeys.set(self.userId, signing.publicKeySpkiB64);
-  await cachePubKey(self.userId, signing.publicKeySpkiB64);
+  selfRef.userId = self.userId;
+  knownEncPubKeys.set(self.userId, encIdentity.publicKeyRawB64);
+  await registry.observe(self.userId, signing.publicKeySpkiB64);
 
   const forumMsg = room.makeAction<ForumEvent>('forumMsg');
   const directMsg = room.makeAction<DirectMessage>('directMsg');
@@ -316,30 +201,6 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     },
   });
 
-  const touchFallbackPeer = (userId: string) => {
-    if (userId === self.userId) return;
-    fallbackPeers.set(userId, Date.now());
-    mergeOnline();
-  };
-
-  const dropFallbackPeer = (userId: string) => {
-    if (!fallbackPeers.has(userId)) return;
-    fallbackPeers.delete(userId);
-    options.onPresenceChange(userId, null, true);
-    mergeOnline();
-  };
-
-  const snapshotForSync = (): ForumEvent[] => {
-    const list = [...localMessages.values()]
-      .sort((a, b) => a.createdAtMs - b.createdAtMs)
-      .slice(-MAX_SYNC_MESSAGES);
-    const raw = JSON.stringify(list);
-    if (new TextEncoder().encode(raw).byteLength > MAX_SYNC_TOTAL_BYTES) {
-      return list.slice(-Math.floor(list.length / 2));
-    }
-    return list;
-  };
-
   const ensureFallback = async (): Promise<NostrFallbackBus | null> => {
     if (left) return null;
     if (fallback) return fallback;
@@ -349,93 +210,92 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     }
     fallbackStarting = (async () => {
       try {
-        fallback = await startNostrFallback(
-          options.roomId.trim(),
-          options.password.trim(),
-          self.userId,
-          {
-            onForum: (event) => {
-              void ingestSigned(event, { liveUserId: event.authorUserId, source: 'live' });
-              touchFallbackPeer(event.authorUserId);
-            },
-            onPresence: (userId, state) => {
-              if (!isValidPresenceState(state)) return;
-              rememberPresenceKeys(userId, state);
-              touchFallbackPeer(userId);
-              options.onPresenceChange(userId, state, false);
-            },
-            onGoodbye: (userId) => {
-              dropFallbackPeer(userId);
-            },
-            onDirectMessage: (dm) => {
-              void acceptDm(dm, null).then((ok) => {
-                if (ok) touchFallbackPeer(dm.fromUserId);
-              });
-            },
-            onSyncRequest: (fromUserId) => {
-              if (!syncAnswerLimiter.allow(fromUserId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
-                return [];
-              }
-              return snapshotForSync();
-            },
-            onSyncResponse: (reqId, events) => {
-              void (async () => {
-                const pending = pendingSync.get(reqId);
-                const raw = JSON.stringify(events);
-                if (new TextEncoder().encode(raw).byteLength > MAX_SYNC_TOTAL_BYTES) {
-                  rejectedSyncCount += 1;
-                  if (pending) {
-                    window.clearTimeout(pending.timer);
-                    pendingSync.delete(reqId);
-                    pending.resolve(pending.added);
-                  }
-                  return;
-                }
-                let added = 0;
-                for (const item of events.slice(0, MAX_SYNC_MESSAGES)) {
-                  const ok = await ingestSigned(item, { liveUserId: null, source: 'sync' });
-                  if (ok) added += 1;
-                }
+        fallback = await startNostrFallback(roomId, password, selfRef.userId, {
+          onForum: (event) => {
+            void forumIngest.ingest(event, { liveUserId: event.authorUserId, source: 'live' });
+            touchFallbackPeer(event.authorUserId);
+          },
+          onPresence: (userId, state) => {
+            if (!isValidPresenceState(state)) return;
+            rememberPresenceKeys(userId, state);
+            touchFallbackPeer(userId);
+            options.onPresenceChange(userId, state, false);
+          },
+          onGoodbye: (userId) => {
+            dropFallbackPeer(userId);
+          },
+          onDirectMessage: (dm) => {
+            void dmIngest.accept(dm, null).then((ok) => {
+              if (ok) touchFallbackPeer(dm.fromUserId);
+            });
+          },
+          onSyncRequest: (fromUserId) => {
+            if (!syncAnswerLimiter.allow(fromUserId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
+              return [];
+            }
+            return snapshotForSync(localMessages);
+          },
+          onSyncResponse: (reqId, events) => {
+            void (async () => {
+              const pending = pendingSync.get(reqId);
+              if (syncPayloadTooLarge(events)) {
+                rejectedSyncCount += 1;
                 if (pending) {
                   window.clearTimeout(pending.timer);
                   pendingSync.delete(reqId);
-                  pending.resolve(pending.added + added);
+                  pending.resolve(pending.added);
                 }
-              })();
-            },
-          }
-        );
+                return;
+              }
+              let added = 0;
+              for (const item of clampSyncEvents(events)) {
+                const ok = await forumIngest.ingest(item, { liveUserId: null, source: 'sync' });
+                if (ok) added += 1;
+              }
+              if (pending) {
+                window.clearTimeout(pending.timer);
+                pendingSync.delete(reqId);
+                pending.resolve(pending.added + added);
+              }
+            })();
+          },
+        });
 
         if (!fallbackPresenceTimer) {
-          fallbackPresenceTimer = setInterval(() => {
-            if (left || !fallback) return;
-            const now = Date.now();
-            let pruned = false;
-            for (const [id, at] of fallbackPeers) {
-              if (now - at > FALLBACK_PEER_TTL_MS) {
-                fallbackPeers.delete(id);
-                options.onPresenceChange(id, null, true);
-                pruned = true;
+          const schedulePresenceBeat = () => {
+            const delay = 12_000 + Math.floor(Math.random() * 4_000);
+            fallbackPresenceTimer = setTimeout(() => {
+              if (left || !fallback) return;
+              const now = Date.now();
+              let pruned = false;
+              for (const [id, at] of fallbackPeers) {
+                if (now - at > FALLBACK_PEER_TTL_MS) {
+                  fallbackPeers.delete(id);
+                  options.onPresenceChange(id, null, true);
+                  pruned = true;
+                }
               }
-            }
-            if (pruned) mergeOnline();
-            if (lastPresence && isValidPresenceState(lastPresence)) {
-              void fallback.publish({
-                v: 1,
-                t: 'presence',
-                userId: self.userId,
-                state: lastPresence,
-                atMs: Date.now(),
-              });
-            }
-          }, 12_000);
+              if (pruned) mergeOnline();
+              if (lastPresence && isValidPresenceState(lastPresence)) {
+                void fallback.publish({
+                  v: 2,
+                  t: 'presence',
+                  userId: selfRef.userId,
+                  state: lastPresence,
+                  atMs: Date.now(),
+                });
+              }
+              schedulePresenceBeat();
+            }, delay);
+          };
+          schedulePresenceBeat();
         }
 
         if (lastPresence && isValidPresenceState(lastPresence)) {
           await fallback.publish({
-            v: 1,
+            v: 2,
             t: 'presence',
-            userId: self.userId,
+            userId: selfRef.userId,
             state: lastPresence,
             atMs: Date.now(),
           });
@@ -454,9 +314,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
   const publishPresenceFallback = async (state: PresenceState) => {
     if (!fallback || left) return;
     await fallback.publish({
-      v: 1,
+      v: 2,
       t: 'presence',
-      userId: self.userId,
+      userId: selfRef.userId,
       state,
       atMs: Date.now(),
     });
@@ -472,25 +332,27 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         resolve(0);
       }, NOSTR_SYNC_TIMEOUT_MS);
       pendingSync.set(reqId, { resolve, added: 0, timer });
-      void bus.publish({ v: 1, t: 'sync-req', fromUserId: self.userId, reqId }).catch(() => {
-        window.clearTimeout(timer);
-        pendingSync.delete(reqId);
-        resolve(0);
-      });
+      void bus
+        .publish({ v: 2, t: 'sync-req', fromUserId: selfRef.userId, reqId })
+        .catch(() => {
+          window.clearTimeout(timer);
+          pendingSync.delete(reqId);
+          resolve(0);
+        });
     });
   };
 
   unsubs.push(
     forumMsg.onMessage((data, { userId }) => {
       if (left) return;
-      void ingestSigned(data, { liveUserId: userId, source: 'live' });
+      void forumIngest.ingest(data, { liveUserId: userId, source: 'live' });
     })
   );
 
   unsubs.push(
     directMsg.onMessage((data, { userId }) => {
       if (left) return;
-      void acceptDm(data, userId);
+      void dmIngest.accept(data, userId);
     })
   );
 
@@ -499,7 +361,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       if (!syncAnswerLimiter.allow(context.userId, MAX_SYNC_ANSWERS_PER_MINUTE)) {
         return [];
       }
-      return snapshotForSync();
+      return snapshotForSync(localMessages);
     })
   );
 
@@ -516,7 +378,6 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         if (!value || !isValidPresenceState(value)) return;
         rememberPresenceKeys(userId, value);
         options.onPresenceChange(userId, value, false);
-        // Count presence peers even when getUsers() lags (ICE / Pages).
         touchFallbackPeer(userId);
       },
       { replay: true }
@@ -530,10 +391,12 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       options.onUserJoined?.(userId);
     }, { replay: true })
   );
+
   unsubs.push(
     room.onUserLeave(({ userId }) => {
       if (left) return;
       fallbackPeers.delete(userId);
+      options.onPresenceChange(userId, null, true);
       mergeOnline();
     })
   );
@@ -565,7 +428,8 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       if (left) return;
       left = true;
       if (pruneTimer) clearInterval(pruneTimer);
-      if (fallbackPresenceTimer) clearInterval(fallbackPresenceTimer);
+      if (fallbackPresenceTimer) clearTimeout(fallbackPresenceTimer);
+      fallbackPresenceTimer = null;
       for (const pending of pendingSync.values()) {
         window.clearTimeout(pending.timer);
         pending.resolve(pending.added);
@@ -574,9 +438,9 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       if (fallback) {
         try {
           await fallback.publish({
-            v: 1,
+            v: 2,
             t: 'goodbye',
-            userId: self.userId,
+            userId: selfRef.userId,
             atMs: Date.now(),
           });
         } catch {
@@ -588,6 +452,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       rateLimiter.clear();
       syncAnswerLimiter.clear();
       trustStore.clear();
+      registry.clear();
       for (const u of unsubs) {
         try {
           u();
@@ -601,18 +466,19 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         /* ignore */
       }
       wipeSigningIdentity(signing);
+      wipeEncryptionIdentity(encIdentity);
     },
     setPresenceAlias: async (alias: string) => {
       const state = buildPresenceState(alias);
       lastPresence = state;
-      if (state.encPubKeyRawB64) knownEncPubKeys.set(self.userId, state.encPubKeyRawB64);
+      knownEncPubKeys.set(selfRef.userId, state.encPubKeyRawB64);
       await presence.set(state);
-      options.onPresenceChange(self.userId, state, false);
+      options.onPresenceChange(selfRef.userId, state, false);
       await publishPresenceFallback(state);
     },
     publishEvent: async (partial) => {
       if (left) throw new P2pActionError('unknown', 'P2P session already closed');
-      if (!rateLimiter.allow(self.userId, MAX_PUBLISH_PER_MINUTE)) {
+      if (!rateLimiter.allow(selfRef.userId, MAX_PUBLISH_PER_MINUTE)) {
         throw new P2pActionError('publish-rate', 'Local publish rate limit');
       }
 
@@ -625,7 +491,7 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         title: partial.title,
         body: partial.body,
         createdAtMs: partial.createdAtMs,
-        authorUserId: self.userId,
+        authorUserId: selfRef.userId,
       };
 
       const signed = await signForumEvent(unsigned, signing);
@@ -641,10 +507,10 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         /* WebRTC may be down */
       }
       if (fallback) {
-        await fallback.publish({ v: 1, t: 'forum', event: signed });
+        await fallback.publish({ v: 2, t: 'forum', event: signed });
       } else if (relayFallbackNotified) {
         const bus = await ensureFallback();
-        await bus?.publish({ v: 1, t: 'forum', event: signed });
+        await bus?.publish({ v: 2, t: 'forum', event: signed });
       }
     },
     sendDirectMessage: async (toUserId: string, body: string): Promise<DirectMessage> => {
@@ -653,36 +519,38 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       if (!trimmed.trim()) throw new P2pActionError('unknown', 'Empty DM body');
 
       const peerEnc = knownEncPubKeys.get(toUserId) ?? presence.get(toUserId)?.encPubKeyRawB64;
-      if (peerEnc) knownEncPubKeys.set(toUserId, peerEnc);
+      if (!peerEnc) {
+        throw new P2pActionError('unknown', 'Peer has no encryption key yet');
+      }
+      knownEncPubKeys.set(toUserId, peerEnc);
 
-      let unsigned: Omit<DirectMessage, 'sig'>;
-      if (encIdentity && peerEnc) {
-        const cipher = await sealDmBody(trimmed, encIdentity, peerEnc);
-        if (!cipher) {
-          throw new P2pActionError('unknown', 'Failed to seal Susurro');
-        }
-        unsigned = {
-          protocolVersion: PROTOCOL_VERSION,
-          msgId: crypto.randomUUID(),
-          fromUserId: self.userId,
-          toUserId,
-          body: '',
-          bodyCipherB64: cipher,
-          seal: 2,
-          createdAtMs: Date.now(),
-        };
-      } else {
-        unsigned = {
-          protocolVersion: PROTOCOL_VERSION,
-          msgId: crypto.randomUUID(),
-          fromUserId: self.userId,
-          toUserId,
-          body: trimmed,
-          createdAtMs: Date.now(),
-        };
+      const msgId = crypto.randomUUID();
+      const cipher = await sealDmBody({
+        plaintext: trimmed,
+        selfEnc: encIdentity,
+        peerEncPubB64: peerEnc,
+        roomId,
+        fromUserId: selfRef.userId,
+        toUserId,
+        msgId,
+      });
+      if (!cipher) {
+        throw new P2pActionError('unknown', 'Failed to seal Susurro');
       }
 
+      const unsigned: Omit<DirectMessage, 'sig'> = {
+        protocolVersion: PROTOCOL_VERSION,
+        msgId,
+        fromUserId: selfRef.userId,
+        toUserId,
+        body: '',
+        bodyCipherB64: cipher,
+        seal: 2,
+        createdAtMs: Date.now(),
+      };
+
       const signed = await signDirectMessage(unsigned, signing);
+      dmIngest.markSeenLocal(signed.msgId);
       try {
         await directMsg.send(signed, { target: toUserId });
       } catch {
@@ -690,14 +558,11 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       }
       if (fallback || relayFallbackNotified) {
         const bus = fallback ?? (await ensureFallback());
-        await bus?.publish({ v: 1, t: 'dm', dm: signed });
+        await bus?.publish({ v: 2, t: 'dm', dm: signed });
       }
-      // Local echo: plaintext body for the sender UI; keep seal marker when sealed.
       return {
         ...signed,
         body: trimmed,
-        bodyCipherB64: undefined,
-        seal: unsigned.seal === 2 ? 2 : undefined,
       };
     },
     nudgeTransport: async () => {
@@ -719,7 +584,8 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
     },
     requestSyncFromPeers: async () => {
       if (left) return 0;
-      const targets = Object.keys(room.getUsers()).filter((id) => id !== self.userId);
+      const allTargets = Object.keys(room.getUsers()).filter((id) => id !== selfRef.userId);
+      const targets = sampleSyncTargets(allTargets);
       let added = 0;
 
       if (targets.length > 0) {
@@ -730,13 +596,12 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
           );
           for (const res of results) {
             if (res.status !== 'fulfilled' || !Array.isArray(res.value)) continue;
-            const raw = JSON.stringify(res.value);
-            if (new TextEncoder().encode(raw).byteLength > MAX_SYNC_TOTAL_BYTES) {
+            if (syncPayloadTooLarge(res.value)) {
               rejectedSyncCount += 1;
               continue;
             }
-            for (const item of res.value.slice(0, MAX_SYNC_MESSAGES)) {
-              const ok = await ingestSigned(item, { liveUserId: null, source: 'sync' });
+            for (const item of clampSyncEvents(res.value)) {
+              const ok = await forumIngest.ingest(item, { liveUserId: null, source: 'sync' });
               if (ok) added += 1;
             }
           }
@@ -748,7 +613,6 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
         }
       }
 
-      // Always also ask Nostr path when fallback is (or becomes) active / alone.
       if (fallback || relayFallbackNotified || targets.length === 0) {
         added += await requestNostrSync();
       }
@@ -768,5 +632,8 @@ export async function joinP2pRoom(options: JoinP2pRoomOptions): Promise<JoinedP2
       return [...ids];
     },
     getRejectedSyncCount: () => rejectedSyncCount,
+    invalidatePeerKey: async (userId: string) => {
+      await registry.invalidateAndReload(userId);
+    },
   };
 }

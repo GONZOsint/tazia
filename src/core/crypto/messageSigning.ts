@@ -1,5 +1,6 @@
 import * as ed from '@noble/ed25519';
 import { canonicalForumPayload, canonicalDmPayload, type ForumEvent, type DirectMessage } from '../protocol';
+import { b64ToBytes, bytesToB64, toArrayBuffer } from './bytes';
 
 /** RFC 8410 SPKI prefix for a raw 32-byte Ed25519 public key. */
 const ED25519_SPKI_PREFIX = Uint8Array.from([
@@ -19,26 +20,6 @@ export interface SigningIdentity {
 
 export interface VerifyKey {
   verify(signature: Uint8Array, data: Uint8Array): Promise<boolean>;
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const binary = atob(b64);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 function rawPublicKeyToSpki(raw: Uint8Array): Uint8Array {
@@ -88,7 +69,7 @@ export async function generateSigningIdentity(): Promise<SigningIdentity> {
     return {
       backend: 'webcrypto',
       keyPair,
-      publicKeySpkiB64: bytesToBase64(new Uint8Array(spki)),
+      publicKeySpkiB64: bytesToB64(new Uint8Array(spki)),
     };
   }
 
@@ -96,7 +77,7 @@ export async function generateSigningIdentity(): Promise<SigningIdentity> {
   return {
     backend: 'noble',
     nobleSecret: secretKey,
-    publicKeySpkiB64: bytesToBase64(rawPublicKeyToSpki(publicKey)),
+    publicKeySpkiB64: bytesToB64(rawPublicKeyToSpki(publicKey)),
   };
 }
 
@@ -108,7 +89,7 @@ export function wipeSigningIdentity(identity: SigningIdentity | null | undefined
 }
 
 export async function importVerifyKey(spkiB64: string): Promise<VerifyKey> {
-  const spki = base64ToBytes(spkiB64);
+  const spki = b64ToBytes(spkiB64);
 
   if (await supportsNativeEd25519()) {
     try {
@@ -176,7 +157,7 @@ export async function signForumEvent(
   const signature = await signWithIdentity(identity, payload);
   return {
     ...unsigned,
-    sig: bytesToBase64(signature),
+    sig: bytesToB64(signature),
   };
 }
 
@@ -187,7 +168,7 @@ export async function verifyForumEvent(
   try {
     const { sig, ...rest } = event;
     const payload = new TextEncoder().encode(canonicalForumPayload(rest));
-    return await publicKey.verify(base64ToBytes(sig), payload);
+    return await publicKey.verify(b64ToBytes(sig), payload);
   } catch {
     return false;
   }
@@ -201,7 +182,7 @@ export async function signDirectMessage(
   const signature = await signWithIdentity(identity, payload);
   return {
     ...unsigned,
-    sig: bytesToBase64(signature),
+    sig: bytesToB64(signature),
   };
 }
 
@@ -212,7 +193,7 @@ export async function verifyDirectMessage(
   try {
     const { sig, ...rest } = dm;
     const payload = new TextEncoder().encode(canonicalDmPayload(rest));
-    return await publicKey.verify(base64ToBytes(sig), payload);
+    return await publicKey.verify(b64ToBytes(sig), payload);
   } catch {
     return false;
   }

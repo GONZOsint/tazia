@@ -46,7 +46,7 @@ export const es: Messages = {
   roomsActiveHint: 'Puedes abrir varias zonas; cambia entre ellas aquí.',
   roomsBackToChat: 'Volver a la plaza',
   roomsHeroTitle: 'Sin cuentas. Mientras dure.',
-  roomsHeroBody: 'Mientras dure.',
+  roomsHeroBody: 'Comparte una frase, hablad mientras la tribu esté online, quema la sesión al acabar.',
   roomsCreate: 'Abrir',
   roomsJoin: 'Entrar',
   roomsPhraseLabel: 'Frase',
@@ -169,10 +169,10 @@ export const es: Messages = {
     'Os conectáis de navegador a navegador. Unos servicios públicos solo ayudan a encontraros la primera vez; después habláis de persona a persona.',
   helpGroupTitle: 'Tribu pequeña, todos online',
   helpGroupBody:
-    'Pensado para una reunión o fiesta (mejor con unas 5 personas más como máximo). Si se cierran todas las pestañas, el historial desaparece. Quien llega tarde puede pedir una copia a quien siga conectado.',
+    'Hasta 50 personas por zona (tope blando). El mesh WebRTC va mejor con ~6 peers; con más gente puede ir más lento o caer al fallback cifrado. Si se cierran todas las pestañas, el historial desaparece.',
   helpZonesTitle: 'Varias zonas',
   helpZonesBody:
-    'Puedes estar en hasta 5 zonas a la vez. Cambia o sal de una en Zonas; Plaza, Tribu y Susurros muestran la zona activa. Quemar borra todas las zonas en este dispositivo.',
+    'Puedes estar en hasta 3 zonas a la vez. Cambia o sal de una en Zonas; Plaza, Tribu y Susurros muestran la zona activa. Quemar borra todas las zonas en este dispositivo.',
   helpRelayTitle: 'Si no os conectáis directo',
   helpRelayBody:
     'A veces la red no deja hablar de navegador a navegador. En ese caso el chat puede seguir por un camino cifrado a través de servidores de ayuda. Preferid la misma Wi‑Fi; si hace falta, abrid Arreglar en Zonas.',
@@ -186,7 +186,7 @@ export const es: Messages = {
   helpMore: 'Detalle técnico',
   helpMoreHide: 'Ocultar detalle técnico',
   helpMoreBody:
-    '• Mesh P2P con WebRTC vía Trystero\n• Si falla ICE: fallback de datos cifrado por relés Nostr (solo ciphertext; no es P2P puro)\n• Protocolo agora-forum-v1 con firmas Ed25519\n• TURN opcional (coturn) para rescate ICE u ocultar IP\n• Confianza TOFU + código de 6 emojis ligado a roomId\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md',
+    '• Mesh P2P con WebRTC vía Trystero\n• Si falla ICE: fallback de datos cifrado por relés Nostr (solo ciphertext; no es P2P puro)\n• Protocolo agora-forum-v2 con Ed25519 + Susurros solo sellados (X25519)\n• TURN opcional (coturn) para rescate ICE u ocultar IP\n• Confianza TOFU + código de 6 emojis ligado a roomId (SAS ~48 bits)\n• Docs: SECURITY.md, PROTOCOL.md, TURN.md, docs/papers/',
   helpForgetDevice: 'Olvidar este dispositivo',
   helpForgetDone: 'Aviso de dirección borrado en este navegador.',
   helpForgetHint: 'Volverá a pedir el aviso de dirección la próxima vez que entres a una zona.',
@@ -273,7 +273,7 @@ export const es: Messages = {
   roomsLeftToast: 'Zona cerrada',
   roomsCapacityAria: '{n} de {max} zonas',
   roomsMeshLargeWarn:
-    'Hay mucha gente ({n} más). Mejor en tribus pequeñas — puede ir más lento o fallar.',
+    'Hay mucha gente ({n} más; tope {max}). El mesh se degrada pasado ~6 peers — puede ir más lento o usar fallback.',
 
   navDms: 'Susurros',
   dmsTitle: 'Susurros',

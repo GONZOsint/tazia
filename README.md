@@ -4,7 +4,7 @@
 
 Live temporary zone in the browser: no accounts, no message server of ours. Share a phrase, talk while everyone is online, **burn the session** when done. On phones you can **Install / Add to Home Screen** (PWA) for an app-like shell — the plaza still needs the network and live peers.
 
-Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: `agora-forum-v1` (Ed25519-signed events). App ID: `tazia.app`.
+Stack: [React](https://react.dev/) + [Vite](https://vite.dev/) + [Trystero 0.27](https://trystero.dev/). Protocol: `agora-forum-v2` (Ed25519-signed events; sealed-only Susurros). App ID: `tazia.app`. **Breaking:** v1 peers do not interoperate.
 
 Spanish README: [`README.es.md`](README.es.md).
 
@@ -21,15 +21,15 @@ You must be **online at the same time**. No async mailbox.
 
 ### Features
 
-- **Several zones at once** (up to **5**): each keeps its own live P2P session; **Zones** lists them; switch or leave one; Plaza / Tribe / Whispers show the **active** zone; **Burn** clears all on this device
-- Whispers (signed; pairwise sealed when both peers advertise X25519) scoped to the active zone
+- **Several zones at once** (up to **3**): each keeps its own live P2P session; **Zones** lists them; switch or leave one; Plaza / Tribe / Whispers show the **active** zone; **Burn** clears all on this device. Soft cap **50** users/zone (mesh best ~6 peers)
+- Whispers (Ed25519 + pairwise X25519 seal required; room-bound AAD) scoped to the active zone
 - TOFU trust + 6-emoji safety codes bound to `roomId` (Tribe)
 - Optional self-hosted TURN (ICE fallback / hide IP) — see [`TURN.md`](TURN.md)
 - Encrypted Nostr data-plane fallback when ICE fails (ciphertext only; not true P2P)
 
 ### Several zones
 
-Join zone A, then open or enter zone B without dropping A (wait until the first join finishes). Use **Switch** on the Zones list. Leave removes only that zone; Burn nukes every zone on this browser. Mesh works best with a small group (~5 peers).
+Join zone A, then open or enter zone B without dropping A (wait until the first join finishes). Use **Switch** on the Zones list. Leave removes only that zone; Burn nukes every zone on this browser. Soft cap 50 users/zone; mesh works best around ~6 peers.
 
 ### ICE failed / CGNAT / same Wi‑Fi on Pages
 
@@ -61,7 +61,7 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 | Doc | Language | Contents |
 | --- | --- | --- |
 | [`SECURITY.md`](SECURITY.md) | ES | Threat model, TOFU, CSP, honest limits |
-| [`PROTOCOL.md`](PROTOCOL.md) | ES | `agora-forum-v1` wire format |
+| [`PROTOCOL.md`](PROTOCOL.md) | ES | `agora-forum-v2` wire format |
 | [`TURN.md`](TURN.md) | EN | Self-hosted coturn + ICE failed checklist |
 | [`docs/sdp-qr-spike.md`](docs/sdp-qr-spike.md) | EN | Manual SDP/QR signaling spike (not shipped) |
 
@@ -77,12 +77,14 @@ For LAN testing, Vite listens on all interfaces (`host: true`). On Windows, allo
 | [RFC 8826](https://datatracker.ietf.org/doc/html/rfc8826) | WebRTC security; TOFU weak without OOB |
 | [arXiv:2510.27500](https://arxiv.org/html/2510.27500) DCUtR NAT | Hole-punch ~70%; TURN still needed as fallback |
 | [arXiv:2311.04658](https://arxiv.org/html/2311.04658v2) CGNAT | Why residential ICE fails without TURN |
-| [SnoW serverless n-party WebRTC](https://arxiv.org/pdf/2206.12762) | Full mesh degrades beyond ~4–6 peers — keep zones small |
+| [SnoW serverless n-party WebRTC](https://arxiv.org/pdf/2206.12762) | Full mesh degrades beyond ~4–6 peers — soft-cap 50, warn at 6 |
+| [WebRTC scales (mesh/SFU)](https://www.freecodecamp.org/news/how-webrtc-scales-signaling-nat-traversal-and-the-mesh-sfu-mcu-tradeoff) | Quadratic mesh cost; DTLS≠E2E app auth |
+| [ePrint 2025/554](https://eprint.iacr.org/2025/554.pdf) | Bind group/nonce to signcryption (Susurro + room AAD) |
 | [CRDT P2P WebRTC VR](https://arxiv.org/html/2503.17826v1) | Eventual typed sync over data channels (future; we use signed merge today) |
 | [Delta Chat realtime P2P](https://delta.chat/en/2024-11-20-webxdc-realtime) | Ephemeral side channels — several independent zones fit that model |
 | [Chrome LNA](https://developer.chrome.com/blog/local-network-access) | Public origin → LAN permission (same Wi‑Fi on Pages) |
 | [WebTransport](https://developer.chrome.com/docs/capabilities/web-apis/webtransport) | Client–server only — not a P2P mesh substitute |
-| OpenMLS / WASM | Future groups roadmap |
+| OpenMLS / WASM ([IETF 126](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-extensions-targeted-messages-virtual-clients-two-party-profile-slimmls-00.pdf)) | Future groups roadmap |
 
 **Browsers:** Chrome, Brave, Firefox, and Safari (HTTPS). Ed25519 uses native Web Crypto when present, otherwise `@noble/ed25519`. Brave’s stricter WebRTC IP policy and Safari’s hidden host ICE candidates can hurt same-LAN mesh — TURN or the encrypted Nostr fallback cover that. Keep **Trystero**; do not fork Nostr/Trystero for Pages.
 

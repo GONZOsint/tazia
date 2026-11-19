@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyRound, LogOut, PlusCircle, QrCode } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { identiconMatrixFromHex } from '../../core/crypto/identity';
 import {
   countOtherPeers,
@@ -24,6 +24,8 @@ import { ZoneInvitePanel } from './ZoneInvitePanel';
 interface RoomEntryViewProps {
   initialRoomId?: string;
   initialPhrase?: string | null;
+  /** Changes when a new invite is consumed mid-session so Join remounts with autofill. */
+  inviteNonce?: number;
   isJoining: boolean;
   errorMsg: string | null;
   /** Expand TURN panel (ICE / peer-connect failures). */
@@ -38,6 +40,7 @@ interface RoomEntryViewProps {
 export function RoomEntryView({
   initialRoomId = '',
   initialPhrase = null,
+  inviteNonce = 0,
   isJoining,
   errorMsg,
   showIceHint = false,
@@ -62,10 +65,14 @@ export function RoomEntryView({
   const prevJoinedCountRef = useRef(joinedRooms.length);
   const browserSupport = useMemo(() => probeBrowserSupportSync(), []);
   const browserBlocked = browserSupport.level === 'blocked';
+  const reduceMotion = useReducedMotion();
+  const enterY = reduceMotion ? 0 : 14;
+  const enterScale = reduceMotion ? 1 : 0.96;
+  const stagger = reduceMotion ? 0 : 0.06;
 
   useEffect(() => {
-    if (hasInvite) setEntryTab('join');
-  }, [hasInvite]);
+    if (initialRoomId) setEntryTab('join');
+  }, [initialRoomId, initialPhrase, inviteNonce]);
 
   useEffect(() => {
     if (showIceHint && hasZones) setEntryTab((cur) => cur ?? 'join');
@@ -124,16 +131,47 @@ export function RoomEntryView({
       )}
 
       {!hasZones && (
-        <section className="panel-surface relative overflow-hidden px-5 py-10 sm:px-10 sm:py-14">
+        <section className="hero-landing px-5 py-12 sm:px-10 sm:py-16">
           <div className="hero-glow" aria-hidden="true" />
           <div className="relative mx-auto flex max-w-lg flex-col items-center text-center">
-            <TaziaLogo size={72} />
-            <h1 className="mt-5 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl [text-wrap:balance]">
+            <motion.div
+              initial={{ opacity: 0, y: enterY, scale: enterScale }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: DUR.switch, ease: EASE.outExpo }}
+            >
+              <TaziaLogo size={80} className="hero-landing-mark" />
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: enterY }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: stagger, duration: DUR.medium, ease: EASE.outExpo }}
+              className="mt-5 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl [text-wrap:balance]"
+            >
               {t('brand')}
-            </h1>
-            <p className="mt-2 text-sm text-muted">{t('roomsHeroTitle')}</p>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: enterY }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: stagger * 2, duration: DUR.medium, ease: EASE.outExpo }}
+              className="mt-3 font-display text-lg font-semibold tracking-tight text-ink sm:text-xl [text-wrap:balance]"
+            >
+              {t('roomsHeroTitle')}
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: enterY }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: stagger * 3, duration: DUR.medium, ease: EASE.outExpo }}
+              className="mt-2 max-w-md text-sm leading-relaxed text-muted"
+            >
+              {t('roomsHeroBody')}
+            </motion.p>
 
-            <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+            <motion.div
+              initial={{ opacity: 0, y: enterY }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: stagger * 4, duration: DUR.switch, ease: EASE.outExpo }}
+              className="mt-9 grid w-full grid-cols-1 gap-3 sm:grid-cols-2"
+            >
               <motion.button
                 whileTap={browserBlocked ? undefined : TAP}
                 transition={TAP_TRANSITION}
@@ -141,9 +179,9 @@ export function RoomEntryView({
                 disabled={browserBlocked}
                 onClick={() => openEntry('create')}
                 className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
-                  entryTab === 'create'
-                    ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink hover:border-ink/30 hover:bg-surface'
+                  entryTab === 'join'
+                    ? 'border border-border bg-bg/80 text-ink hover:border-ink/30 hover:bg-surface'
+                    : 'btn-accent-sheen btn-ring-hover bg-accent text-on-accent hover:bg-accent-hover'
                 }`}
               >
                 <PlusCircle className="h-5 w-5" aria-hidden="true" />
@@ -157,14 +195,14 @@ export function RoomEntryView({
                 onClick={() => openEntry('join')}
                 className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[var(--radius-ctrl)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${
                   entryTab === 'join'
-                    ? 'bg-accent text-on-accent'
-                    : 'border border-border bg-bg text-ink hover:border-ink/30 hover:bg-surface'
+                    ? 'bg-accent text-on-accent hover:bg-accent-hover'
+                    : 'border border-border bg-bg/80 text-ink hover:border-ink/30 hover:bg-surface'
                 }`}
               >
                 <KeyRound className="h-5 w-5" aria-hidden="true" />
                 {t('roomsJoin')}
               </motion.button>
-            </div>
+            </motion.div>
           </div>
         </section>
       )}
@@ -386,7 +424,7 @@ export function RoomEntryView({
                 />
               ) : (
                 <JoinRoomForm
-                  key="join"
+                  key={`join-${inviteNonce}-${initialRoomId}-${initialPhrase ?? ''}`}
                   initialRoomId={initialRoomId}
                   initialPhrase={initialPhrase}
                   isJoining={isJoining}

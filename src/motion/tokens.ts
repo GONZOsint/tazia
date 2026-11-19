@@ -46,9 +46,6 @@ export const IGNITE = {
   finishMs: 360,
 } as const;
 
-/** Sealed whisper flash hold before fade (permanent mark stays on timestamp). */
-export const SEAL_FLASH_MS = 1300;
-
 export const TAP = { scale: 0.97 } as const;
 export const TAP_TRANSITION = { duration: DUR.tap } as const;
 
@@ -62,31 +59,29 @@ export const zoneCardExit = {
   },
 };
 
+/** Soft panel enter — keep opacity high to avoid blank-frame flicker. */
 export const contentSwitch = {
-  initial: { opacity: 0, y: 6 },
+  initial: { opacity: 0.92, y: 3 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { duration: DUR.switch, ease: EASE.outExpo },
+  exit: { opacity: 0.92, y: -2 },
+  transition: { duration: DUR.tab, ease: EASE.outExpo },
 };
 
 /**
- * Rooms → plaza / zone switch (apagón).
- * Opacity-first; light y/scale. No CSS filter blur — flickers on Windows GPUs.
- * AnimatePresence mode="wait": easeIn exit, easeOut enter.
+ * Zone switch inside Plaza (apagón).
+ * Opacity-first; no scale/blur — scale+blur flickers on Windows GPUs.
  */
 export const enterPlaza = {
-  initial: { opacity: 0, y: 6, scale: 0.985 },
+  initial: { opacity: 0.9, y: 4 },
   animate: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: { duration: DUR.switch, ease: EASE.outExpo },
+    transition: { duration: DUR.tab, ease: EASE.outExpo },
   },
   exit: {
-    opacity: 0,
-    y: -3,
-    scale: 0.99,
-    transition: { duration: DUR.tab, ease: EASE.easeIn },
+    opacity: 0.9,
+    y: -2,
+    transition: { duration: DUR.micro, ease: EASE.easeIn },
   },
 };
 
@@ -100,7 +95,7 @@ export const disclosure = {
 
 /** Message / post land-in. */
 export const bubbleEnter = {
-  initial: { opacity: 0, y: 8, scale: 0.98 },
+  initial: { opacity: 0, y: 6, scale: 0.985 },
   animate: { opacity: 1, y: 0, scale: 1 },
   transition: EASE.bubbleSpring,
 };
@@ -121,18 +116,13 @@ export const peerRowExit = {
   transition: { duration: DUR.tab, ease: EASE.easeIn },
 };
 
-/** Sealed Susurro lock icon flash. */
+/** Sealed Susurro lock mark on the timestamp — settles in with the bubble. */
 export const sealIcon = {
-  initial: { opacity: 0, scale: 0.85 },
+  initial: { opacity: 0, scale: 0.6 },
   animate: {
     opacity: 1,
     scale: 1,
-    transition: { duration: DUR.micro, ease: EASE.outExpo },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.9,
-    transition: { duration: DUR.tap, ease: EASE.easeIn },
+    transition: { delay: 0.08, duration: DUR.medium, ease: EASE.outExpo },
   },
 };
 

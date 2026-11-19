@@ -4,16 +4,17 @@
  */
 import { schnorr } from '@noble/secp256k1';
 import { getRelaySockets } from '@trystero-p2p/nostr';
+import { bytesToHex } from '../crypto/bytes';
 import type { DirectMessage, ForumEvent, PresenceState } from '../protocol';
 import { decryptJson, deriveSessionMaterial, encryptJson } from './roomCrypto';
 
 export type FallbackEnvelope =
-  | { v: 1; t: 'forum'; event: ForumEvent }
-  | { v: 1; t: 'presence'; userId: string; state: PresenceState; atMs: number }
-  | { v: 1; t: 'goodbye'; userId: string; atMs: number }
-  | { v: 1; t: 'dm'; dm: DirectMessage }
-  | { v: 1; t: 'sync-req'; fromUserId: string; reqId: string }
-  | { v: 1; t: 'sync-res'; toUserId: string; reqId: string; events: ForumEvent[] };
+  | { v: 2; t: 'forum'; event: ForumEvent }
+  | { v: 2; t: 'presence'; userId: string; state: PresenceState; atMs: number }
+  | { v: 2; t: 'goodbye'; userId: string; atMs: number }
+  | { v: 2; t: 'dm'; dm: DirectMessage }
+  | { v: 2; t: 'sync-req'; fromUserId: string; reqId: string }
+  | { v: 2; t: 'sync-res'; toUserId: string; reqId: string; events: ForumEvent[] };
 
 export interface NostrFallbackHandlers {
   onForum: (event: ForumEvent) => void;
@@ -33,10 +34,6 @@ type SchnorrSigner = { secretKey: Uint8Array; publicKey: Uint8Array };
 
 const te = new TextEncoder();
 
-function toHex(bytes: Uint8Array): string {
-  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 function topicToKind(topic: string): number {
   let h = 2166136261;
   for (let i = 0; i < topic.length; i++) h = Math.imul(h ^ topic.charCodeAt(i), 16777619);
@@ -48,7 +45,7 @@ async function createSignedEvent(
   content: string,
   signer: SchnorrSigner
 ): Promise<string> {
-  const pubkey = toHex(signer.publicKey);
+  const pubkey = bytesToHex(signer.publicKey);
   const created_at = Math.floor(Date.now() / 1000);
   const kind = topicToKind(topic);
   const tags = [['x', topic]];
@@ -58,8 +55,8 @@ async function createSignedEvent(
       te.encode(JSON.stringify([0, pubkey, created_at, kind, tags, content]))
     )
   );
-  const id = toHex(idBytes);
-  const sig = toHex(await schnorr.signAsync(idBytes, signer.secretKey));
+  const id = bytesToHex(idBytes);
+  const sig = bytesToHex(await schnorr.signAsync(idBytes, signer.secretKey));
   return JSON.stringify(['EVENT', { kind, tags, created_at, content, pubkey, id, sig }]);
 }
 
@@ -82,6 +79,7 @@ export async function startNostrFallback(
   const subId = `tazia-fb-${crypto.randomUUID().slice(0, 8)}`;
   const signer = schnorr.keygen() as SchnorrSigner;
   const seenEventIds = new Set<string>();
+  const SEEN_EVENT_CAP = 4_000;
   const listeners = new Map<WebSocket, (ev: MessageEvent) => void>();
   let stopped = false;
   let attachTimer: number | null = null;
@@ -105,7 +103,7 @@ export async function startNostrFallback(
         if (env.fromUserId === selfUserId) break;
         const events = handlers.onSyncRequest(env.fromUserId, env.reqId);
         void publish({
-          v: 1,
+          v: 2,
           t: 'sync-res',
           toUserId: env.fromUserId,
           reqId: env.reqId,
@@ -136,12 +134,12 @@ export async function startNostrFallback(
     if (!tagOk) return;
     if (seenEventIds.has(ev.id)) return;
     seenEventIds.add(ev.id);
-    if (seenEventIds.size > 2000) {
+    if (seenEventIds.size > SEEN_EVENT_CAP) {
       const first = seenEventIds.values().next().value;
       if (first) seenEventIds.delete(first);
     }
-    const env = await decryptJson<FallbackEnvelope>(key, ev.content);
-    if (!env || env.v !== 1) return;
+    const env = await decryptJson<FallbackEnvelope>(key, ev.content, roomId);
+    if (!env || env.v !== 2) return;
     handlePayload(env);
   };
 
@@ -161,7 +159,6 @@ export async function startNostrFallback(
         /* ignore */
       }
     }
-    // Drop dead sockets from the map
     for (const ws of [...listeners.keys()]) {
       if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
         const fn = listeners.get(ws);
@@ -178,15 +175,13 @@ export async function startNostrFallback(
   };
 
   attach();
-  // Slow safety net for late-opening Trystero sockets (publish also calls attach).
   attachTimer = window.setInterval(attach, 12_000);
 
   const publish = async (env: FallbackEnvelope) => {
     if (stopped) return;
-    // Optional jitter to reduce coarse timing correlation on public relays.
-    await new Promise((r) => window.setTimeout(r, Math.floor(Math.random() * 200)));
+    await new Promise((r) => window.setTimeout(r, Math.floor(Math.random() * 280)));
     if (stopped) return;
-    const content = await encryptJson(key, env);
+    const content = await encryptJson(key, env, roomId);
     const wire = await createSignedEvent(topic, content, signer);
     attach();
     for (const ws of openSockets()) {
