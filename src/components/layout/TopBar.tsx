@@ -25,6 +25,8 @@ export interface ActiveZoneChip {
 interface TopBarProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
+  /** App session flame — shows extinguish control (not zone membership). */
+  sessionLit?: boolean;
   hasActiveRoom: boolean;
   onBurnSession: () => void;
   forumUnread?: number;
@@ -43,6 +45,7 @@ interface TopBarProps {
 export function TopBar({
   activeTab,
   onSelectTab,
+  sessionLit = false,
   hasActiveRoom,
   onBurnSession,
   forumUnread = 0,
@@ -60,11 +63,12 @@ export function TopBar({
       : activeZone.roomId
     : '';
   const zoneIcon = activeZone ? identiconVisualFromHex(activeZone.roomId) : null;
+  const showFire = sessionLit || hasActiveRoom;
 
   return (
     <header
       className={`relative z-30 shrink-0 overflow-visible border-b border-border topbar-safe ${
-        hasActiveRoom ? 'topbar--fire-clearance' : ''
+        showFire ? 'topbar--fire-clearance' : ''
       }`}
     >
       {/*
@@ -213,10 +217,11 @@ export function TopBar({
           <span className="inline-flex shrink-0">
             <LangToggle />
           </span>
-          {/* Fixed burn slot so Theme/Lang do not shift when a zone appears. */}
+          {/* Fixed burn slot so Theme/Lang do not shift when the flame appears. */}
           <span className="inline-flex h-11 w-11 shrink-0 items-center justify-end overflow-visible sm:w-[9.75rem]">
-            {hasActiveRoom ? (
+            {showFire ? (
               <FireBurnButton
+                mode="extinguish"
                 label={t('leaveTab')}
                 onClick={onBurnSession}
                 dying={burnHeating}

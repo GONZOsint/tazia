@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { useToast } from '../components/ui/ToastHost';
 import { useRoomManager } from '../hooks/useRoomManager';
+import { useSessionFlame } from '../hooks/useSessionFlame';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useT } from '../i18n';
 import { AppOverlays } from './appShell/AppOverlays';
@@ -31,6 +32,15 @@ export default function App() {
     selectTab,
     onNavigateTab,
   } = useAppNavigation();
+
+  const { lit: sessionLit, ignite } = useSessionFlame({
+    autoIgnite: Boolean(initialInvite?.roomId),
+  });
+
+  const onHelpFromIgnite = useCallback(() => {
+    ignite();
+    selectTab('how');
+  }, [ignite, selectTab]);
 
   /** Bridge: zone chrome hook runs after manager (needs activeRoomId). */
   const zoneIgniteRef = useRef<(roomId: string) => void>(() => {});
@@ -178,6 +188,10 @@ export default function App() {
   return (
     <AppShellLayout
       splashShort={splashShort}
+      sessionLit={sessionLit}
+      onIgnite={ignite}
+      onHelpFromIgnite={onHelpFromIgnite}
+      burnNotice={burnNotice}
       activeTab={activeTab}
       selectTab={selectTab}
       isInRoom={roomView.isInRoom}
@@ -202,7 +216,7 @@ export default function App() {
       swipeDisabled={modalOpen || burnPlaying}
       overlays={
         <AppOverlays
-          burnNotice={burnNotice}
+          burnNotice={false}
           ipConsentNeeded={ipConsentNeeded}
           onAcceptIpConsent={() => void confirmIpConsent()}
           onCancelIpConsent={cancelIpConsent}

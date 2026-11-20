@@ -9,42 +9,62 @@ import {
 } from '../../motion/fireButton';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
+export type FireBurnMode = 'ignite' | 'extinguish';
+
 interface FireBurnButtonProps {
   label: string;
   onClick: () => void;
+  /**
+   * ignite — starts unlit; click lights WebGL then calls onClick (enter app).
+   * extinguish — auto-lit; click confirms session burn (default).
+   */
+  mode?: FireBurnMode;
   /** Session extinguish choreography — visually put the flame out. */
   dying?: boolean;
   disabled?: boolean;
+  /** Force pill layout (landing). Default follows sm breakpoint. */
+  forcePill?: boolean;
+  /** Skip header clearance class (landing is not in TopBar). */
+  className?: string;
 }
 
-function useIsPill(): boolean {
+function useIsPill(forcePill?: boolean): boolean {
   const [pill, setPill] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 640px)').matches : false
+    forcePill ||
+    (typeof window !== 'undefined' ? window.matchMedia('(min-width: 640px)').matches : false)
   );
   useEffect(() => {
+    if (forcePill) {
+      setPill(true);
+      return;
+    }
     const mq = window.matchMedia('(min-width: 640px)');
     const onChange = () => setPill(mq.matches);
     onChange();
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
-  }, []);
+  }, [forcePill]);
   return pill;
 }
 
 /**
- * Session “apagar llama” control — accent fire button with WebGL flame crown
- * (mockup). Lit while the zone is alive; extinguishes when `dying`.
+ * Accent fire button with WebGL crown.
+ * App entry (ignite) or session extinguish (extinguish) — same control, mirrored ritual.
  */
 export function FireBurnButton({
   label,
   onClick,
+  mode = 'extinguish',
   dying = false,
   disabled = false,
+  forcePill = false,
+  className = '',
 }: FireBurnButtonProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const handleRef = useRef<FireButtonHandle | null>(null);
-  const isPill = useIsPill();
+  const isPill = useIsPill(forcePill);
+  const isIgnite = mode === 'ignite';
 
   useEffect(() => {
     const btn = btnRef.current;
@@ -55,23 +75,43 @@ export function FireBurnButton({
     handleRef.current = handle;
     if (!handle) return;
 
-    // Auto-ignite shortly after mount (session is already alive).
-    const t = window.setTimeout(() => {
-      if (!dying) handle.setLit(true, 0.5);
-    }, isPill ? 320 : 180);
+    if (!isIgnite) {
+      const t = window.setTimeout(() => {
+        if (!dying) handle.setLit(true, 0.5);
+      }, isPill ? 320 : 180);
+      return () => {
+        window.clearTimeout(t);
+        handle.destroy();
+        handleRef.current = null;
+      };
+    }
 
+    handle.setLit(false, 0.5);
     return () => {
-      window.clearTimeout(t);
       handle.destroy();
       handleRef.current = null;
     };
-    // Remount when circle ↔ pill geometry changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dying driven below
-  }, [isPill]);
+  }, [isPill, isIgnite]);
 
   useEffect(() => {
+    if (isIgnite) return;
     handleRef.current?.setLit(!dying, 0.5);
-  }, [dying]);
+  }, [dying, isIgnite]);
+
+  const handleClick = () => {
+    if (disabled || dying) return;
+    if (isIgnite) {
+      const rect = btnRef.current?.getBoundingClientRect();
+      const originX = rect && rect.width > 0 ? 0.5 : 0.5;
+      handleRef.current?.setLit(true, originX);
+      // Brief beat so the crown ignites before the shell swaps.
+      window.setTimeout(() => onClick(), 280);
+      return;
+    }
+    onClick();
+  };
+
+  const headerClass = forcePill || isIgnite ? '' : 'fire-btn--header';
 
   return (
     <motion.button
@@ -79,14 +119,14 @@ export function FireBurnButton({
       whileTap={dying || disabled ? undefined : TAP}
       transition={TAP_TRANSITION}
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled || dying}
       aria-label={label}
       title={label}
-      aria-pressed={!dying}
-      className={`fire-btn fire-btn--header burn-heat session-burn-target ${
+      aria-pressed={isIgnite ? false : !dying}
+      className={`fire-btn burn-heat session-burn-target ${headerClass} ${
         isPill ? 'fire-btn--pill' : 'fire-btn--circle'
-      } ${dying ? 'is-dying' : ''}`}
+      } ${dying ? 'is-dying' : ''} ${className}`.trim()}
     >
       <canvas ref={canvasRef} className="fire-canvas" aria-hidden="true" />
       {dying ? (
