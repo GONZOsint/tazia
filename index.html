@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' wss:; worker-src 'self' blob:;"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Permissions-Policy"
+      content="camera=(self), microphone=(), geolocation=(), local-network=(self), loopback-network=(self)"
+    />
+    <meta name="theme-color" content="#0b0d09" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TAZIA" />
+    <!-- Blocking: paint with the right theme before CSS/body (avoids light↔dark FOUC). -->
+    <script src="./theme-boot.js"></script>
+    <!-- Blocking: lang + title before React (avoids ES flash for EN users). -->
+    <script src="./locale-boot.js"></script>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180" />
+    <title>TAZIA — Zona Anónima Temporal en Acción</title>
+    <meta
+      name="description"
+      content="TAZIA: zona anónima temporal en acción. Charla en vivo en el navegador sin cuentas. Comparte una frase, hablad online, salid al acabar."
+    />
+    <meta property="og:title" content="TAZIA — Zona Anónima Temporal en Acción" />
+    <meta
+      property="og:description"
+      content="Zona Anónima Temporal en Acción. Charla en directo entre navegadores; sin servidor de mensajes."
+    />
+    <meta property="og:type" content="website" />
+    <!-- Raster: social crawlers do not reliably render SVG for og:image. -->
+    <meta property="og:image" content="pwa-512x512.png" />
+    <script type="module" crossorigin src="/tazia/assets/index-BzwMOZKw.js"></script>
+    <link rel="modulepreload" crossorigin href="/tazia/assets/rolldown-runtime-BWaJ3C7D.js">
+    <link rel="modulepreload" crossorigin href="/tazia/assets/tokens-B3FWvHxF.js">
+    <link rel="modulepreload" crossorigin href="/tazia/assets/x-Bl4XDWhB.js">
+    <link rel="modulepreload" crossorigin href="/tazia/assets/avatarSeed-Bpr6J2IK.js">
+    <link rel="modulepreload" crossorigin href="/tazia/assets/users-OD5IPRIt.js">
+    <link rel="modulepreload" crossorigin href="/tazia/assets/loader-circle-Akpz3iwe.js">
+    <link rel="stylesheet" crossorigin href="/tazia/assets/index-DmO6wvwm.css">
+  <link rel="manifest" href="/tazia/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/tazia/registerSW.js"></script></head>
+  <body class="bg-bg text-ink antialiased">
+    <div id="root"></div>
+    <!-- Classic (non-module) so it runs before the app and can scrub #room~phrase under CSP script-src 'self'. -->
+    <script src="./scrub-phrase.js" defer></script>
+  </body>
+</html>
