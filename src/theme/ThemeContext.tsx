@@ -3,7 +3,9 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -11,23 +13,37 @@ import {
 export type ThemeMode = 'light' | 'dark';
 
 const STORAGE_KEY = 'tazia-theme';
+const THEME_COLOR: Record<ThemeMode, string> = {
+  light: '#e4e1da',
+  dark: '#0b0d09',
+};
 
-function detectTheme(): ThemeMode {
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+function readSavedTheme(): ThemeMode | null {
+  if (typeof window === 'undefined') return null;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'light' || saved === 'dark') return saved;
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return saved === 'light' || saved === 'dark' ? saved : null;
   } catch {
-    /* ignore */
+    return null;
   }
-  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
+}
+
+function detectSystemTheme(): ThemeMode {
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   return 'light';
 }
 
-const THEME_COLOR = { light: '#e4e1da', dark: '#0b0d09' } as const;
+function detectTheme(): ThemeMode {
+  return readSavedTheme() ?? detectSystemTheme();
+}
 
 function applyThemeClass(mode: ThemeMode) {
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
   root.classList.toggle('dark', mode === 'dark');
   root.style.colorScheme = mode;
@@ -36,7 +52,7 @@ function applyThemeClass(mode: ThemeMode) {
   if (meta) meta.setAttribute('content', THEME_COLOR[mode]);
 }
 
-interface ThemeContextValue {
+export interface ThemeContextValue {
   theme: ThemeMode;
   setTheme: (mode: ThemeMode) => void;
   toggleTheme: () => void;
@@ -45,30 +61,63 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    const mode = detectTheme();
-    // Sync with theme-boot.js / first paint — do not wait for useEffect (FOUC).
-    applyThemeClass(mode);
-    return mode;
-  });
+  const [theme, setThemeState] = useState<ThemeMode>(detectTheme);
+  const themeRef = useRef<ThemeMode>(theme);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
+    themeRef.current = theme;
     applyThemeClass(theme);
   }, [theme]);
 
   const setTheme = useCallback((mode: ThemeMode) => {
+    themeRef.current = mode;
     applyThemeClass(mode);
     setThemeState(mode);
     try {
-      localStorage.setItem(STORAGE_KEY, mode);
+      window.localStorage.setItem(STORAGE_KEY, mode);
     } catch {
       /* ignore */
     }
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [setTheme, theme]);
+    setTheme(themeRef.current === 'dark' ? 'light' : 'dark');
+  }, [setTheme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY) return;
+      const next =
+        e.newValue === 'light' || e.newValue === 'dark' ? e.newValue : detectSystemTheme();
+      themeRef.current = next;
+      applyThemeClass(next);
+      setThemeState(next);
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    const mql =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-color-scheme: dark)')
+        : null;
+
+    const handleMedia = (e: MediaQueryListEvent) => {
+      if (readSavedTheme() !== null) return;
+      const next: ThemeMode = e.matches ? 'dark' : 'light';
+      themeRef.current = next;
+      applyThemeClass(next);
+      setThemeState(next);
+    };
+
+    mql?.addEventListener?.('change', handleMedia);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      mql?.removeEventListener?.('change', handleMedia);
+    };
+  }, []);
 
   const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
 

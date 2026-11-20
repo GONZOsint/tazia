@@ -1,11 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+  AnimatePresence,
+  motion,
+  useIsPresent,
+  useReducedMotion,
+} from 'motion/react';
 import { useT } from '../../i18n';
-import { APP_SPLASH, DUR, EASE, ZONE_BOOT } from '../../motion/tokens';
+import { APP_SPLASH, ZONE_BOOT } from '../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
+import { SplashMark } from './SplashMark';
 import { TaziaMark } from './TaziaMark';
 
+/** True solo si esta carga de página realmente mostró AppSplash. */
+let splashShownThisLoad = false;
+/** True cuando ya se resolvió (visto previamente en sessionStorage o ya cerrado). */
+let splashSettledThisLoad = false;
+/** Ignite copy reveal delay for this load (full / short / reduced). */
+let splashCopyHandoffMsThisLoad: number = APP_SPLASH.copyHandoffMs;
+
 function readSplashSeen(): boolean {
+  if (typeof window === 'undefined') return true;
   try {
     return sessionStorage.getItem(APP_SPLASH.storageKey) === '1';
   } catch {
@@ -13,167 +27,202 @@ function readSplashSeen(): boolean {
   }
 }
 
-/** Survives React Strict Mode remount in the same page load. */
-let splashClaimedThisLoad = false;
+/**
+ * True únicamente cuando esta carga mostró AppSplash sobre IgniteLanding.
+ * Nota: AppSplash debe renderizarse antes que IgniteLanding en el árbol
+ * para que Ignite lea el valor actualizado en su primer render.
+ */
+export function splashCoveredIntroThisLoad(): boolean {
+  return splashShownThisLoad;
+}
 
-/** Claim once-per-session splash; also warms ZONE_BOOT so hero skips full ritual. */
+/** Ms from mount when Ignite may reveal copy after this load’s splash. */
+export function splashCopyHandoffMs(): number {
+  return splashCopyHandoffMsThisLoad;
+}
+
+function resolveCopyHandoffMs(short: boolean, reduced: boolean): number {
+  if (reduced) {
+    const exit = APP_SPLASH.reducedExitMs;
+    return APP_SPLASH.reducedMs - exit + Math.round(exit * 0.45);
+  }
+  if (short) {
+    const exit = APP_SPLASH.shortExitMs;
+    return APP_SPLASH.shortMs - exit + Math.round(exit * 0.45);
+  }
+  return APP_SPLASH.copyHandoffMs;
+}
+
 function claimSplash(): boolean {
-  if (splashClaimedThisLoad) return true;
-  if (readSplashSeen()) return false;
-  splashClaimedThisLoad = true;
+  if (splashSettledThisLoad) return false;
+  if (splashShownThisLoad) return true;
+
+  if (readSplashSeen()) {
+    splashSettledThisLoad = true;
+    return false;
+  }
+
+  splashShownThisLoad = true;
   try {
     sessionStorage.setItem(APP_SPLASH.storageKey, '1');
     sessionStorage.setItem(ZONE_BOOT.storageKey, '1');
   } catch {
-    /* ignore */
+    /* ignore storage quota / private mode errors */
   }
   return true;
 }
 
 interface AppSplashProps {
-  /** Prefer a shorter beat (invite deep-link, etc.). */
   short?: boolean;
+  onExitComplete?: () => void;
+  /** True while the splash veil is open (for inert/aria-hidden on shell). */
+  onActiveChange?: (active: boolean) => void;
 }
 
-/**
- * Cold-start full-screen mark — Telegram/Duolingo beat, once per session.
- * Blocks clicks while visible; respects prefers-reduced-motion.
- *
- * Choreography tokens live in APP_SPLASH (Motion transitions + UX timing band).
- */
-export function AppSplash({ short = false }: AppSplashProps) {
-  const t = useT();
-  const reduceMotion = useReducedMotion();
+export function AppSplash({
+  short = false,
+  onExitComplete,
+  onActiveChange,
+}: AppSplashProps) {
   const [open, setOpen] = useState(() => claimSplash());
-  const doneRef = useRef(false);
-  const hapticRef = useRef(false);
 
-  const finishMs = reduceMotion
+  useLayoutEffect(() => {
+    onActiveChange?.(open);
+    return () => onActiveChange?.(false);
+  }, [open, onActiveChange]);
+
+  const handleDismiss = () => {
+    splashSettledThisLoad = true;
+    setOpen(false);
+  };
+
+  return (
+    <AnimatePresence onExitComplete={onExitComplete}>
+      {open && (
+        <SplashOverlay
+          key="app-splash"
+          short={short}
+          onDismiss={handleDismiss}
+        />
+      )}
+    </AnimatePresence>
+  );
+}
+
+interface SplashOverlayProps {
+  short: boolean;
+  onDismiss: () => void;
+}
+
+/** Accelerated exit — matches splash mock curve-exit. */
+const EXIT_EASE = [0.3, 0, 0.8, 0.15] as const;
+
+function SplashOverlay({ short, onDismiss }: SplashOverlayProps) {
+  const t = useT();
+  const wordmarkId = useId();
+  const isPresent = useIsPresent();
+  const prefersReduced = Boolean(useReducedMotion());
+
+  const mountTimeRef = useRef<number | null>(null);
+  const hapticFiredRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  const finishMs = prefersReduced
     ? APP_SPLASH.reducedMs
     : short
       ? APP_SPLASH.shortMs
       : APP_SPLASH.finishMs;
-  // Keep a readable hold; exit fade is owned by AnimatePresence only.
-  // Exit stays shorter than enter (Material / NN/g); cap so short mode still fades cleanly.
-  const exitMs = Math.min(APP_SPLASH.exitMs, Math.max(120, Math.floor(finishMs * 0.28)));
-  const skipParts = Boolean(reduceMotion) || short;
-  const { delay, partTweenDur, partSpring, stageSpring, stageOpacityDur, wordmarkDur } =
-    APP_SPLASH;
+
+  const exitMs = prefersReduced
+    ? APP_SPLASH.reducedExitMs
+    : short
+      ? APP_SPLASH.shortExitMs
+      : APP_SPLASH.exitMs;
+
+  const exitSec = exitMs / 1000;
+  const skipChoreography = prefersReduced || short;
+
+  useLayoutEffect(() => {
+    splashCopyHandoffMsThisLoad = resolveCopyHandoffMs(short, prefersReduced);
+  }, [short, prefersReduced]);
 
   useEffect(() => {
-    if (!open) return;
+    if (mountTimeRef.current === null) {
+      mountTimeRef.current = performance.now();
+    }
 
-    const dismissAt = Math.max(0, finishMs - exitMs);
+    const elapsed = performance.now() - mountTimeRef.current;
+    const dismissAt = Math.max(80, finishMs - exitMs);
+    const remainingDismiss = Math.max(0, dismissAt - elapsed);
 
-    const hapticTimer = window.setTimeout(() => {
-      if (hapticRef.current || reduceMotion) return;
-      hapticRef.current = true;
-      haptic(HAPTIC_TAP);
-    }, reduceMotion || short ? 40 : APP_SPLASH.hapticMs);
+    let hapticTimer: number | undefined;
+    if (!prefersReduced && !hapticFiredRef.current) {
+      const targetHapticMs = short ? 40 : APP_SPLASH.hapticMs;
+      const remainingHaptic = Math.max(0, targetHapticMs - elapsed);
+      hapticTimer = window.setTimeout(() => {
+        if (hapticFiredRef.current) return;
+        hapticFiredRef.current = true;
+        haptic(HAPTIC_TAP);
+      }, remainingHaptic);
+    }
 
     const doneTimer = window.setTimeout(() => {
-      if (doneRef.current) return;
-      doneRef.current = true;
-      setOpen(false);
-    }, dismissAt);
+      onDismissRef.current();
+    }, remainingDismiss);
 
     return () => {
-      window.clearTimeout(hapticTimer);
+      if (hapticTimer !== undefined) window.clearTimeout(hapticTimer);
       window.clearTimeout(doneTimer);
     };
-  }, [open, reduceMotion, short, finishMs, exitMs]);
+  }, [prefersReduced, short, finishMs, exitMs]);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          key="app-splash"
-          className="app-splash"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: exitMs / 1000, ease: EASE.easeIn }}
-          aria-hidden="true"
-        >
-          <div className="app-splash__glow" />
-          <motion.div
-            className="app-splash__stage"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.88 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.04 }}
-            transition={
-              reduceMotion
-                ? { duration: DUR.tab, ease: EASE.outExpo }
-                : {
-                    opacity: { duration: stageOpacityDur, ease: EASE.outExpo },
-                    scale: stageSpring,
-                  }
-            }
-          >
-            <TaziaMark
-              size={APP_SPLASH.markPx}
-              labelled={false}
-              partMotion={
-                skipParts
-                  ? undefined
-                  : {
-                      outlineA: {
-                        initial: { opacity: 0, scale: 0.94 },
-                        animate: { opacity: 1, scale: 1 },
-                        transition: {
-                          duration: partTweenDur,
-                          ease: EASE.outExpo,
-                          delay: delay.outlineA,
-                        },
-                        style: { transformOrigin: '50% 50%' },
-                      },
-                      outlineB: {
-                        initial: { opacity: 0, scale: 0.94 },
-                        animate: { opacity: 1, scale: 1 },
-                        transition: {
-                          duration: partTweenDur,
-                          ease: EASE.outExpo,
-                          delay: delay.outlineB,
-                        },
-                        style: { transformOrigin: '50% 50%' },
-                      },
-                      island: {
-                        initial: { opacity: 0, scale: 0.55, y: 12 },
-                        animate: { opacity: 1, scale: 1, y: 0 },
-                        transition: {
-                          ...partSpring,
-                          delay: delay.island,
-                        },
-                        style: { transformOrigin: '50% 60%' },
-                      },
-                      arrow: {
-                        initial: { opacity: 0, x: -14, scale: 0.88 },
-                        animate: { opacity: 1, x: 0, scale: 1 },
-                        transition: {
-                          ...partSpring,
-                          delay: delay.arrow,
-                        },
-                        style: { transformOrigin: '20% 50%' },
-                      },
-                    }
+    <motion.div
+      className={`app-splash${skipChoreography ? ' app-splash--static' : ' app-splash--play'}`}
+      style={{ pointerEvents: isPresent ? 'auto' : 'none' }}
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      exit={{
+        opacity: 0,
+        transition: { duration: exitSec, ease: EXIT_EASE },
+      }}
+      role="group"
+      aria-labelledby={wordmarkId}
+    >
+      <motion.div
+        className="app-splash__stage"
+        exit={
+          prefersReduced
+            ? undefined
+            : {
+                opacity: 0,
+                scale: 1.07,
+                transition: { duration: exitSec * 0.9, ease: EXIT_EASE },
               }
-            />
-            <motion.p
-              className="app-splash__wordmark type-display"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-              transition={{
-                duration: reduceMotion ? DUR.micro : wordmarkDur,
-                ease: EASE.outExpo,
-                delay: skipParts ? 0.06 : delay.wordmark,
-              }}
-            >
-              {t('brand')}
-            </motion.p>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        }
+      >
+        <div className="app-splash__glow" aria-hidden="true" />
+
+        <div className="brand-intro-layout">
+          <div className="brand-intro-cluster">
+            <div className="brand-intro-cluster__mark">
+              {skipChoreography ? (
+                <TaziaMark size={APP_SPLASH.markPx} labelled={false} />
+              ) : (
+                <SplashMark size={APP_SPLASH.markPx} />
+              )}
+            </div>
+
+            <div className="intro-copy-block">
+              <p id={wordmarkId} className="app-splash__wordmark">
+                {t('brand')}
+              </p>
+            </div>
+          </div>
+          <div className="intro-btn-wrap app-splash__cta-slot" aria-hidden="true" />
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

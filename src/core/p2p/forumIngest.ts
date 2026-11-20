@@ -7,6 +7,7 @@ import {
   threadDeletedByEvent,
 } from '../forum/threadDelete';
 import {
+  isForumEventWithinWireBudget,
   isValidForumEvent,
   MAX_PUBLISH_PER_MINUTE,
   type ForumEvent,
@@ -47,6 +48,11 @@ export class ForumIngest {
     return snapshotForSync(this.localMessages);
   }
 
+  /** Full local forum history (e.g. hydrate UI after join dead-zone). */
+  getForumSnapshot(): ForumEvent[] {
+    return [...this.localMessages.values()].sort((a, b) => a.createdAtMs - b.createdAtMs);
+  }
+
   async ingest(
     event: ForumEvent,
     opts: {
@@ -61,6 +67,10 @@ export class ForumIngest {
       if (opts.source === 'sync') this.deps.onRejectedSync?.();
       return false;
     }
+    if (!isForumEventWithinWireBudget(event)) {
+      if (opts.source === 'sync') this.deps.onRejectedSync?.();
+      return false;
+    }
 
     if (!opts.skipRateLimit) {
       if (opts.liveUserId) {
@@ -68,7 +78,8 @@ export class ForumIngest {
         if (!this.deps.rateLimiter.allow(opts.liveUserId, MAX_PUBLISH_PER_MINUTE)) {
           return false;
         }
-      } else if (opts.source === 'fallback' || opts.source === 'sync') {
+      } else if (opts.source === 'fallback') {
+        // Sync is historical catch-up — do not truncate large snapshots via publish rate.
         if (!this.deps.rateLimiter.allow(event.authorUserId, MAX_PUBLISH_PER_MINUTE)) {
           return false;
         }
@@ -94,10 +105,7 @@ export class ForumIngest {
         peerFirstSeenAtMs: this.deps.peerFirstSeenAtMs,
       });
       if (reason === 'delete-vote-parent-missing') {
-        if (opts.source === 'sync') {
-          this.deps.onRejectedSync?.();
-          return false;
-        }
+        // Live and sync: queue until DELETE_PROPOSE lands (sync batches can arrive out of order).
         this.queuePendingDeleteVote(event);
         return false;
       }
@@ -164,7 +172,8 @@ export class ForumIngest {
     if (!events?.length) return;
     this.pendingLive.delete(userId);
     for (const ev of events) {
-      await this.ingest(ev, { liveUserId: ev.authorUserId, source: 'live' });
+      // Queued without a pin — treat as fallback, not fake WebRTC live binding.
+      await this.ingest(ev, { liveUserId: null, source: 'fallback' });
     }
   }
 
@@ -189,8 +198,9 @@ export class ForumIngest {
     if (!parentId) return;
     const list = this.pendingDeleteVotes.get(parentId) ?? [];
     if (list.some((e) => e.msgId === event.msgId)) return;
+    // Drop newest when full — do not FIFO-evict earlier ayees (ballot grief).
+    if (list.length >= 40) return;
     list.push(event);
-    if (list.length > 40) list.shift();
     this.pendingDeleteVotes.set(parentId, list);
     window.setTimeout(() => {
       const cur = this.pendingDeleteVotes.get(parentId);
@@ -204,8 +214,8 @@ export class ForumIngest {
   private queuePendingLive(event: ForumEvent) {
     const list = this.pendingLive.get(event.authorUserId) ?? [];
     if (list.some((e) => e.msgId === event.msgId)) return;
+    if (list.length >= 40) return;
     list.push(event);
-    if (list.length > 40) list.shift();
     this.pendingLive.set(event.authorUserId, list);
     window.setTimeout(() => {
       const cur = this.pendingLive.get(event.authorUserId);

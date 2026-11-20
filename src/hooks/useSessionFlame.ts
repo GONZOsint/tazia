@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 const SESSION_LIT_KEY = 'tazia-session-lit';
 
@@ -22,16 +22,26 @@ function writeLit(on: boolean): void {
 /**
  * App-level flame session (not zone membership).
  * Survives tab navigations; cleared by burnSession's sessionStorage.clear().
+ *
+ * `autoIgnite` is cold-load only (initial invite). Later hashchange invites
+ * must not silently skip Encender llama.
+ *
+ * When returning from extinguish (`burnNotice`), ignore any stale lit flag so
+ * the landing ritual / notice path can run.
  */
-export function useSessionFlame(opts?: { autoIgnite?: boolean }) {
-  const [lit, setLit] = useState(() => readLit() || Boolean(opts?.autoIgnite));
-
-  useEffect(() => {
-    if (opts?.autoIgnite && !readLit()) {
-      writeLit(true);
-      setLit(true);
+export function useSessionFlame(opts?: { autoIgnite?: boolean; burnNotice?: boolean }) {
+  const [lit, setLit] = useState(() => {
+    if (opts?.burnNotice) {
+      writeLit(false);
+      return false;
     }
-  }, [opts?.autoIgnite]);
+    if (readLit()) return true;
+    if (opts?.autoIgnite) {
+      writeLit(true);
+      return true;
+    }
+    return false;
+  });
 
   const ignite = useCallback(() => {
     writeLit(true);

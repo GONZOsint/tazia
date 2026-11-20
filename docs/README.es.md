@@ -14,6 +14,8 @@ Si un número de cifrado o de mensajes en red no coincide con un texto, **priori
 | Seguridad (qué protege y qué no; burn vs voto de borrado) | [`SECURITY.md`](SECURITY.md) | [`SECURITY.es.md`](SECURITY.es.md) |
 | Protocolo TAZEP (formato, sync, borrado unánime) | [`PROTOCOL.md`](PROTOCOL.md) | [`PROTOCOL.es.md`](PROTOCOL.es.md) |
 | Conexión TURN / ICE (cuando no os encontráis) | [`TURN.md`](TURN.md) | [`TURN.es.md`](TURN.es.md) |
+| TURN nativo (exe Win/Mac + APK Android) | [`tools/tazia-turn/README.md`](../tools/tazia-turn/README.md) | igual |
+| Coturn Docker (opcional) | [`docker/coturn/README.md`](../docker/coturn/README.md) · [`install/`](../docker/coturn/install/README.md) | igual |
 | Spike SDP/QR (experimento, no en la app) | [`sdp-qr-spike.md`](sdp-qr-spike.md) | [`sdp-qr-spike.es.md`](sdp-qr-spike.es.md) |
 
 ## Papers

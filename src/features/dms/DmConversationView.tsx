@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { MAX_DM_BODY_CHARS, type DirectMessage } from '../../core/protocol';
@@ -8,7 +17,7 @@ import { formatClockTime } from '../../core/utils/inviteLink';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
 import { PlaneSendIcon } from '../../components/ui/PlaneSendIcon';
 import { PeerAvatar } from '../../components/content/PeerAvatar';
-import { peerAvatarSeed as cachedPeerAvatarSeed } from '../../core/avatar/peerSeedCache';
+import { resolvePeerAvatarSeed } from '../../core/avatar/peerSeedCache';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
 import {
   TAP,
@@ -21,7 +30,7 @@ import {
 
 const NEAR_BOTTOM_PX = 96;
 
-interface DmConversationViewProps {
+export interface DmConversationViewProps {
   selfUserId: string;
   peerId: string;
   peerAlias: string;
@@ -30,6 +39,28 @@ interface DmConversationViewProps {
   trustStore?: TrustStore | null;
   onSend: (body: string) => Promise<boolean>;
   onBack: () => void;
+}
+
+interface ThreadMeta {
+  peerId: string;
+  messages: DirectMessage[];
+  knownIds: Set<string>;
+  freshIds: Set<string>;
+  fromSendIds: Set<string>;
+  firstContentIds: Set<string>;
+  wasEmpty: boolean;
+}
+
+function createInitialMeta(peerId: string, messages: DirectMessage[]): ThreadMeta {
+  return {
+    peerId,
+    messages,
+    knownIds: new Set(messages.map((m) => m.msgId)),
+    freshIds: new Set(),
+    fromSendIds: new Set(),
+    firstContentIds: new Set(),
+    wasEmpty: messages.length === 0,
+  };
 }
 
 export function DmConversationView({
@@ -45,26 +76,80 @@ export function DmConversationView({
   const t = useT();
   const { locale } = useLocale();
   const reduceMotion = useReducedMotion();
+  const inputId = useId();
+
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [pendingSends, setPendingSends] = useState(0);
   const [trustTick, setTrustTick] = useState(0);
+  const [meta, setMeta] = useState<ThreadMeta>(() => createInitialMeta(peerId, messages));
+
   const { planeKey, launching: planeLaunching, trigger: triggerPlane } = usePlaneLaunch();
   const logRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const stickToBottomRef = useRef(true);
   const forceScrollRef = useRef(false);
-  const enterReadyRef = useRef(false);
-  const knownIdsRef = useRef<Set<string>>(new Set());
-  const seededRef = useRef(false);
-  const fromSendIdsRef = useRef<Set<string>>(new Set());
-  const pendingSendLandsRef = useRef(0);
-  const firstContentIdsRef = useRef<Set<string>>(new Set());
-  const wasEmptyRef = useRef(messages.length === 0);
+  const mountedRef = useRef(false);
+  const peerIdRef = useRef(peerId);
+
+  if (meta.peerId !== peerId) {
+    setMeta(createInitialMeta(peerId, messages));
+    setBody('');
+    setSending(false);
+    setPendingSends(0);
+  } else if (meta.messages !== messages) {
+    const knownIds = new Set(meta.knownIds);
+    const freshIds = new Set<string>();
+    const fromSendIds = new Set(meta.fromSendIds);
+    const firstContentIds = new Set(meta.firstContentIds);
+    let wasEmpty = meta.wasEmpty;
+    let remainingSends = pendingSends;
+
+    for (const m of messages) {
+      if (knownIds.has(m.msgId)) continue;
+      knownIds.add(m.msgId);
+      freshIds.add(m.msgId);
+      if (wasEmpty && firstContentIds.size === 0) {
+        firstContentIds.add(m.msgId);
+        wasEmpty = false;
+      }
+      if (
+        m.fromUserId === selfUserId &&
+        remainingSends > 0 &&
+        !fromSendIds.has(m.msgId)
+      ) {
+        fromSendIds.add(m.msgId);
+        remainingSends -= 1;
+      }
+    }
+
+    setMeta({
+      peerId,
+      messages,
+      knownIds,
+      freshIds,
+      fromSendIds,
+      firstContentIds,
+      wasEmpty,
+    });
+    if (remainingSends !== pendingSends) {
+      setPendingSends(remainingSends);
+    }
+  }
 
   useEffect(() => {
-    enterReadyRef.current = true;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
+
+  useEffect(() => {
+    peerIdRef.current = peerId;
+    stickToBottomRef.current = true;
+    forceScrollRef.current = false;
+  }, [peerId]);
 
   useEffect(() => {
     if (!trustStore) return;
@@ -86,38 +171,6 @@ export function DmConversationView({
     resizeComposer();
   }, [body, resizeComposer]);
 
-  const freshIds = useMemo(() => {
-    const fresh = new Set<string>();
-    if (!seededRef.current) return fresh;
-    for (const m of messages) {
-      if (knownIdsRef.current.has(m.msgId)) continue;
-      fresh.add(m.msgId);
-      if (wasEmptyRef.current && firstContentIdsRef.current.size === 0) {
-        firstContentIdsRef.current.add(m.msgId);
-        wasEmptyRef.current = false;
-      }
-      if (
-        m.fromUserId === selfUserId &&
-        pendingSendLandsRef.current > 0 &&
-        !fromSendIdsRef.current.has(m.msgId)
-      ) {
-        fromSendIdsRef.current.add(m.msgId);
-        pendingSendLandsRef.current -= 1;
-      }
-    }
-    return fresh;
-  }, [messages, selfUserId]);
-
-  useLayoutEffect(() => {
-    if (!seededRef.current) {
-      knownIdsRef.current = new Set(messages.map((m) => m.msgId));
-      seededRef.current = true;
-      wasEmptyRef.current = messages.length === 0;
-      return;
-    }
-    for (const m of messages) knownIdsRef.current.add(m.msgId);
-  }, [messages]);
-
   const updateStick = () => {
     const el = logRef.current;
     if (!el) return;
@@ -135,17 +188,20 @@ export function DmConversationView({
       bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
     });
     return () => window.cancelAnimationFrame(id);
-  }, [messages.length, reduceMotion]);
+  }, [messages.length, peerId, reduceMotion]);
 
   const sendBody = async () => {
-    if (!body.trim() || sending) return;
+    const trimmed = body.trim();
+    if (!trimmed || sending) return;
+    const sendPeerId = peerId;
     setSending(true);
     triggerPlane();
-    pendingSendLandsRef.current += 1;
+    setPendingSends((n) => n + 1);
     forceScrollRef.current = true;
     stickToBottomRef.current = true;
     try {
-      const ok = await onSend(body.trim());
+      const ok = await onSend(trimmed);
+      if (!mountedRef.current || peerIdRef.current !== sendPeerId) return;
       if (ok) {
         haptic(HAPTIC_TAP);
         setBody('');
@@ -154,19 +210,22 @@ export function DmConversationView({
           resizeComposer();
         });
       } else {
-        pendingSendLandsRef.current = Math.max(0, pendingSendLandsRef.current - 1);
+        setPendingSends((n) => Math.max(0, n - 1));
       }
     } finally {
-      setSending(false);
+      if (mountedRef.current && peerIdRef.current === sendPeerId) {
+        setSending(false);
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     void sendBody();
   };
 
-  const onComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const onComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void sendBody();
@@ -175,31 +234,35 @@ export function DmConversationView({
 
   const hasText = Boolean(body.trim());
   const canSend = hasText && !sending;
+  const sendLabel = sending ? t('dmsSending') : t('dmsSend');
 
   return (
     <main className="mx-auto flex h-full min-h-0 w-full max-w-[720px] flex-1 flex-col px-4 pt-3 pb-4 sm:px-8 sm:pt-5 sm:pb-6 md:pb-6">
       <header className="shrink-0 border-b border-border/80 pb-2.5">
         <div className="flex items-center gap-2.5">
           <motion.button
-            whileTap={TAP}
+            whileTap={reduceMotion ? undefined : TAP}
             transition={TAP_TRANSITION}
             type="button"
             onClick={onBack}
-            className="icon-action icon-action--ghost -ml-1.5 focus-visible:outline-2 focus-visible:outline-accent"
+            className="icon-action icon-action--ghost -ml-1.5 cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             aria-label={t('dmsBack')}
+            title={t('dmsBack')}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </motion.button>
           <div className="min-w-0 flex-1">
             <h1 className="type-title flex min-w-0 items-center gap-2 text-ink">
               <PeerAvatar
-                avatarSeed={peerAvatarSeed || cachedPeerAvatarSeed(peerId)}
+                avatarSeed={resolvePeerAvatarSeed(peerAvatarSeed, peerId)}
                 size={32}
                 label={peerAlias}
+                animated={false}
               />
               <span className="truncate">{peerAlias}</span>
               {peerVerified && (
                 <span
+                  role="img"
                   className="inline-flex shrink-0 text-ok"
                   title={t('trustVerified')}
                   aria-label={t('trustVerified')}
@@ -231,20 +294,19 @@ export function DmConversationView({
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const isSelf = msg.fromUserId === selfUserId;
-            const animateEnter = enterReadyRef.current;
-            const isFresh = animateEnter && freshIds.has(msg.msgId);
-            const firstContent = firstContentIdsRef.current.has(msg.msgId);
-            const fromSend = fromSendIdsRef.current.has(msg.msgId) && !firstContent;
+            const isFresh = meta.freshIds.has(msg.msgId);
+            const firstContent = meta.firstContentIds.has(msg.msgId);
+            const fromSend = meta.fromSendIds.has(msg.msgId) && !firstContent;
             const enter = resolveBubbleEnter(reduceMotion, {
               fromSend,
               firstContent,
             });
-            const showSeal = isSelf;
+
             return (
               <motion.div
                 key={msg.msgId}
                 layout={false}
-                initial={animateEnter ? enter.initial : false}
+                initial={isFresh ? enter.initial : false}
                 animate={enter.animate}
                 exit={enter.exit}
                 transition={enter.transition}
@@ -262,11 +324,11 @@ export function DmConversationView({
                         : { opacity: 1 }
                     }
                   >
-                    {showSeal && (
+                    {isSelf && (
                       <motion.span
                         className="inline-flex shrink-0"
                         aria-hidden="true"
-                        initial={isFresh ? sealIcon.initial : false}
+                        initial={isFresh && !reduceMotion ? sealIcon.initial : false}
                         animate={sealIcon.animate}
                       >
                         <Lock className="h-2.5 w-2.5" strokeWidth={2.4} />
@@ -285,16 +347,16 @@ export function DmConversationView({
       </div>
 
       <form
-        onSubmit={(e) => void handleSubmit(e)}
+        onSubmit={handleSubmit}
         className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 border-t border-border/60 bg-bg/90 px-3 py-2.5 backdrop-blur-md md:static md:bottom-auto md:z-auto md:mt-4 md:rounded-[var(--radius-panel)] md:border md:border-border md:bg-surface-raised/95 md:p-3"
       >
         <div className="dm-composer mx-auto w-full max-w-[720px]">
-          <label className="sr-only" htmlFor="dm-body">
+          <label className="sr-only" htmlFor={inputId}>
             {t('dmsSend')}
           </label>
           <textarea
             ref={inputRef}
-            id="dm-body"
+            id={inputId}
             value={body}
             maxLength={MAX_DM_BODY_CHARS}
             rows={1}
@@ -306,12 +368,13 @@ export function DmConversationView({
             enterKeyHint="send"
           />
           <motion.button
-            whileTap={canSend ? TAP : undefined}
+            whileTap={canSend && !reduceMotion ? TAP : undefined}
             transition={TAP_TRANSITION}
             type="submit"
             disabled={!canSend}
-            aria-label={sending ? t('dmsSending') : t('dmsSend')}
-            className={`dm-composer__send inline-flex h-10 w-10 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-accent ${
+            aria-label={sendLabel}
+            title={sendLabel}
+            className={`dm-composer__send inline-flex h-10 w-10 cursor-pointer select-none items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed ${
               hasText ? 'dm-composer__send--ready btn-accent-sheen' : ''
             }`}
           >

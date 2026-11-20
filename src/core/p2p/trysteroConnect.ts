@@ -32,6 +32,9 @@ export async function openTrysteroRoom(
         trickleIce: true,
         rtcConfig,
         ...(options.turnConfig?.length ? { turnConfig: options.turnConfig } : {}),
+        ...(options.relayUrls?.length
+          ? { relayConfig: { urls: options.relayUrls } }
+          : {}),
       },
       roomId
     );

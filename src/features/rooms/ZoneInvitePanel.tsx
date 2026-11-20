@@ -71,14 +71,15 @@ export function ZoneInvitePanel({ roomId, phrase, compact = false }: ZoneInviteP
         onConfirm={() => {
           setIncludePhrase(true);
           setConfirmOpen(false);
-          // Let the QR fire ritual land before the toast competes for attention.
+          // Quiet confirm after the QR line settles — short info, not a warning banner.
           window.setTimeout(() => {
             toast.push({
               message: t('phraseInLinkToast'),
-              tone: 'warning',
+              tone: 'info',
               dedupeKey: 'phrase-in-link',
+              durationMs: 1800,
             });
-          }, SECRET_FRAME_MS);
+          }, Math.min(420, SECRET_FRAME_MS));
         }}
         onCancel={() => setConfirmOpen(false)}
       />

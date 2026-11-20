@@ -1,0 +1,377 @@
+@layer components {
+  /* Plaza reply tree — continuous vertical rail + branch */
+  .thread-node {
+    position: relative;
+  }
+  .thread-node--nested {
+    padding-left: 1.15rem;
+  }
+  .thread-node--nested::before {
+    content: '';
+    position: absolute;
+    left: 0.35rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+    border-radius: 1px;
+  }
+  .thread-node--nested.is-last::before {
+    bottom: auto;
+    height: 1.15rem;
+  }
+  .thread-node--nested::after {
+    content: '';
+    position: absolute;
+    left: 0.35rem;
+    top: 1.05rem;
+    width: 0.7rem;
+    height: 2px;
+    background: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+    border-radius: 1px;
+  }
+
+  /* Plaza posts */
+  .plaza-post {
+    position: relative;
+    border-radius: var(--radius-msg);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-raised);
+    padding: 0.65rem 0.85rem 0.7rem 0.95rem;
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
+    transition:
+      box-shadow var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo);
+  }
+  @media (min-width: 640px) {
+    .plaza-post {
+      padding: 0.75rem 1rem 0.8rem 1.05rem;
+    }
+  }
+  .plaza-post--nested {
+    background: color-mix(in oklab, var(--color-bg) 70%, var(--color-surface-raised));
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-border) 40%, transparent);
+  }
+  .plaza-post--self {
+    border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-accent) 28%, transparent);
+    background: color-mix(in oklab, var(--color-accent-soft) 55%, var(--color-surface-raised));
+  }
+  .plaza-post--self.plaza-post--nested {
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-accent) 18%, transparent);
+  }
+  .plaza-post.is-highlighted {
+    border-color: color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-accent) 40%, transparent),
+      0 0 18px color-mix(in oklab, var(--color-accent) 16%, transparent);
+  }
+
+  /* Parent panel clips at inset-0 — keep crown inside this padding box. */
+  .plaza-reader {
+    /* Room for title rim crown (~header circle height feel on a wide card). */
+    padding-top: 3.25rem;
+  }
+  .plaza-title {
+    position: relative;
+    overflow: visible;
+    isolation: isolate;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 55%, transparent);
+    border-radius: var(--radius-panel);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    padding: 0.75rem 0.85rem 0.8rem 1rem;
+    box-shadow:
+      0 1px 0 color-mix(in oklab, #fff 22%, transparent),
+      0 0 18px color-mix(in oklab, var(--color-accent) 14%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 28%, transparent);
+    transition:
+      background-color var(--dur-ritual) var(--ease-out-expo),
+      border-color var(--dur-ritual) var(--ease-out-expo),
+      box-shadow var(--dur-ritual) var(--ease-out-expo),
+      color var(--dur-ritual) var(--ease-out-expo);
+  }
+  .plaza-title.is-lit {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    border-color: color-mix(in oklab, var(--color-accent) 70%, transparent);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, #fff 28%, transparent),
+      0 0 26px color-mix(in oklab, var(--color-accent) 28%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 32%, transparent);
+  }
+  .plaza-title.is-dying {
+    background: color-mix(in oklab, var(--color-accent) 28%, var(--color-surface-raised));
+    border-color: color-mix(in oklab, var(--fire-mid) 35%, var(--color-border));
+    color: color-mix(in oklab, var(--color-on-accent) 55%, var(--color-ink));
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent);
+  }
+  .plaza-title__fire {
+    position: absolute;
+    /* Full-bleed rim — fire hugs the rounded side edges. */
+    left: 0;
+    width: 100%;
+    /* Slightly shorter than pill; closer to Apagar llama tongue scale. */
+    height: 52px;
+    bottom: calc(100% - 6px);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .plaza-title__label {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    flex: 1 1 auto;
+    margin: 0;
+    color: inherit;
+    line-height: var(--leading-snug);
+    overflow-wrap: anywhere;
+  }
+  .plaza-title__extinguish {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    align-self: center;
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-on-accent);
+  }
+  @media (hover: hover) {
+    .plaza-title__extinguish:hover {
+      border-color: color-mix(in oklab, #000 18%, transparent);
+      background: color-mix(in oklab, #000 12%, transparent);
+      color: var(--color-on-accent);
+    }
+  }
+
+  /* Unanimous delete ballot — fire chrome */
+  .plaza-delete-ballot {
+    margin-top: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--fire-mid) 42%, var(--color-danger-border));
+    border-radius: var(--radius-panel);
+    background: color-mix(in oklab, var(--color-danger-bg) 72%, var(--fire-edge));
+    padding: 0.85rem 1rem 0.9rem;
+    box-shadow:
+      0 0 18px color-mix(in oklab, var(--fire-edge) 12%, transparent),
+      inset 0 1px 0 color-mix(in oklab, var(--fire-core) 12%, transparent);
+  }
+  .plaza-delete-ballot__icon {
+    color: color-mix(in oklab, var(--fire-mid) 70%, var(--color-danger-ink));
+    filter: drop-shadow(0 0 4px color-mix(in oklab, var(--fire-mid) 28%, transparent));
+  }
+  .plaza-delete-ballot__title {
+    color: color-mix(in oklab, var(--color-danger-ink) 55%, var(--fire-core));
+  }
+  .plaza-delete-ballot__meta {
+    color: color-mix(in oklab, var(--color-danger-ink) 58%, var(--fire-mid));
+    opacity: 0.85;
+  }
+  .plaza-delete-ballot__aye {
+    margin-top: 0.75rem;
+    display: inline-flex;
+    min-height: 44px;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-radius: var(--radius-ctrl);
+    border: 1px solid color-mix(in oklab, var(--fire-mid) 55%, var(--color-danger-border));
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--color-danger) 70%, var(--fire-edge)),
+      color-mix(in oklab, var(--fire-mid) 55%, var(--color-danger))
+    );
+    padding: 0.5rem 0.85rem;
+    font: inherit;
+    font-weight: 600;
+    color: var(--color-on-danger);
+    box-shadow: 0 0 14px color-mix(in oklab, var(--fire-mid) 22%, transparent);
+  }
+  .plaza-delete-ballot__aye:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+  .plaza-delete-ballot__aye:disabled {
+    opacity: 0.5;
+  }
+  .plaza-delete-ballot__aye:focus-visible {
+    outline: 2px solid var(--fire-core);
+    outline-offset: 2px;
+  }
+  @media (min-width: 640px) {
+    .plaza-delete-ballot__aye {
+      width: auto;
+    }
+  }
+  .plaza-delete-ballot__track {
+    margin-top: 0.65rem;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--fire-edge) 22%, var(--color-border));
+  }
+  .plaza-delete-ballot__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--fire-edge), var(--fire-mid), var(--fire-core));
+    box-shadow: 0 0 8px color-mix(in oklab, var(--fire-mid) 40%, transparent);
+    transition: width var(--dur-switch) var(--ease-out-expo);
+  }
+
+  .plaza-topic-pending {
+    border-color: color-mix(in oklab, var(--fire-mid) 36%, transparent) !important;
+    background: color-mix(in oklab, var(--fire-edge) 10%, var(--color-surface-raised));
+  }
+  .plaza-topic-pending__ember {
+    color: color-mix(in oklab, var(--fire-mid) 75%, var(--color-warn));
+    filter: drop-shadow(0 0 3px color-mix(in oklab, var(--fire-mid) 35%, transparent));
+  }
+
+  /* Messenger-style bubbles: soft radius with a flatter corner on the seat side */
+  .dm-bubble {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    max-width: 80%;
+    border-radius: var(--radius-msg) var(--radius-msg) var(--radius-msg) 5px;
+    padding: 0.55rem 0.85rem 0.45rem;
+    font-size: var(--type-body);
+    line-height: var(--leading-message);
+    border: 1px solid color-mix(in oklab, var(--color-border) 72%, transparent);
+    background: var(--color-surface-raised);
+    color: var(--color-ink);
+    text-wrap: pretty;
+  }
+  .dm-bubble--self {
+    border-radius: var(--radius-msg) var(--radius-msg) 5px var(--radius-msg);
+    border-color: transparent;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  .dm-bubble__meta {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--color-muted);
+  }
+  .dm-bubble--self .dm-bubble__meta {
+    color: color-mix(in oklab, var(--color-on-accent) 68%, transparent);
+  }
+
+  /* Compact chat composer — single-line feel, grows with content */
+  .dm-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.45rem;
+    border-radius: calc(var(--radius-panel) + 4px);
+    border: 1px solid color-mix(in oklab, var(--color-border) 88%, var(--color-ink));
+    background: color-mix(in oklab, var(--color-surface-raised) 88%, var(--color-bg));
+    padding: 0.35rem 0.35rem 0.35rem 0.75rem;
+    transition:
+      border-color var(--dur-micro) var(--ease-out-expo),
+      box-shadow var(--dur-micro) var(--ease-out-expo);
+  }
+  .dm-composer:focus-within {
+    border-color: color-mix(in oklab, var(--color-accent) 42%, var(--color-border));
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 18%, transparent);
+  }
+  .dm-composer__field {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 2.5rem;
+    max-height: 7.5rem;
+    resize: none;
+    border: 0;
+    background: transparent;
+    padding: 0.55rem 0.2rem;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--color-ink);
+    outline: none;
+    field-sizing: content;
+  }
+  .dm-composer__field::placeholder {
+    color: var(--color-muted);
+    opacity: 0.78;
+  }
+  .dm-composer__field:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  .dm-composer__send {
+    flex-shrink: 0;
+    border: 0;
+    background: var(--color-surface);
+    color: var(--color-accent);
+    transition:
+      background-color var(--dur-micro) var(--ease-out-expo),
+      color var(--dur-micro) var(--ease-out-expo),
+      opacity var(--dur-micro) var(--ease-out-expo);
+  }
+  .dm-composer__send:disabled:not(.dm-composer__send--ready) {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .dm-composer__send--ready {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  .dm-composer__send--ready:disabled {
+    cursor: wait;
+    opacity: 0.85;
+  }
+  @media (hover: hover) {
+    .dm-composer__send--ready:not(:disabled):hover {
+      background: var(--color-accent-hover);
+    }
+  }
+
+  .thread-quote {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: calc(var(--radius-ctrl) - 2px);
+    border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+    background: color-mix(in oklab, var(--color-bg) 88%, var(--color-surface-raised));
+    font-size: var(--type-caption);
+    line-height: var(--leading-snug);
+    letter-spacing: var(--tracking-caption);
+    color: var(--color-muted);
+  }
+  .thread-quote--composer {
+    margin-top: 0;
+    border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    background: color-mix(in oklab, var(--color-accent-soft) 35%, var(--color-bg));
+  }
+
+  /* New-bonfire composer: FireBurnButton crown along the title banner when publishing. */
+  .composer-ignite-banner {
+    overflow: visible;
+    /* Accent sample for mountFireButton color probe. */
+    background-color: transparent;
+    color: var(--color-accent);
+  }
+  .composer-ignite-banner.is-lit {
+    border-color: color-mix(in oklab, var(--color-accent) 42%, var(--color-border));
+  }
+  .composer-ignite-banner__fire {
+    position: absolute;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 56px;
+    bottom: calc(100% - 10px);
+    pointer-events: none;
+    z-index: 0;
+  }
+}

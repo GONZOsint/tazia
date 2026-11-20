@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import {
   Check,
   ChevronDown,
@@ -15,6 +15,8 @@ import { motion, useReducedMotion } from 'motion/react';
 import { useT } from '../../i18n';
 import type { MessageKey } from '../../i18n';
 import { clearIpConsent } from '../../core/utils/ipConsent';
+import { clearTurnConfig } from '../rooms/TurnRelaySettings';
+import { clearNostrRelayConfig } from '../rooms/nostrRelayConfig';
 import {
   TAP,
   TAP_TRANSITION,
@@ -31,20 +33,22 @@ type IconComp = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 't
 function HelpQuickSteps({ steps }: { steps: readonly string[] }) {
   const t = useT();
   const reduceMotion = useReducedMotion();
+  const titleId = useId();
   const [active, setActive] = useState(1);
-  const stepsAnimatedRef = useRef(false);
-  const animateSteps = !stepsAnimatedRef.current;
-  if (!stepsAnimatedRef.current) stepsAnimatedRef.current = true;
 
   const total = steps.length;
   const progress = total > 1 ? (active - 1) / (total - 1) : 1;
   const isLast = active === total;
 
   return (
-    <section className="mt-8" aria-labelledby="help-steps-title">
+    <section className="mt-8" aria-labelledby={titleId}>
       <div className="help-section-label">
-        <h2 id="help-steps-title">{t('helpStepsTitle')}</h2>
-        <span className={`help-step-hint ${isLast ? 'is-ember' : ''}`} aria-live="polite">
+        <h2 id={titleId}>{t('helpStepsTitle')}</h2>
+        <span
+          className={`help-step-hint ${isLast ? 'is-ember' : ''}`}
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {t('helpStepOf', { n: active, total })}
         </span>
       </div>
@@ -64,29 +68,21 @@ function HelpQuickSteps({ steps }: { steps: readonly string[] }) {
             const isActive = n === active;
             return (
               <motion.li
-                key={label}
-                initial={
-                  !animateSteps
-                    ? false
-                    : reduceMotion
-                      ? zoneBootReduced.initial
-                      : listRowEnter.initial
-                }
+                key={i}
+                initial={reduceMotion ? zoneBootReduced.initial : listRowEnter.initial}
                 animate={reduceMotion ? zoneBootReduced.animate : listRowEnter.animate}
-                transition={
-                  animateSteps && !reduceMotion ? staggerChild(i, 0.05).transition : undefined
-                }
+                transition={!reduceMotion ? staggerChild(i, 0.05).transition : undefined}
               >
                 <button
                   type="button"
-                  className={`help-step ${reached ? 'is-reached' : ''} ${
+                  className={`help-step cursor-pointer select-none ${reached ? 'is-reached' : ''} ${
                     isActive ? 'is-active' : ''
                   } ${n === total ? 'is-burn' : ''}`}
                   aria-current={isActive ? 'step' : undefined}
                   onClick={() => setActive(n)}
                   onFocus={() => setActive(n)}
-                  onMouseEnter={() => {
-                    if (window.matchMedia('(hover: hover)').matches) setActive(n);
+                  onPointerEnter={(e) => {
+                    if (e.pointerType === 'mouse') setActive(n);
                   }}
                 >
                   <span className="help-step__num" aria-hidden="true">
@@ -147,13 +143,19 @@ function HelpAccordion({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerId = useId();
+  const panelId = useId();
 
   return (
-    <div className={`help-accordion ${dashed ? 'help-accordion--dashed' : ''} ${open ? 'is-open' : ''}`}>
+    <div
+      className={`help-accordion ${dashed ? 'help-accordion--dashed' : ''} ${open ? 'is-open' : ''}`}
+    >
       <button
+        id={triggerId}
         type="button"
-        className="help-accordion__trigger"
+        className="help-accordion__trigger cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         aria-expanded={open}
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="help-accordion__left">
@@ -169,7 +171,14 @@ function HelpAccordion({
           aria-hidden="true"
         />
       </button>
-      <div className="help-accordion__panel" aria-hidden={!open}>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={triggerId}
+        className="help-accordion__panel"
+        aria-hidden={!open}
+        inert={!open}
+      >
         <div className="help-accordion__inner">
           <div className="help-accordion__content">{children}</div>
         </div>
@@ -180,6 +189,7 @@ function HelpAccordion({
 
 function HelpForgetButton() {
   const t = useT();
+  const reduceMotion = useReducedMotion();
   const [state, setState] = useState<'idle' | 'confirming' | 'done'>('idle');
   const timerRef = useRef<number | null>(null);
 
@@ -206,12 +216,21 @@ function HelpForgetButton() {
     <section className="help-forget">
       <div className="help-forget__row">
         <motion.button
-          whileTap={TAP}
+          whileTap={state === 'done' || reduceMotion ? undefined : TAP}
           transition={TAP_TRANSITION}
           type="button"
-          className={`help-forget__btn ${state === 'confirming' ? 'is-confirming' : ''} ${
+          aria-disabled={state === 'done' || undefined}
+          className={`help-forget__btn select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            state === 'done' ? 'cursor-default' : 'cursor-pointer'
+          } ${state === 'confirming' ? 'is-confirming' : ''} ${
             state === 'done' ? 'is-done' : ''
           }`}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && state === 'confirming') {
+              e.stopPropagation();
+              reset();
+            }
+          }}
           onClick={() => {
             if (state === 'idle') {
               setState('confirming');
@@ -225,6 +244,8 @@ function HelpForgetButton() {
             if (state === 'confirming') {
               if (timerRef.current) window.clearTimeout(timerRef.current);
               clearIpConsent();
+              clearTurnConfig({ emitCleared: false });
+              clearNostrRelayConfig();
               setState('done');
               timerRef.current = window.setTimeout(reset, FORGET_DONE_MS);
             }
@@ -237,9 +258,10 @@ function HelpForgetButton() {
         </motion.button>
         <span
           className={`help-forget__status ${state === 'done' ? 'is-visible' : ''}`}
+          role="status"
           aria-live="polite"
         >
-          {t('helpForgetDone')}
+          {state === 'done' ? t('helpForgetDone') : ''}
         </span>
       </div>
       <p className="help-forget__hint">{t('helpForgetHint')}</p>
@@ -268,8 +290,12 @@ const TECH_ROWS: Array<{ key: MessageKey; val: MessageKey }> = [
 
 export function HowItWorksView() {
   const t = useT();
+  const tribeTitleId = useId();
+  const networkTitleId = useId();
+  const safetyTitleId = useId();
 
   const steps = [
+    t('helpStepsIgnite'),
     t('helpSteps1'),
     t('helpSteps2'),
     t('helpSteps3'),
@@ -278,6 +304,7 @@ export function HowItWorksView() {
   ] as const;
 
   const flowChips = [
+    t('helpFlowIgnite'),
     t('helpFlowOpen'),
     t('helpFlowPhrase'),
     t('helpFlowQr'),
@@ -297,9 +324,9 @@ export function HowItWorksView() {
 
       <HelpQuickSteps steps={steps} />
 
-      <section className="mt-8" aria-labelledby="help-tribe-title">
+      <section className="mt-8" aria-labelledby={tribeTitleId}>
         <div className="help-section-label">
-          <h2 id="help-tribe-title">{t('helpTribeSection')}</h2>
+          <h2 id={tribeTitleId}>{t('helpTribeSection')}</h2>
         </div>
         <div className="help-cards">
           <HelpInfoCard
@@ -332,15 +359,18 @@ export function HowItWorksView() {
             title={t('helpNoServerTitle')}
             body={t('helpNoServerBody')}
           >
-            <div className="help-flow" aria-label={t('helpNoServerBody')}>
+            <div className="help-flow" role="list">
               {flowChips.map((chip, i) => (
-                <span key={chip} className="contents">
+                <span key={i} className="contents">
                   {i > 0 ? (
                     <span className="help-flow__arrow" aria-hidden="true">
                       →
                     </span>
                   ) : null}
-                  <span className={`help-flow__chip ${i === flowChips.length - 1 ? 'is-burn' : ''}`}>
+                  <span
+                    role="listitem"
+                    className={`help-flow__chip ${i === flowChips.length - 1 ? 'is-burn' : ''}`}
+                  >
                     {chip}
                   </span>
                 </span>
@@ -350,9 +380,9 @@ export function HowItWorksView() {
         </div>
       </section>
 
-      <section className="mt-8" aria-labelledby="help-network-title">
+      <section className="mt-8" aria-labelledby={networkTitleId}>
         <div className="help-section-label">
-          <h2 id="help-network-title">{t('helpNetworkSection')}</h2>
+          <h2 id={networkTitleId}>{t('helpNetworkSection')}</h2>
         </div>
         <HelpAccordion title={t('helpFixTitle')} icon={Wrench}>
           <div className="help-trouble">
@@ -378,10 +408,16 @@ export function HowItWorksView() {
         </HelpAccordion>
       </section>
 
-      <section className="help-safety mt-8" aria-labelledby="help-safety-title">
-        <div className="help-safety__header" id="help-safety-title">
+      <section className="help-safety mt-8" aria-labelledby={safetyTitleId}>
+        <h2 className="help-safety__header" id={safetyTitleId}>
           <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{t('helpSafetyTitle')}</span>
+        </h2>
+        <div className="mb-4 rounded-[var(--radius-panel)] border border-border bg-bg px-4 py-3">
+          <p className="type-label text-ink">{t('helpPrivacyTitle')}</p>
+          <p className="type-caption mt-1 text-muted">{t('helpPrivacyBody')}</p>
+          <p className="type-label mt-3 text-ink">{t('helpOfflineTitle')}</p>
+          <p className="type-caption mt-1 text-muted">{t('helpOfflineBody')}</p>
         </div>
         <ul className="help-safety__list">
           {SAFETY_ITEMS.map(({ tone, lead, body }) => (
@@ -404,7 +440,7 @@ export function HowItWorksView() {
         </ul>
       </section>
 
-      <section className="mt-6">
+      <div className="mt-6">
         <HelpAccordion title={t('helpMore')} dashed>
           <div className="help-tech">
             {TECH_ROWS.map(({ key, val }) => (
@@ -416,7 +452,7 @@ export function HowItWorksView() {
             <p className="help-tech__docs type-caption">{t('helpMoreBody')}</p>
           </div>
         </HelpAccordion>
-      </section>
+      </div>
 
       <div className="mt-8">
         <HelpForgetButton />

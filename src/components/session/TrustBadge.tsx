@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Shield, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import type { TrustLevel } from '../../core/trust/trustStore';
 import { useT } from '../../i18n';
 import { DUR, EASE, badgePop } from '../../motion/tokens';
@@ -24,48 +24,57 @@ const CONFIG: Record<
   changed: { Icon: ShieldAlert, color: 'text-danger', labelKey: 'trustChanged' },
 };
 
+const POP_ANIMATE = {
+  opacity: [0.5, 1, 1],
+  scale: [0.82, 1.18, 1],
+  filter: [
+    'drop-shadow(0 0 0 transparent)',
+    'drop-shadow(0 0 8px color-mix(in oklab, var(--color-accent) 55%, transparent))',
+    'drop-shadow(0 0 0 transparent)',
+  ],
+};
+
+const IDLE_ANIMATE = {
+  opacity: 1,
+  scale: 1,
+  filter: 'none',
+};
+
+const POP_TRANSITION = { duration: DUR.pulse, ease: EASE.outExpo };
+
 export function TrustBadge({ level, className = '' }: TrustBadgeProps) {
   const t = useT();
-  const { Icon, color, labelKey } = CONFIG[level];
+  const reduceMotion = useReducedMotion();
+  const { Icon, color, labelKey } = CONFIG[level] ?? CONFIG.new;
   const label = t(labelKey);
-  const prevLevel = useRef(level);
+
+  const [prevLevel, setPrevLevel] = useState(level);
   const [pop, setPop] = useState(false);
 
+  if (prevLevel !== level) {
+    setPrevLevel(level);
+    setPop(level === 'verified' && !reduceMotion);
+  }
+
   useEffect(() => {
-    if (prevLevel.current !== level && level === 'verified') {
-      setPop(true);
-      const id = window.setTimeout(() => setPop(false), DUR.pulse * 1000);
-      prevLevel.current = level;
-      return () => window.clearTimeout(id);
-    }
-    prevLevel.current = level;
-  }, [level]);
+    if (!pop) return;
+    const id = window.setTimeout(() => setPop(false), Math.round(DUR.pulse * 1000));
+    return () => window.clearTimeout(id);
+  }, [pop]);
+
+  const isPopping = pop && !reduceMotion;
 
   return (
     <motion.span
-      className={`inline-flex items-center ${color} ${className}`}
-      title={label}
+      role="img"
       aria-label={label}
-      animate={
-        pop
-          ? {
-              opacity: [0.5, 1],
-              scale: [0.82, 1.18, 1],
-              filter: [
-                'drop-shadow(0 0 0 transparent)',
-                'drop-shadow(0 0 8px color-mix(in oklab, var(--color-accent) 55%, transparent))',
-                'drop-shadow(0 0 0 transparent)',
-              ],
-            }
-          : { opacity: 1, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }
-      }
-      transition={
-        pop
-          ? { duration: DUR.pulse, ease: EASE.outExpo }
-          : badgePop.transition
-      }
+      title={label}
+      initial={false}
+      className={`inline-flex shrink-0 items-center ${color} ${className}`}
+      animate={isPopping ? POP_ANIMATE : IDLE_ANIMATE}
+      transition={isPopping ? POP_TRANSITION : badgePop.transition}
     >
-      <Icon className="h-4 w-4" aria-hidden="true" />
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
     </motion.span>
   );
 }

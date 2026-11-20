@@ -1,0 +1,527 @@
+@layer components {
+  .input-base {
+    min-height: var(--tap-min);
+    width: 100%;
+    border-radius: var(--radius-ctrl);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-raised);
+    padding: 0.625rem 0.75rem;
+    /* ≥16px avoids iOS zoom; keep absolute for form fields */
+    font-size: 16px;
+    line-height: var(--leading-snug);
+    color: var(--color-ink);
+    transition:
+      border-color var(--dur-micro) var(--ease-out-expo),
+      box-shadow var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo);
+  }
+  .input-base::placeholder {
+    color: var(--color-faint);
+  }
+  .input-base:focus {
+    border-color: var(--color-ink);
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 32%, transparent);
+  }
+  textarea.input-base {
+    line-height: 1.45;
+    min-height: 7.5rem;
+  }
+
+  .tap-target {
+    min-height: var(--tap-min);
+    min-width: var(--tap-min);
+  }
+
+  .chrome-elev {
+    box-shadow: var(--shadow-chrome);
+  }
+  @media (min-width: 768px) {
+    .chrome-elev-md-flat {
+      box-shadow: none;
+    }
+  }
+
+  /*
+   * Mobile bottom nav — M3 navigation bar anatomy (container + active indicator + badge).
+   * Height token kept in sync with App / composer `bottom-[calc(...)]` offsets.
+   */
+  .bottom-nav {
+    border-top: 1px solid color-mix(in oklab, var(--color-border) 85%, transparent);
+    background: color-mix(in oklab, var(--color-surface-raised) 92%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+  .bottom-nav__list {
+    min-height: var(--bottom-nav-h);
+  }
+  .bottom-nav__item {
+    min-height: var(--bottom-nav-h);
+    padding-top: 0.35rem;
+    padding-bottom: 0.3rem;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .bottom-nav__icon-slot {
+    width: 3.5rem; /* ~56 — M3 indicator width band */
+    height: 2rem; /* 32 — M3 active indicator height */
+  }
+  .bottom-nav__indicator {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: var(--color-accent-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent) 28%, transparent);
+  }
+  .bottom-nav__label {
+    font-size: var(--type-caption);
+    letter-spacing: 0.02em;
+  }
+  .bottom-nav__badge {
+    top: -0.15rem;
+    right: 0.15rem;
+  }
+  html.dark .bottom-nav {
+    background: color-mix(in oklab, var(--color-surface-raised) 88%, transparent);
+  }
+
+  .shadow-sheet {
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .logo-mark {
+    box-shadow: var(--shadow-logo);
+  }
+
+  /*
+   * Cold-start splash — choreography ported from splash UI mock:
+   * island focal → radar → stroke-draw outlines → arrow thrust → brand.
+   */
+  .app-splash {
+    --splash-spring-fast: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+    --splash-spring-soft: cubic-bezier(0.38, 1.21, 0.22, 1);
+    --splash-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --splash-motion: 1;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    background: color-mix(in oklab, var(--color-bg) 28%, #000);
+    pointer-events: auto;
+  }
+  @media (min-width: 1024px) and (pointer: fine) {
+    .app-splash {
+      --splash-motion: 0.82;
+    }
+  }
+  .app-splash__stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    will-change: transform, opacity;
+  }
+  .app-splash__glow {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: clamp(190px, 44vw, 300px);
+    height: clamp(190px, 44vw, 300px);
+    border-radius: 50%;
+    translate: -50% -50%;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--color-accent) 24%, transparent) 0%,
+      transparent 68%
+    );
+    /* Static blur — only transform/opacity animate (GPU). */
+    filter: blur(24px);
+    opacity: 0;
+    transform: scale(0.4);
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  .app-splash--play .app-splash__glow {
+    animation: splash-glow-breath calc(950ms * var(--splash-motion)) var(--splash-enter)
+      calc(40ms * var(--splash-motion)) forwards;
+  }
+  .app-splash--static .app-splash__glow {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+
+  .splash-mark {
+    display: block;
+    overflow: visible;
+  }
+  .splash-mark__radar {
+    transform-origin: 252px 237px;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .splash-mark__island {
+    transform-origin: 252px 237px;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .splash-mark__outline {
+    stroke: var(--color-brand-cream);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    fill-opacity: 0;
+    stroke-opacity: 1;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .splash-mark__outline--a {
+    transform-origin: 210px 245px;
+  }
+  .splash-mark__outline--b {
+    transform-origin: 380px 230px;
+  }
+  .splash-mark__arrow {
+    transform-origin: 366px 355px;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .splash-mark__flash {
+    transform-origin: 366px 355px;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+
+  .app-splash--play .splash-mark__island {
+    animation: splash-island-focal calc(480ms * var(--splash-motion)) var(--splash-spring-fast)
+      calc(40ms * var(--splash-motion)) forwards;
+  }
+  .app-splash--play .splash-mark__radar {
+    animation: splash-ring-pulse calc(760ms * var(--splash-motion)) var(--splash-enter)
+      calc(60ms * var(--splash-motion)) forwards;
+  }
+  .app-splash--play .splash-mark__outline--a {
+    animation:
+      splash-enter-arc-a calc(560ms * var(--splash-motion)) var(--splash-spring-soft)
+        calc(150ms * var(--splash-motion)) forwards,
+      splash-draw-stroke calc(560ms * var(--splash-motion)) var(--splash-enter)
+        calc(150ms * var(--splash-motion)) forwards,
+      splash-fill-crossfade calc(280ms * var(--splash-motion)) ease-out
+        calc(460ms * var(--splash-motion)) forwards;
+  }
+  .app-splash--play .splash-mark__outline--b {
+    animation:
+      splash-enter-arc-b calc(540ms * var(--splash-motion)) var(--splash-spring-soft)
+        calc(220ms * var(--splash-motion)) forwards,
+      splash-draw-stroke calc(520ms * var(--splash-motion)) var(--splash-enter)
+        calc(220ms * var(--splash-motion)) forwards,
+      splash-fill-crossfade calc(280ms * var(--splash-motion)) ease-out
+        calc(520ms * var(--splash-motion)) forwards;
+  }
+  .app-splash--play .splash-mark__arrow {
+    animation: splash-arrow-thrust calc(440ms * var(--splash-motion)) var(--splash-spring-fast)
+      calc(520ms * var(--splash-motion)) forwards;
+  }
+  .app-splash--play .splash-mark__flash {
+    animation: splash-flash-pop calc(420ms * var(--splash-motion)) var(--splash-enter)
+      calc(620ms * var(--splash-motion)) forwards;
+  }
+
+  .app-splash--static .splash-mark__island,
+  .app-splash--static .splash-mark__outline,
+  .app-splash--static .splash-mark__arrow {
+    opacity: 1;
+    fill-opacity: 1;
+    stroke-opacity: 0;
+    stroke-dashoffset: 0;
+    transform: none;
+  }
+  .app-splash--static .splash-mark__radar,
+  .app-splash--static .splash-mark__flash {
+    opacity: 0;
+  }
+
+  .app-splash__wordmark {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 5vw, 1.875rem);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding-left: 0.12em;
+    line-height: 1.15;
+    color: var(--color-brand-cream);
+    pointer-events: none;
+    text-wrap: balance;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .app-splash--play .app-splash__wordmark {
+    animation: splash-brand-settle calc(420ms * var(--splash-motion)) var(--splash-enter)
+      calc(680ms * var(--splash-motion)) forwards;
+  }
+  .app-splash--static .app-splash__wordmark {
+    opacity: 0.95;
+  }
+
+  .app-splash__cta-slot {
+    visibility: hidden;
+    min-height: 5.25rem;
+    width: 9.75rem;
+    pointer-events: none;
+  }
+
+  @keyframes splash-glow-breath {
+    0% {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    45% {
+      opacity: 0.95;
+      transform: scale(1.06);
+    }
+    100% {
+      opacity: 0.32;
+      transform: scale(0.96);
+    }
+  }
+  @keyframes splash-ring-pulse {
+    0% {
+      opacity: 0.5;
+      transform: scale(0.48);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.18);
+    }
+  }
+  @keyframes splash-island-focal {
+    0% {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes splash-enter-arc-a {
+    0% {
+      opacity: 0;
+      transform: translate(-12px, 6px) scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0, 0) scale(1);
+    }
+  }
+  @keyframes splash-enter-arc-b {
+    0% {
+      opacity: 0;
+      transform: translate(12px, -6px) scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0, 0) scale(1);
+    }
+  }
+  @keyframes splash-draw-stroke {
+    0% {
+      stroke-dashoffset: 100;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes splash-fill-crossfade {
+    0% {
+      fill-opacity: 0;
+      stroke-opacity: 1;
+    }
+    100% {
+      fill-opacity: 1;
+      stroke-opacity: 0;
+    }
+  }
+  @keyframes splash-arrow-thrust {
+    0% {
+      opacity: 0;
+      transform: translate(-22px, 4px) scale(0.82);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0, 0) scale(1);
+    }
+  }
+  @keyframes splash-flash-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    35% {
+      opacity: 0.65;
+      transform: scale(1.15);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.7);
+    }
+  }
+  @keyframes splash-brand-settle {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 0.95;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-splash__glow,
+    .splash-mark__radar,
+    .splash-mark__island,
+    .splash-mark__outline,
+    .splash-mark__arrow,
+    .splash-mark__flash,
+    .app-splash__wordmark {
+      animation: none !important;
+    }
+    .app-splash__glow {
+      opacity: 0.35;
+      transform: none;
+      will-change: auto;
+    }
+    .splash-mark__island,
+    .splash-mark__outline,
+    .splash-mark__arrow,
+    .app-splash__wordmark {
+      opacity: 1 !important;
+      transform: none !important;
+      fill-opacity: 1 !important;
+      stroke-opacity: 0 !important;
+      stroke-dashoffset: 0 !important;
+    }
+    .splash-mark__radar,
+    .splash-mark__flash {
+      opacity: 0 !important;
+    }
+  }
+
+  .panel-surface {
+    border-radius: var(--radius-panel);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-raised);
+  }
+
+  /* Panel padding tiers — keep hub / sidebar / modal spacing cohesive */
+  .panel-pad {
+    padding: var(--space-4);
+  }
+  @media (min-width: 640px) {
+    .panel-pad {
+      padding: 1.25rem; /* 20 — between space-4 and space-5 */
+    }
+  }
+  .panel-pad--dense {
+    padding: 0.875rem; /* 14 */
+  }
+  @media (min-width: 640px) {
+    .panel-pad--dense {
+      padding: var(--space-4);
+    }
+  }
+  .panel-pad--modal {
+    padding: 1.25rem;
+  }
+  @media (min-width: 640px) {
+    .panel-pad--modal {
+      padding: 1.5rem;
+    }
+  }
+
+  /* Dense chrome clear/dismiss — full tap, visually compact */
+  .icon-action--dense {
+    height: 2rem;
+    width: 2rem;
+    min-height: 2rem;
+    min-width: 2rem;
+  }
+
+  /* Icon-only chrome actions — shared radius/hover, no layout shift */
+  .icon-action {
+    display: inline-flex;
+    min-height: var(--tap-min);
+    min-width: var(--tap-min);
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-ctrl);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    transition:
+      background-color var(--dur-micro) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo),
+      color var(--dur-micro) var(--ease-out-expo);
+  }
+  @media (hover: hover) {
+    .icon-action:hover {
+      background-color: var(--color-surface);
+      border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-ink));
+    }
+  }
+  .icon-action[aria-pressed='true'],
+  .icon-action.is-active {
+    border-color: color-mix(in oklab, var(--color-accent) 50%, var(--color-border));
+    background-color: var(--color-accent-soft);
+  }
+  .icon-action--ghost {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--color-muted);
+  }
+  @media (hover: hover) {
+    .icon-action--ghost:hover {
+      background-color: var(--color-surface);
+      border-color: transparent;
+      color: var(--color-ink);
+    }
+  }
+  .icon-action--danger {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--color-danger-ink);
+  }
+  @media (hover: hover) {
+    .icon-action--danger:hover {
+      border-color: var(--color-danger-border);
+      background-color: var(--color-danger-bg);
+      color: var(--color-danger-ink);
+    }
+  }
+
+  /* Disclosure chevrons — same spin everywhere */
+  .chevron-spin {
+    transition: transform var(--dur-medium) var(--ease-out-expo);
+  }
+  .chevron-spin.is-open {
+    transform: rotate(180deg);
+  }
+
+  /* List / row press feedback without Framer on every item */
+  .pressable {
+    transition:
+      background-color var(--dur-tap) var(--ease-out-expo),
+      border-color var(--dur-tap) var(--ease-out-expo),
+      transform var(--dur-tap) var(--ease-out-expo);
+  }
+  .pressable:active {
+    transform: scale(0.985);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pressable:active {
+      transform: none;
+    }
+  }
+}

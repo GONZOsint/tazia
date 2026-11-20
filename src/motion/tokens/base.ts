@@ -1,10 +1,3 @@
-export const MOTION_TIER = {
-  frequent: 'frequent',
-  panel: 'panel',
-  ritual: 'ritual',
-  climax: 'climax',
-} as const;
-
 export const DUR = {
   tap: 0.1,
   micro: 0.14,
@@ -19,11 +12,6 @@ export const DUR = {
   /** Rare ornament (zone-join / QR ring) — keep ≤ 0.4s. */
   pulse: 0.36,
   ring: 0.36,
-  /**
-   * Climax-short Motion tier (~0.68s) — conceptual band between ritual and
-   * full BURN canvas. CSS card collapse uses `--dur-burn` (900ms), not this.
-   */
-  burn: 0.68,
   /** Peer materialize / mesh birth settle. */
   birth: 0.28,
   /** QR success / passphrase douse. */

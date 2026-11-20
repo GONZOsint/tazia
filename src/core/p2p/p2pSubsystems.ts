@@ -96,6 +96,7 @@ export function createP2pSubsystems(input: {
     peerFirstSeenAtMs: (userId) => input.online.peerFirstSeenAtMs.get(userId),
     onRejectedSync: () => {
       syncVerify.noteRejected();
+      input.options.onRejectedSync?.();
     },
   });
 
@@ -123,6 +124,8 @@ export function createP2pSubsystems(input: {
     forumIngest,
     syncAnswerLimiter,
     getEventsForSync: () => forumIngest.getEventsForSync(),
+    // Counter already bumped in SyncVerify.rejectOnce — only refresh RoomState.
+    onRejectedSync: () => input.options.onRejectedSync?.(),
   });
 
   const fallbackBridge = createFallbackBridge({
@@ -144,6 +147,8 @@ export function createP2pSubsystems(input: {
     getLastPresence: () => input.session.lastPresence,
     isLiveWebrtc: input.online.isLiveWebrtc,
     mergeOnline: () => input.online.mergeOnline(),
+    knownEncPubKeys: input.knownEncPubKeys,
+    readOnlineUserIds: () => input.online.readOnlineUserIds(),
   });
 
   return {

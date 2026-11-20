@@ -93,13 +93,16 @@ Get-FileHash .\release\tazia-single.html -Algorithm SHA256
 
 - It does not include a PWA service worker (no “install app” like on Pages).
 - It does not replace the multi-asset GitHub Pages deploy.
-- It is for USB carry, auditing one build, or using the app without serving `dist/`.
+- It is for USB carry, auditing one build, or using the app without serving `dist/` (GitHub does not see those visits).
+- Single-file CSP allows `unsafe-inline` (inlined scripts); the multi-asset Pages deploy is stricter.
+
+On every Pages deploy, Actions also uploads the **`tazia-single`** artifact (`tazia-single.html` + `.sha256` + `MANIFEST.txt`) so you can download it without building locally.
 
 ---
 
 ## Tips
 
-**📶 Connection.** Same Wi‑Fi usually works better. If you can’t connect, **Zones → Fix** walks through next steps. Sometimes you need your own TURN server ([guide](docs/TURN.md)): a relay that helps when direct P2P can’t get through the router or CGNAT.
+**📶 Connection.** Same Wi‑Fi usually works better. If you can’t connect, **Zones → Fix** walks through next steps. Sometimes you need your own TURN server ([guide](docs/TURN.md)): a relay that helps when direct P2P can’t get through the router or CGNAT. You can also set **custom Nostr relays** (`wss://`) there instead of the public signaling pool.
 
 **🔑 Phrase.** It’s the key to the room — don’t post it in a public chat. Verifying in **Tribe** (emoji sequence) confirms you’re talking to the right person.
 

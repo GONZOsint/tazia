@@ -33,8 +33,8 @@ export const MESH_BIRTH = {
  * Progress bar drains over the same window; hover must pause both.
  */
 export const TOAST = {
-  successMs: 2500,
-  infoMs: 2500,
+  successMs: 2200,
+  infoMs: 1800,
   warningMs: 4000,
   errorMs: 5000,
 } as const;

@@ -1,50 +1,31 @@
 /**
  * Splash / zone boot / hero idle.
+ * Splash timing mirrors the optimized splash UI mock (island → stroke → arrow → brand).
  */
 
 export const APP_SPLASH = {
-  /** Align with wordmark settle so the tap lands as the mark “locks”. */
-  hapticMs: 720,
-  /** Invite deep-link — hold + fade, no part stagger. */
-  shortMs: 780,
-  finishMs: 1680,
-  exitMs: 360,
-  /** Must stay ≥ exitMs so reduced-motion still gets a clean fade. */
-  reducedMs: 400,
+  /** Haptic when arrow locks (~620ms in mock). */
+  hapticMs: 620,
+  /** Invite deep-link — hold + clean fade, no SVG choreography. */
+  shortMs: 560,
+  /**
+   * Full beat: CSS assembly ~1.1s + short hold, then accelerated exit.
+   * dismissAt = finishMs − exitMs ≈ 1450 (mock minBrandTime).
+   */
+  finishMs: 1690,
+  /** Accelerated veil (mock curve-exit) — don’t make the user wait. */
+  exitMs: 240,
+  shortExitMs: 180,
+  reducedMs: 300,
+  reducedExitMs: 150,
+  /** Splash + Ignite shared seat (mock uses ~148–220; we keep denser UI scale). */
   markPx: 128,
   storageKey: 'tazia.splashSeen',
-  /** Stage veil — opacity tween (fast-in / slow-out entrance curve). */
-  stageOpacityDur: 0.36,
-  /** Cream outline strokes (tween). */
-  partTweenDur: 0.42,
-  /** Wordmark rise after the mark assembles. */
-  wordmarkDur: 0.4,
   /**
-   * Island / chevron — duration-based spring so settle lines up with tweens.
-   * @see https://motion.dev/docs/react-transitions#visualduration
+   * Ignite copy after veil is mostly clear.
+   * dismissAt 1450 + ~70% of exit.
    */
-  partSpring: {
-    type: 'spring' as const,
-    visualDuration: 0.42,
-    bounce: 0.16,
-  },
-  /** Stage scale uses a slightly longer settle than parts. */
-  stageSpring: {
-    type: 'spring' as const,
-    visualDuration: 0.48,
-    bounce: 0.14,
-  },
-  /**
-   * Assembly order (paint order): outlines → island → arrow → wordmark.
-   * Gaps sit in the 0.08–0.2s stagger band so the eye reads sequence, not lag.
-   */
-  delay: {
-    outlineA: 0.08,
-    outlineB: 0.18,
-    island: 0.34,
-    arrow: 0.54,
-    wordmark: 0.72,
-  },
+  copyHandoffMs: 1620,
 } as const;
 
 /**
@@ -52,11 +33,12 @@ export const APP_SPLASH = {
  * No confetti, no canvas. CTAs stay interactive from first paint.
  */
 export const ZONE_BOOT = {
-  sparkMs: 80,
-  glowMs: 200,
-  ctaAtMs: 360,
+  sparkMs: 70,
+  glowMs: 180,
+  /** Gives CTA entrance 240ms to settle cleanly inside finishMs (520ms). */
+  ctaAtMs: 280,
   finishMs: 520,
-  /** Revisit / post-burn mini-boot — must cover ignite-ring-expand (--dur-ignite-ring). */
+  /** Revisit / post-burn mini-boot — keep in sync with CSS --dur-ignite-ring. */
   revisitMs: 320,
   reducedMs: 140,
   storageKey: 'tazia.bootSeen',
@@ -66,19 +48,20 @@ export const ZONE_BOOT = {
 
 /**
  * Hero landing idle presence — decorative only (transform/opacity).
- * Pause when tab hidden or prefers-reduced-motion. Mirror --dur-hero-* in CSS.
+ * Pause when tab hidden, prefers-reduced-motion, or coarse pointer (parallax).
+ * Mirror --dur-hero-* in CSS.
  */
 export const HERO_IDLE = {
-  /** Mark halo breath cycle. */
-  breathMs: 7200,
+  /** Mark halo breath cycle (offset from sheenMs to avoid mechanical sync). */
+  breathMs: 6800,
   /** Primary CTA idle sheen cycle. */
-  sheenMs: 7200,
+  sheenMs: 8600,
   /** Wait after last interaction before a single CTA nudge. */
   nudgeAfterMs: 10000,
-  /** Nudge animation length. */
-  nudgeMs: 680,
+  /** Crisp nudge length (not sluggish). */
+  nudgeMs: 520,
   /** Silence after a nudge before the idle timer may fire again. */
   nudgeCooldownMs: 22000,
-  /** Max parallax offset (px) for mark follow. */
+  /** Max parallax offset (px) for mark follow (fine-pointer devices only). */
   parallaxPx: 3.5,
 } as const;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type AnimationEvent } from 'r
 
 /** Must match `--dur-qr-scan` and CSS iteration count on `.qr-laser-line`. */
 export const SCAN_SWEEP_MS = 1350;
-export const SCAN_SWEEPS = 2;
+export const SCAN_SWEEPS = 1;
 export const SCAN_SETTLE_MS = SCAN_SWEEP_MS * SCAN_SWEEPS;
 
 export function useQrScanLaser(opts: { reduceMotion: boolean | null }) {

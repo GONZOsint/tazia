@@ -35,6 +35,8 @@ export async function publishActive(
 
   refs.updateRoom(roomId, (r) => ({ ...r, isPublishing: true, roomError: null }));
   try {
+    // Always publish against the zone that was active when the user submitted —
+    // never re-target to a zone the user switched to mid-flight.
     await room.session.publishEvent({
       msgId: crypto.randomUUID(),
       type: input.type,
@@ -46,6 +48,7 @@ export async function publishActive(
     });
     return true;
   } catch (err) {
+    if (!refs.roomsRef.current.has(roomId)) return false;
     if (err instanceof P2pActionError) {
       const key = mapRoomError(err.code);
       refs.updateRoom(roomId, (r) => ({
@@ -57,7 +60,9 @@ export async function publishActive(
     }
     return false;
   } finally {
-    refs.updateRoom(roomId, (r) => ({ ...r, isPublishing: false }));
+    if (refs.roomsRef.current.has(roomId)) {
+      refs.updateRoom(roomId, (r) => ({ ...r, isPublishing: false }));
+    }
   }
 }
 
@@ -72,6 +77,8 @@ export async function sendDmActive(
   if (!room) return false;
   try {
     const dm = await room.session.sendDirectMessage(toUserId, body);
+    // Always append to the zone that sent, even if the user switched tabs/zones.
+    if (!refs.roomsRef.current.has(roomId)) return true;
     refs.updateRoom(roomId, (r) => {
       const prev = r.dmMessages[toUserId] ?? [];
       const next = appendDmMessage(prev, dm);
@@ -83,7 +90,7 @@ export async function sendDmActive(
     });
     return true;
   } catch {
-    refs.updateRoom(roomId, (r) => ({ ...r, roomError: { key: 'errDmSend' } }));
+    // DmsTabPanel toasts on false (incl. key-changed hint) — avoid Plaza roomError.
     return false;
   }
 }
@@ -103,14 +110,16 @@ export function clearDmUnreadAction(refs: ActionRefs, peerId: string) {
   }));
 }
 
-export function dismissRoomErrorAction(refs: ActionRefs) {
-  if (!refs.activeRoomIdRef.current) return;
-  refs.updateRoom(refs.activeRoomIdRef.current, (r) => ({ ...r, roomError: null }));
+export function dismissRoomErrorAction(refs: ActionRefs, roomId?: string | null) {
+  const target = roomId ?? refs.activeRoomIdRef.current;
+  if (!target) return;
+  refs.updateRoom(target, (r) => ({ ...r, roomError: null }));
 }
 
-export function dismissTransportNoticeAction(refs: ActionRefs) {
-  if (!refs.activeRoomIdRef.current) return;
-  refs.updateRoom(refs.activeRoomIdRef.current, (r) => ({ ...r, transportNotice: null }));
+export function dismissTransportNoticeAction(refs: ActionRefs, roomId?: string | null) {
+  const target = roomId ?? refs.activeRoomIdRef.current;
+  if (!target) return;
+  refs.updateRoom(target, (r) => ({ ...r, transportNotice: null }));
 }
 
 export function dismissKeyChangeAction(refs: ActionRefs, roomId: string, userId: string) {

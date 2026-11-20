@@ -255,11 +255,6 @@ export function identiconVisualFromHex(hex: string): IdenticonVisual {
   return visualFromHashBytes(hexToBytes(hex, 32));
 }
 
-/** @deprecated Prefer identiconVisualFromHex — matrix only. */
-export function identiconMatrixFromHex(hex: string): boolean[] {
-  return identiconVisualFromHex(hex).identiconMatrix;
-}
-
 const peerVisualCache = new Map<string, PeerVisual>();
 
 /** Sync read of a visual already computed via visualFromUserId. */

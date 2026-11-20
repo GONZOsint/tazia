@@ -1,4 +1,4 @@
-import type { RefObject, AnimationEvent } from 'react';
+import { useId, type AnimationEvent, type RefObject } from 'react';
 import { QrCode, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { contentSwitch } from '../../motion/tokens';
@@ -39,9 +39,12 @@ export function InviteQrCard({
   qrLocal,
   roomsQrHasSecret,
 }: InviteQrCardProps) {
+  const localNoteId = useId();
+  const secretWarnId = useId();
+
   return (
     <div className="flex w-full flex-col items-center gap-2">
-      <div ref={stageRef} className="qr-perspective mx-auto">
+      <div ref={stageRef} className="qr-perspective mx-auto select-none">
         <div
           className={`qr-ambient-glow ${includesSecret ? 'qr-ambient-glow--fire' : ''}`}
           aria-hidden="true"
@@ -73,32 +76,44 @@ export function InviteQrCard({
             <img
               src={dataUrl}
               alt={qrAlt}
+              aria-describedby={includesSecret ? `${localNoteId} ${secretWarnId}` : localNoteId}
               width={size}
               height={size}
-              className="block max-w-full rounded-[calc(var(--radius-ctrl)-4px)]"
+              decoding="sync"
+              className="block aspect-square h-auto max-w-full rounded-[calc(var(--radius-ctrl)-4px)]"
               draggable={false}
             />
           </div>
         </div>
       </div>
-      <p className="flex max-w-[16rem] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-muted">
+
+      <p
+        id={localNoteId}
+        className="flex max-w-[16rem] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-muted text-balance"
+      >
         <QrCode className="h-3.5 w-3.5 shrink-0 text-faint" aria-hidden="true" />
-        {qrLocal}
+        <span>{qrLocal}</span>
       </p>
-      <div className="flex min-h-[1.35rem] max-w-[16rem] items-center justify-center">
+
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="flex min-h-[1.35rem] max-w-[16rem] items-center justify-center"
+      >
         <AnimatePresence initial={false}>
           {includesSecret && (
             <motion.p
+              id={secretWarnId}
               key="secret-warn"
               initial={contentSwitch.initial}
               animate={contentSwitch.animate}
               exit={contentSwitch.exit}
               transition={contentSwitch.transition}
-              className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium text-warn"
-              role="status"
+              className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium leading-snug text-warn text-balance"
             >
               <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {roomsQrHasSecret}
+              <span>{roomsQrHasSecret}</span>
             </motion.p>
           )}
         </AnimatePresence>

@@ -23,9 +23,6 @@ import type { PresenceKeys } from './presenceKeys';
 import type { SyncVerify } from './syncVerify';
 import type { JoinP2pRoomOptions } from './p2pTypes';
 
-export type { FallbackPeerSet } from './fallbackPeerSet';
-export { createFallbackPeerSet } from './fallbackPeerSet';
-
 export interface FallbackBridgeDeps {
   roomId: string;
   password: string;
@@ -45,13 +42,37 @@ export interface FallbackBridgeDeps {
   getLastPresence: () => PresenceState | null;
   isLiveWebrtc: (userId: string) => boolean;
   mergeOnline: () => void;
+  /** Peers with known enc keys — candidates for dm-wrap unwrap. */
+  knownEncPubKeys: Map<string, string>;
+  /** Online (WebRTC + fallback) userIds for dm-wrap peer guessing. */
+  readOnlineUserIds: () => string[];
+}
+
+/** Cap HKDF tries per dm-wrap; prefer known-enc peers first. */
+const DM_WRAP_CANDIDATE_CAP = 16;
+
+function collectDmWrapCandidates(deps: FallbackBridgeDeps): string[] {
+  const self = deps.self.userId;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (id: string) => {
+    if (!id || id === self || seen.has(id) || out.length >= DM_WRAP_CANDIDATE_CAP) return;
+    seen.add(id);
+    out.push(id);
+  };
+  for (const id of deps.knownEncPubKeys.keys()) push(id);
+  for (const id of deps.fallbackPeers.listIds()) push(id);
+  for (const id of deps.readOnlineUserIds()) push(id);
+  return out;
 }
 
 export interface FallbackBridge {
   ensure: () => Promise<NostrFallbackBus | null>;
   publishPresence: (state: PresenceState) => Promise<void>;
-  publishForum: (event: ForumEvent, ensureIfNeeded?: boolean) => Promise<void>;
-  publishDm: (dm: DirectMessage, ensureIfNeeded?: boolean) => Promise<void>;
+  /** Returns false when no bus could be started or publish did not send. */
+  publishForum: (event: ForumEvent, ensureIfNeeded?: boolean) => Promise<boolean>;
+  /** Returns false when no bus could be started (caller should treat as undelivered). */
+  publishDm: (dm: DirectMessage, ensureIfNeeded?: boolean) => Promise<boolean>;
   requestNostrSync: () => Promise<number>;
   getBus: () => NostrFallbackBus | null;
   stopPresenceBeat: () => void;
@@ -99,16 +120,19 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
     return ensure();
   };
 
-  const publishForum = async (event: ForumEvent, ensureIfNeeded = false) => {
+  const publishForum = async (
+    event: ForumEvent,
+    ensureIfNeeded = false
+  ): Promise<boolean> => {
     const bus = await resolveBus(ensureIfNeeded);
-    if (!bus || deps.isLeft()) return;
-    await bus.publish({ v: 2, t: 'forum', event });
+    if (!bus || deps.isLeft()) return false;
+    return bus.publish({ v: 2, t: 'forum', event });
   };
 
-  const publishDm = async (dm: DirectMessage, ensureIfNeeded = false) => {
+  const publishDm = async (dm: DirectMessage, ensureIfNeeded = false): Promise<boolean> => {
     const bus = await resolveBus(ensureIfNeeded);
-    if (!bus || deps.isLeft()) return;
-    await bus.publish({ v: 2, t: 'dm', dm });
+    if (!bus || deps.isLeft()) return false;
+    return bus.publish({ v: 2, t: 'dm', dm });
   };
 
   const claimBusForLeave = async (): Promise<NostrFallbackBus | null> => {
@@ -145,7 +169,10 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
             fallbackPeers: deps.fallbackPeers,
             options: deps.options,
             isLeft: deps.isLeft,
-          })
+          }),
+          {
+            getDmPeerCandidates: () => collectDmWrapCandidates(deps),
+          }
         );
 
         // Leave raced start — stop orphan sockets and do not retain the bus.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { List, MessageSquare, MessageSquarePlus } from 'lucide-react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { AnimatePresence, motion } from 'motion/react';
@@ -26,7 +26,7 @@ import {
 import { RoomSidebar } from './RoomSidebar';
 import { ThreadComposer } from './ThreadComposer';
 import { ThreadReader, type AuthorVisualCache } from './ThreadReader';
-import { useForumAshRitual } from './useForumAshRitual';
+import { useForumDeleteHaptic } from './useForumDeleteHaptic';
 import { useForumThreadSelection } from './useForumThreadSelection';
 
 interface ForumWorkspaceProps {
@@ -78,7 +78,6 @@ export function ForumWorkspace({
 }: ForumWorkspaceProps) {
   const t = useT();
   const [authorVisuals, setAuthorVisuals] = useState<AuthorVisualCache>({});
-  const [heldAshId, setHeldAshId] = useState<string | null>(null);
 
   useEffect(() => {
     setAuthorVisuals({});
@@ -93,7 +92,7 @@ export function ForumWorkspace({
   const pendingDeleteIds = useMemo(() => computePendingDeleteIds(messages), [messages]);
   const untitled = t('readerUntitled');
 
-  /** Unfiltered — ash snapshots must not depend on search. */
+  /** Unfiltered — delete haptic snapshots must not depend on search. */
   const allThreads = useMemo(
     () => buildThreadGroups(messages, deletedIds, untitled, ''),
     [messages, deletedIds, untitled]
@@ -110,7 +109,7 @@ export function ForumWorkspace({
     setTopicsOpen,
     selectThread,
     startCompose,
-  } = useForumThreadSelection(allThreads, roomId, heldAshId);
+  } = useForumThreadSelection(allThreads, roomId);
 
   const threads = useMemo(
     () => buildThreadGroups(messages, deletedIds, untitled, searchQuery),
@@ -121,9 +120,8 @@ export function ForumWorkspace({
   useEffect(() => {
     if (!selectedThreadId) return;
     if (threads.some((th) => th.threadId === selectedThreadId)) return;
-    if (heldAshId && heldAshId === selectedThreadId) return;
     setSelectedThreadId(null);
-  }, [threads, selectedThreadId, heldAshId, setSelectedThreadId]);
+  }, [threads, selectedThreadId, setSelectedThreadId]);
 
   const activeThread = useMemo(() => {
     if (threads.length === 0) return null;
@@ -136,26 +134,7 @@ export function ForumWorkspace({
     return threads[0] ?? null;
   }, [threads, selectedThreadId]);
 
-  const onAshStart = useCallback(
-    (threadId: string) => {
-      setHeldAshId(threadId);
-      setIsComposingThread(false);
-      setSelectedThreadId(threadId);
-    },
-    [setIsComposingThread, setSelectedThreadId]
-  );
-
-  const { ashThread, reduceMotion } = useForumAshRitual(
-    allThreads,
-    deletedIds,
-    roomId,
-    onAshStart
-  );
-
-  useEffect(() => {
-    if (!ashThread) setHeldAshId(null);
-    else setHeldAshId(ashThread.threadId);
-  }, [ashThread]);
+  useForumDeleteHaptic(allThreads, deletedIds, roomId);
 
   const hasAnyThreads = hasAnyContentThreads(messages, deletedIds);
 
@@ -165,8 +144,6 @@ export function ForumWorkspace({
   }, [messages, activeThread]);
 
   const isBusy = isPublishing;
-  const displayThread = ashThread ?? activeThread;
-  const displayBallot = ashThread ? null : activeDeleteBallot;
 
   const sidebarProps = {
     roomId,
@@ -185,11 +162,9 @@ export function ForumWorkspace({
     meshStatus,
     relayActive,
     isSyncing,
-    isBusy: isBusy || Boolean(ashThread),
+    isBusy,
     onSyncNow: () => void onSyncNow(),
     pendingDeleteIds,
-    ashThread,
-    reduceMotion,
   };
 
   return (
@@ -294,31 +269,21 @@ export function ForumWorkspace({
                 </motion.div>
               ) : (
                 <motion.div
-                  key={displayThread?.threadId ?? ashThread?.threadId ?? 'idle'}
-                  initial={ashThread ? false : enterPlaza.initial}
+                  key={activeThread?.threadId ?? 'idle'}
+                  initial={enterPlaza.initial}
                   animate={enterPlaza.animate}
                   exit={enterPlaza.exit}
                   transition={enterPlaza.transition}
-                  className={`absolute inset-0 flex flex-col overflow-hidden ${
-                    ashThread
-                      ? `plaza-talk-ash-target${
-                          reduceMotion
-                            ? ' plaza-talk-incinerate plaza-talk-incinerate--reduced'
-                            : ''
-                        }`
-                      : ''
-                  }`}
-                  aria-busy={ashThread ? true : undefined}
-                  aria-label={ashThread ? t('readerDeleteIncinerating') : undefined}
+                  className="absolute inset-0 flex flex-col overflow-hidden"
                 >
-                  {isSyncing && messages.length === 0 && !ashThread ? (
+                  {isSyncing && messages.length === 0 ? (
                     <div className="space-y-4" aria-busy="true" aria-label={t('forumSyncing')}>
                       <div className="panel-surface h-32 animate-pulse" />
                       <div className="panel-surface h-24 animate-pulse" />
                     </div>
-                  ) : displayThread ? (
+                  ) : activeThread ? (
                     <ThreadReader
-                      thread={displayThread}
+                      thread={activeThread}
                       identity={profile}
                       selfUserId={selfUserId}
                       presenceAliases={presenceAliases}
@@ -326,8 +291,8 @@ export function ForumWorkspace({
                       authorVisuals={authorVisuals}
                       onAuthorVisuals={setAuthorVisuals}
                       onlineUserIds={onlineUserIds}
-                      deleteBallot={displayBallot}
-                      isBusy={isBusy || Boolean(ashThread)}
+                      deleteBallot={activeDeleteBallot}
+                      isBusy={isBusy}
                       onReplyThread={onReplyThread}
                       onProposeDeleteThread={onProposeDeleteThread}
                       onVoteDeleteThread={onVoteDeleteThread}

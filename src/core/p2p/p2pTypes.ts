@@ -37,6 +37,10 @@ export interface JoinedP2pRoom {
   getPresenceMap: () => Record<string, PresenceState>;
   getOnlineUserIds: () => string[];
   getRejectedSyncCount: () => number;
+  /** Forum events ingested before RoomState was committed (join dead-zone). */
+  getForumSnapshot: () => ForumEvent[];
+  /** Opened DMs accepted before RoomState was committed (join dead-zone). */
+  getDmSnapshot: () => DirectMessage[];
   /** After TrustStore.repin — reload VerifyKey for that peer. */
   invalidatePeerKey: (userId: string) => Promise<void>;
 }
@@ -54,7 +58,11 @@ export interface JoinP2pRoomOptions {
   onDirectMessage?: (dm: DirectMessage) => void;
   onError: (code: P2pRoomErrorCode, message: string) => void;
   onRelayFallback?: () => void;
+  /** Sync/history reject — keep RoomState.rejectedSyncCount fresh without waiting for runSync. */
+  onRejectedSync?: () => void;
   rtcConfig?: RTCConfiguration;
   turnConfig?: RTCIceServer[];
   relayOnly?: boolean;
+  /** Custom Nostr wss:// relays; omit to keep Trystero defaults. */
+  relayUrls?: string[];
 }

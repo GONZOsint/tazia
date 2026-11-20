@@ -23,7 +23,7 @@ import {
   type PresenceState,
 } from '../protocol';
 import { isValidAvatarSeed } from '../avatar/avatarSeed';
-import { buildPresenceState } from './p2pPresenceState';
+import { buildPresenceState, normalizePresenceAlias } from './p2pPresenceState';
 import type { P2pOnlineCoordinator } from './p2pOnline';
 import type { P2pSessionBag } from './p2pSubsystems';
 import { P2pActionError, type JoinP2pRoomOptions, type JoinedP2pRoom } from './p2pTypes';
@@ -63,7 +63,7 @@ export type P2pRoomActionContext = {
   fallbackBridge: FallbackBridge;
 };
 
-export async function runP2pLeave(ctx: P2pRoomActionContext): Promise<void> {
+async function runP2pLeave(ctx: P2pRoomActionContext): Promise<void> {
   if (ctx.session.left) return;
   ctx.session.left = true;
   if (ctx.pruneTimer.current) clearInterval(ctx.pruneTimer.current);
@@ -100,6 +100,10 @@ export function buildJoinedP2pRoomActions(
   return {
     leave: () => runP2pLeave(ctx),
     setPresenceAlias: async (alias: string) => {
+      const normalized = normalizePresenceAlias(alias);
+      if (!normalized) {
+        throw new P2pActionError('unknown', 'Invalid presence alias');
+      }
       const seed = session.lastPresence?.avatarSeed;
       if (!seed) {
         throw new P2pActionError(
@@ -107,7 +111,7 @@ export function buildJoinedP2pRoomActions(
           'Presence avatarSeed required; call setPresenceProfile first'
         );
       }
-      const state = buildPresenceState(alias, seed, ctx.signing, ctx.encIdentity);
+      const state = buildPresenceState(normalized, seed, ctx.signing, ctx.encIdentity);
       session.lastPresence = state;
       ctx.knownEncPubKeys.set(selfRef.userId, state.encPubKeyRawB64);
       await actions.presence.set(state);
@@ -115,10 +119,14 @@ export function buildJoinedP2pRoomActions(
       await ctx.fallbackBridge.publishPresence(state);
     },
     setPresenceProfile: async (alias: string, avatarSeed: string) => {
+      const normalized = normalizePresenceAlias(alias);
+      if (!normalized) {
+        throw new P2pActionError('unknown', 'Invalid presence alias');
+      }
       if (!isValidAvatarSeed(avatarSeed)) {
         throw new P2pActionError('unknown', 'Invalid presence avatarSeed');
       }
-      const state = buildPresenceState(alias, avatarSeed, ctx.signing, ctx.encIdentity);
+      const state = buildPresenceState(normalized, avatarSeed, ctx.signing, ctx.encIdentity);
       session.lastPresence = state;
       ctx.knownEncPubKeys.set(selfRef.userId, state.encPubKeyRawB64);
       await actions.presence.set(state);
@@ -160,12 +168,40 @@ export function buildJoinedP2pRoomActions(
         throw new P2pActionError('unknown', 'Signed event rejected by local ingest');
       }
 
+      let delivered = false;
       try {
         await actions.forumMsg.send(signed);
+        delivered = true;
       } catch {
-        /* WebRTC may be down */
+        /* try Nostr fallback below */
       }
-      await ctx.fallbackBridge.publishForum(signed, session.relayFallbackNotified);
+      if (!delivered) {
+        // WebRTC broadcast can reject when any peer's onReceive/channel flakes;
+        // retry Nostr a few times (sockets may still be CONNECTING after ensure).
+        for (let attempt = 0; attempt < 3 && !delivered; attempt++) {
+          delivered = await ctx.fallbackBridge.publishForum(signed, true);
+          if (!delivered) {
+            await new Promise((r) => window.setTimeout(r, 150 * (attempt + 1)));
+          }
+        }
+        if (delivered && !session.relayFallbackNotified) {
+          session.relayFallbackNotified = true;
+          ctx.options.onRelayFallback?.();
+        }
+      } else if (session.relayFallbackNotified) {
+        // Best-effort mirror on fallback path when already relay-active.
+        void ctx.fallbackBridge.publishForum(signed, false);
+      }
+      if (!delivered) {
+        // Alone in the zone: local ingest is enough; joiners catch up via sync.
+        const others = Object.keys(ctx.room.getUsers()).filter((id) => id !== selfRef.userId);
+        if (others.length === 0) {
+          delivered = true;
+        }
+      }
+      if (!delivered) {
+        throw new P2pActionError('unknown', 'Failed to deliver forum event');
+      }
     },
     sendDirectMessage: async (toUserId: string, body: string): Promise<DirectMessage> => {
       if (session.left) throw new P2pActionError('unknown', 'P2P session already closed');
@@ -219,13 +255,23 @@ export function buildJoinedP2pRoomActions(
       };
 
       const signed = await signDirectMessage(unsigned, ctx.signing);
-      ctx.dmIngest.markSeenLocal(signed.msgId);
+      let delivered = false;
       try {
         await actions.directMsg.send(signed, { target: toUserId });
+        delivered = true;
       } catch {
-        /* fallback */
+        /* try Nostr fallback below */
       }
-      await ctx.fallbackBridge.publishDm(signed, session.relayFallbackNotified);
+      if (!delivered) {
+        delivered = await ctx.fallbackBridge.publishDm(signed, true);
+      } else if (session.relayFallbackNotified) {
+        // Best-effort mirror on fallback path when already relay-active.
+        void ctx.fallbackBridge.publishDm(signed, false);
+      }
+      if (!delivered) {
+        throw new P2pActionError('unknown', 'Failed to deliver Susurro');
+      }
+      ctx.dmIngest.markSeenLocal(signed.msgId);
       return {
         ...signed,
         body: trimmed,
@@ -274,11 +320,8 @@ export function buildJoinedP2pRoomActions(
               transportUserId: res.userId,
             });
           }
-        } catch (err) {
-          ctx.options.onError(
-            'unknown',
-            err instanceof Error ? err.message : 'Peer sync failed'
-          );
+        } catch {
+          // Flaky mesh / empty peer sync — do not surface as a persistent Plaza roomError.
         }
       }
 
@@ -302,6 +345,8 @@ export function buildJoinedP2pRoomActions(
     },
     getOnlineUserIds: () => ctx.online.readOnlineUserIds(),
     getRejectedSyncCount: () => ctx.syncVerify.getRejectedSyncCount(),
+    getForumSnapshot: () => ctx.forumIngest.getForumSnapshot(),
+    getDmSnapshot: () => ctx.dmIngest.getDmSnapshot(),
     invalidatePeerKey: async (userId: string) => {
       const enc = ctx.trustStore.getPinnedEnc(userId);
       if (enc) ctx.knownEncPubKeys.set(userId, enc);

@@ -28,10 +28,16 @@ export class DmIngest {
   private readonly seenDmIds = new Map<string, number>();
   private readonly ingestingIds = new Set<string>();
   private readonly pendingDms = new Map<string, DirectMessage[]>();
+  /** Accepted plaintext DMs (for UI hydrate after join dead-zone). */
+  private readonly acceptedDms: DirectMessage[] = [];
   private readonly deps: DmIngestDeps;
 
   constructor(deps: DmIngestDeps) {
     this.deps = deps;
+  }
+
+  getDmSnapshot(): DirectMessage[] {
+    return [...this.acceptedDms];
   }
 
   async accept(dm: DirectMessage, transportUserId: string | null): Promise<boolean> {
@@ -77,12 +83,14 @@ export class DmIngest {
         this.pruneSeen(Date.now(), true);
       }
 
-      this.deps.onDirectMessage?.({
+      const opened: DirectMessage = {
         ...dm,
         body: plain.slice(0, MAX_DM_BODY_CHARS),
         bodyCipherB64: dm.bodyCipherB64,
         seal: 2,
-      });
+      };
+      this.acceptedDms.push(opened);
+      this.deps.onDirectMessage?.(opened);
       return true;
     } finally {
       this.ingestingIds.delete(dm.msgId);
@@ -120,8 +128,8 @@ export class DmIngest {
   private queuePendingDm(dm: DirectMessage) {
     const list = this.pendingDms.get(dm.fromUserId) ?? [];
     if (list.some((d) => d.msgId === dm.msgId)) return;
+    if (list.length >= 20) return;
     list.push(dm);
-    if (list.length > 20) list.shift();
     this.pendingDms.set(dm.fromUserId, list);
     window.setTimeout(() => {
       const cur = this.pendingDms.get(dm.fromUserId);

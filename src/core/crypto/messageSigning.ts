@@ -1,5 +1,11 @@
 import * as ed from '@noble/ed25519';
-import { canonicalForumPayload, canonicalDmPayload, type ForumEvent, type DirectMessage } from '../protocol';
+import {
+  canonicalForumPayload,
+  canonicalDmPayload,
+  MAX_SIG_B64_CHARS,
+  type ForumEvent,
+  type DirectMessage,
+} from '../protocol';
 import { b64ToBytes, bytesToB64, bytesToHex, toArrayBuffer } from './bytes';
 
 /** RFC 8410 SPKI prefix for a raw 32-byte Ed25519 public key. */
@@ -51,7 +57,7 @@ let nativeEd25519: boolean | null = null;
  * Feature-detect SubtleCrypto Ed25519 (not the same as SubtleCrypto itself).
  * @see https://caniuse.com/mdn-api_subtlecrypto_generatekey_ed25519
  */
-export async function supportsNativeEd25519(): Promise<boolean> {
+async function supportsNativeEd25519(): Promise<boolean> {
   if (nativeEd25519 !== null) return nativeEd25519;
   if (typeof crypto === 'undefined' || !crypto.subtle) {
     nativeEd25519 = false;
@@ -248,7 +254,7 @@ export async function verifySyncRes(
   sigB64: string
 ): Promise<boolean> {
   try {
-    if (!sigB64 || sigB64.length < 16) return false;
+    if (!sigB64 || sigB64.length < 16 || sigB64.length > MAX_SIG_B64_CHARS) return false;
     const payload = canonicalSyncResPayload(roomId, reqId, fromUserId, toUserId, eventsDigest);
     return await publicKey.verify(b64ToBytes(sigB64), payload);
   } catch {

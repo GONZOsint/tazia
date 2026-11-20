@@ -9,7 +9,7 @@ import {
 } from './messageSigning';
 import { b64ToBytes, bytesToB64, toArrayBuffer } from './bytes';
 import * as ed from '@noble/ed25519';
-import { LIVE_CLOCK_SKEW_MS } from '../protocol';
+import { LIVE_CLOCK_SKEW_MS, MAX_SIG_B64_CHARS } from '../protocol';
 
 export function canonicalPresenceAttestPayload(
   roomId: string,
@@ -74,7 +74,13 @@ async function verifyRaw(
   payload: Uint8Array
 ): Promise<boolean> {
   try {
-    if (!attestSigB64 || attestSigB64.length < 16) return false;
+    if (
+      !attestSigB64 ||
+      attestSigB64.length < 16 ||
+      attestSigB64.length > MAX_SIG_B64_CHARS
+    ) {
+      return false;
+    }
     const key = await importVerifyKey(signPubKeySpkiB64);
     return await key.verify(b64ToBytes(attestSigB64), payload);
   } catch {

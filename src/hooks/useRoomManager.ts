@@ -4,7 +4,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type MutableRefObject,
+  type SetStateAction,
 } from 'react';
 import { acceptIpConsent, hasIpConsent } from '../core/utils/ipConsent';
 import type { SessionError } from './sessionErrors';
@@ -14,13 +16,13 @@ import {
   type RoomState,
 } from './roomManagerTypes';
 import { TOAST } from '../motion/tokens';
-import { applyRoomUpdate } from './roomManager/roomMap';
+import { applyRoomUpdate, roomListChromeEqual } from './roomManager/roomMap';
 import {
   clearAllSyncTimers,
   runSync,
   type SyncEngineRefs,
 } from './roomManager/syncEngine';
-import { joinRoomInternal } from './roomManager/joinRoom';
+import { bumpJoinToken, joinRoomInternal } from './roomManager/joinRoom';
 import {
   attachVisibilitySync,
   burnSessionAction,
@@ -50,7 +52,9 @@ export function useRoomManager(
     onZoneIgnited?: (roomId: string, meta: { firstZone: boolean }) => void;
   }
 ) {
-  const [rooms, setRooms] = useState<Map<string, RoomState>>(new Map());
+  /** roomsRef is the source of truth; roomsVersion drives React only when UI must see it. */
+  const roomsRef = useRef<Map<string, RoomState>>(new Map());
+  const [roomsVersion, setRoomsVersion] = useState(0);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<SessionError>(null);
@@ -70,20 +74,71 @@ export function useRoomManager(
   const burnTimerRef = useRef<number | null>(null);
   const syncTimersRef = useRef<Map<string, number[]>>(new Map());
   const syncInFlightRef = useRef<Set<string>>(new Set());
-  const roomsRef = useRef<Map<string, RoomState>>(rooms);
   const activeRoomIdRef = useRef<string | null>(null);
   const joinTokensRef = useRef<Map<string, number>>(new Map());
   const isJoiningRef = useRef(false);
   const joinGenerationRef = useRef(0);
+  const tearingDownRef = useRef(false);
+  const leavingRoomIdsRef = useRef<Set<string>>(new Set());
   const forumFocusedRef = options?.forumTabFocusedRef;
   const dmsFocusedRef = options?.dmsTabFocusedRef;
   const activeDmPeerIdRef = options?.activeDmPeerIdRef;
   const onZoneIgnitedRef = useRef(options?.onZoneIgnited);
   onZoneIgnitedRef.current = options?.onZoneIgnited;
 
-  const updateRoom = useCallback((roomId: string, updater: (prev: RoomState) => RoomState) => {
-    setRooms((prev) => applyRoomUpdate(prev, roomId, updater));
+  const bumpRoomsUi = useCallback(() => {
+    setRoomsVersion((v) => v + 1);
   }, []);
+
+  /** Compatible with join/leave helpers that still call setRooms(...). */
+  const setRooms: Dispatch<SetStateAction<Map<string, RoomState>>> = useCallback(
+    (action) => {
+      const prev = roomsRef.current;
+      const next = typeof action === 'function' ? action(prev) : action;
+      if (next === prev) return;
+      roomsRef.current = next;
+      bumpRoomsUi();
+    },
+    [bumpRoomsUi]
+  );
+
+  const setSessionTearingDown = useCallback((tearingDown: boolean) => {
+    tearingDownRef.current = tearingDown;
+    if (tearingDown) {
+      // Invalidate in-flight joins immediately (do not wait for burnSessionAction).
+      joinGenerationRef.current += 1;
+      if (isJoiningRef.current) {
+        for (const id of joinTokensRef.current.keys()) bumpJoinToken(joinTokensRef, id);
+        isJoiningRef.current = false;
+        setIsJoining(false);
+      }
+      pendingJoinRef.current = null;
+    }
+  }, []);
+
+  const updateRoom = useCallback(
+    (roomId: string, updater: (prev: RoomState) => RoomState) => {
+      const prev = roomsRef.current;
+      const next = applyRoomUpdate(prev, roomId, updater);
+      if (next === prev) return;
+      const before = prev.get(roomId);
+      const after = next.get(roomId);
+      roomsRef.current = next;
+
+      const isActive = roomId === activeRoomIdRef.current;
+      // Background zones: skip React when only forum/DM bodies / presence blobs moved.
+      if (
+        !isActive &&
+        before &&
+        after &&
+        roomListChromeEqual(before, after)
+      ) {
+        return;
+      }
+      bumpRoomsUi();
+    },
+    [bumpRoomsUi]
+  );
 
   const syncRefs: SyncEngineRefs = {
     roomsRef,
@@ -94,18 +149,28 @@ export function useRoomManager(
     updateRoom,
   };
 
-  useEffect(() => {
-    roomsRef.current = rooms;
-  }, [rooms]);
+  // Read ref each render so a tab switch / other state update sees silent background commits.
+  // roomsVersion exists only to force re-render when UI must observe room changes.
+  void roomsVersion;
+  const rooms = roomsRef.current;
 
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId;
   }, [activeRoomId]);
 
+  const dismissBurnNotice = useCallback(() => {
+    if (burnTimerRef.current !== null) {
+      window.clearTimeout(burnTimerRef.current);
+      burnTimerRef.current = null;
+    }
+    setBurnNotice(false);
+  }, []);
+
   useEffect(() => {
     if (!burnNotice) return;
+    // Long backstop so landing users still see it; cleared early on ignite.
     if (burnTimerRef.current !== null) window.clearTimeout(burnTimerRef.current);
-    burnTimerRef.current = window.setTimeout(() => setBurnNotice(false), TOAST.warningMs);
+    burnTimerRef.current = window.setTimeout(() => setBurnNotice(false), TOAST.warningMs * 3);
     return () => {
       if (burnTimerRef.current !== null) window.clearTimeout(burnTimerRef.current);
     };
@@ -133,6 +198,8 @@ export function useRoomManager(
           joinTokensRef,
           isJoiningRef,
           joinGenerationRef,
+          tearingDownRef,
+          leavingRoomIdsRef,
           forumFocusedRef,
           dmsFocusedRef,
           activeDmPeerIdRef,
@@ -181,6 +248,7 @@ export function useRoomManager(
         roomId,
         roomsRef,
         joinTokensRef,
+        leavingRoomIdsRef,
         syncRefs,
         setRooms,
         setActiveRoomId,
@@ -196,6 +264,7 @@ export function useRoomManager(
       joinGenerationRef,
       isJoiningRef,
       pendingJoinRef,
+      leavingRoomIdsRef,
       syncRefs,
       setRooms,
       setActiveRoomId,
@@ -206,6 +275,14 @@ export function useRoomManager(
   const switchRoom = useCallback(
     (roomId: string) => {
       if (!roomsRef.current.has(roomId)) return;
+      // Invalidate any in-flight join so it cannot re-activate a different zone.
+      joinGenerationRef.current += 1;
+      if (isJoiningRef.current) {
+        for (const id of joinTokensRef.current.keys()) bumpJoinToken(joinTokensRef, id);
+        isJoiningRef.current = false;
+        setIsJoining(false);
+      }
+      setJoinError(null);
       setActiveRoomId(roomId);
       updateRoom(roomId, (r) => ({ ...r, unreadCount: 0 }));
       onNavigateTab('forum');
@@ -221,12 +298,12 @@ export function useRoomManager(
   );
 
   const dismissRoomError = useCallback(
-    () => dismissRoomErrorAction(actionRefs),
+    (roomId?: string | null) => dismissRoomErrorAction(actionRefs, roomId),
     [updateRoom]
   );
 
   const dismissTransportNotice = useCallback(
-    () => dismissTransportNoticeAction(actionRefs),
+    (roomId?: string | null) => dismissTransportNoticeAction(actionRefs, roomId),
     [updateRoom]
   );
 
@@ -308,6 +385,7 @@ export function useRoomManager(
     isJoining,
     joinError,
     burnNotice,
+    dismissBurnNotice,
     ipConsentNeeded,
     totalForumUnread,
     totalDmUnread,
@@ -317,6 +395,7 @@ export function useRoomManager(
     leaveRoom,
     switchRoom,
     burnSession,
+    setSessionTearingDown,
     publish,
     syncNow,
     sendDm,

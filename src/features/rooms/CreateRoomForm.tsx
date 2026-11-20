@@ -133,27 +133,23 @@ export function CreateRoomForm({
             <label htmlFor="create-phrase" className="type-label text-ink">
               {t('roomsPhraseLabel')}
             </label>
-            <SecretPhraseInput
-              id="create-phrase"
-              value={createPhrase}
-              onChange={setCreatePhrase}
-              visible={showCreatePhrase}
-              onToggleVisible={() => setShowCreatePhrase((v) => !v)}
-            />
-            <PassphraseStrengthBar
-              id={createStrength.id}
-              score={createStrength.score}
-              douseKey={douseKey}
-              className="mt-0"
-            />
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex min-w-0 items-stretch gap-1.5">
+              <div className="min-w-0 flex-1">
+                <SecretPhraseInput
+                  id="create-phrase"
+                  value={createPhrase}
+                  onChange={setCreatePhrase}
+                  visible={showCreatePhrase}
+                  onToggleVisible={() => setShowCreatePhrase((v) => !v)}
+                />
+              </div>
               <CopyButton
                 text={createPhrase}
                 label={t('roomsCopyPhrase')}
                 copiedLabel={t('copiedDefault')}
                 icon={KeyRound}
                 iconOnly
-                className="min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-1.5 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                className="inline-flex shrink-0 items-center justify-center self-stretch min-h-[44px] min-w-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 text-xs font-medium text-ink focus-visible:outline-2 focus-visible:outline-accent"
               />
               <motion.button
                 whileTap={TAP}
@@ -164,7 +160,7 @@ export function CreateRoomForm({
                   setShowCreatePhrase(true);
                   setDiceSpinKey((k) => k + 1);
                 }}
-                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 py-2 type-ui font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                className="inline-flex shrink-0 items-center gap-1.5 self-stretch min-h-[44px] rounded-[var(--radius-ctrl)] border border-border bg-bg px-3 type-ui font-medium text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <span key={diceSpinKey} className="dice-rolling">
                   <Dices className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
@@ -172,6 +168,12 @@ export function CreateRoomForm({
                 {t('roomsGeneratePhrase')}
               </motion.button>
             </div>
+            <PassphraseStrengthBar
+              id={createStrength.id}
+              score={createStrength.score}
+              douseKey={douseKey}
+              className="mt-0"
+            />
           </div>
 
           <div>
@@ -273,14 +275,15 @@ export function CreateRoomForm({
         onConfirm={() => {
           setIncludePhraseInLink(true);
           setConfirmOpen(false);
-          // Let the QR outer-line ritual land before the toast competes for attention.
+          // Quiet confirm after the QR line settles — short info, not a warning banner.
           window.setTimeout(() => {
             toast.push({
               message: t('phraseInLinkToast'),
-              tone: 'warning',
+              tone: 'info',
               dedupeKey: 'phrase-in-link',
+              durationMs: 1800,
             });
-          }, SECRET_FRAME_MS);
+          }, Math.min(420, SECRET_FRAME_MS));
         }}
         onCancel={() => setConfirmOpen(false)}
       />

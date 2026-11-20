@@ -2,7 +2,6 @@ import { ArrowLeft, KeyRound, PlusCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { Ref, RefObject } from 'react';
 import { useT } from '../../../i18n';
-import { TaziaLogo } from '../../../components/brand/TaziaLogo';
 import { BurningPhrase } from '../../../components/session/BurningPhrase';
 import {
   DUR,
@@ -12,8 +11,6 @@ import {
   ZONE_BOOT,
   stageSwitch,
   zoneBootCopy,
-  zoneBootMark,
-  zoneBootMarkShort,
   zoneBootReduced,
 } from '../../../motion/tokens';
 import { haptic, HAPTIC_TAP } from '../../../motion/haptic';
@@ -104,58 +101,29 @@ export function RoomEntryHero({
           />
           <div className="hero-landing__grid" aria-hidden="true" />
           <div className="relative z-[1] mx-auto flex max-w-md flex-col items-center text-center">
-            <div ref={markRef} className="hero-landing-mark-parallax">
-              <motion.div
+            {/* Brand mark lives on TopBar after ignite — no second logo here. */}
+            <div
+              ref={markRef}
+              className={`hero-landing-mark-parallax${bootRing ? ' zone-boot-mark-ring' : ''}`}
+            >
+              <motion.h1
                 initial={
                   skipHeroBootMotion
                     ? false
                     : reduceMotion
                       ? zoneBootReduced.initial
-                      : bootMode === 'full'
-                        ? zoneBootMark.initial
-                        : zoneBootMarkShort.initial
+                      : zoneBootCopy.initial
                 }
-                animate={
-                  reduceMotion
-                    ? zoneBootReduced.animate
-                    : bootMode === 'full'
-                      ? zoneBootMark.animate
-                      : zoneBootMarkShort.animate
-                }
-                transition={
-                  reduceMotion
-                    ? zoneBootReduced.transition
-                    : bootMode === 'full'
-                      ? zoneBootMark.transition
-                      : zoneBootMarkShort.transition
-                }
-                whileHover={reduceMotion || browserBlocked ? undefined : { scale: 1.04 }}
-                className={`hero-landing-mark-wrap${bootRing ? ' zone-boot-mark-ring' : ''}`}
+                animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
+                transition={{
+                  ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
+                  delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.sparkMs / 1000,
+                }}
+                className="type-display text-ink"
               >
-                {/*
-                  No sharedMark here: layoutId orphan on hero→configure exit
-                  caused logo flicker. Handoff to TopBar runs when a zone is active.
-                */}
-                <TaziaLogo size={88} className="hero-landing-mark relative z-[1]" />
-              </motion.div>
+                {t('brand')}
+              </motion.h1>
             </div>
-            <motion.h1
-              initial={
-                skipHeroBootMotion
-                  ? false
-                  : reduceMotion
-                    ? zoneBootReduced.initial
-                    : zoneBootCopy.initial
-              }
-              animate={reduceMotion ? zoneBootReduced.animate : zoneBootCopy.animate}
-              transition={{
-                ...(reduceMotion ? zoneBootReduced.transition : zoneBootCopy.transition),
-                delay: reduceMotion || bootMode !== 'full' ? 0 : ZONE_BOOT.sparkMs / 1000,
-              }}
-              className="type-display mt-6 text-ink"
-            >
-              {t('brand')}
-            </motion.h1>
             <motion.p
               initial={
                 skipHeroBootMotion

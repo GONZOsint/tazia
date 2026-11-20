@@ -5,21 +5,26 @@ import type { MessageKey } from '../../i18n';
 export type ActiveTab = 'forum' | 'rooms' | 'presence' | 'dms' | 'how';
 
 export type NavItem = {
-  id: ActiveTab;
-  labelKey: Extract<MessageKey, 'navForum' | 'navRooms' | 'navPresence' | 'navDms' | 'navHelp'>;
-  Icon: ComponentType<{
+  readonly id: ActiveTab;
+  readonly labelKey: Extract<
+    MessageKey,
+    'navForum' | 'navRooms' | 'navPresence' | 'navDms' | 'navHelp'
+  >;
+  readonly Icon: ComponentType<{
     className?: string;
     'aria-hidden'?: boolean | 'true' | 'false';
     strokeWidth?: number;
   }>;
 };
 
-const FORUM: NavItem = { id: 'forum', labelKey: 'navForum', Icon: MessagesSquare };
-const ROOMS: NavItem = { id: 'rooms', labelKey: 'navRooms', Icon: Radio };
-const PRESENCE: NavItem = { id: 'presence', labelKey: 'navPresence', Icon: Users };
-const DMS: NavItem = { id: 'dms', labelKey: 'navDms', Icon: MessageCircle };
-const HOW: NavItem = { id: 'how', labelKey: 'navHelp', Icon: HelpCircle };
-
 /** Zones → Plaza → Tribe → Whispers → Help. */
-export const DESKTOP_NAV_ITEMS: NavItem[] = [ROOMS, FORUM, PRESENCE, DMS, HOW];
-export const MOBILE_NAV_ITEMS: NavItem[] = [ROOMS, FORUM, PRESENCE, DMS, HOW];
+const NAV_ITEMS: readonly NavItem[] = [
+  { id: 'rooms', labelKey: 'navRooms', Icon: Radio },
+  { id: 'forum', labelKey: 'navForum', Icon: MessagesSquare },
+  { id: 'presence', labelKey: 'navPresence', Icon: Users },
+  { id: 'dms', labelKey: 'navDms', Icon: MessageCircle },
+  { id: 'how', labelKey: 'navHelp', Icon: HelpCircle },
+];
+
+export const DESKTOP_NAV_ITEMS: readonly NavItem[] = NAV_ITEMS;
+export const MOBILE_NAV_ITEMS: readonly NavItem[] = NAV_ITEMS;

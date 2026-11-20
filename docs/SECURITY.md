@@ -28,6 +28,19 @@ It is not an async messenger (“leave a message, read it later”), not Tor, an
 | TURN operator (if configured) | Sees IP and encrypted WebRTC traffic; cannot forge app signatures |
 | Static hosting | Serves JS/CSS; does not store messages |
 
+**No application HTTP API.** Runtime surface is static assets, WebRTC, Trystero/Nostr `wss:`, and optional user TURN — there is no TAZIA backend that stores messages or credentials.
+
+### IP visibility (honest)
+
+| Path | Peers see your IP? | Third party |
+| --- | --- | --- |
+| Default WebRTC + STUN | Yes (`host` / `srflx`) | Default STUN operators (Google/Cloudflare via Trystero) |
+| Helper on + hide address off | Often yes until traffic relays | STUN; TURN when relayed |
+| **Hide my internet address** + working helper (default when you enable the helper) | No (helper address only) | Helper operator sees your IP |
+| Nostr data-plane fallback | No direct peer ICE | Nostr relay sees your IP + ciphertext |
+
+Enabling a helper server turns **Hide my internet address** (relay-only) **on by default** (uncheck for same-LAN host candidates). Browser settings (e.g. Brave *WebRTC IP Handling*) can hide host candidates; that is not Tor and can break same-LAN mesh. mDNS / CGNAT identifiers can still leak under some browsers even when LAN IPs are obfuscated ([arXiv:2510.16168](https://arxiv.org/abs/2510.16168)).
+
 ---
 
 ## What protects you today
@@ -81,10 +94,10 @@ Safety code (SAS): **6** emojis from a **256**-symbol pool (~48 bits) + `roomId`
 
 ### Network, consent, and burn
 
-IP consent on first use. Burn does **not** clear it; “Forget this device” does.  
+IP consent on first use (peers **and** third parties: default STUN, Nostr relays, TURN if configured). Burn does **not** clear it by default; Help → “Forget this device” clears IP consent + TURN + custom Nostr relays (session and persisted); extinguish can optionally do the same wipe.  
 Phrase in the URL is scrubbed (`public/scrub-phrase.js` + React).  
-Optional TURN: `sessionStorage` by default; `localStorage` only with opt-in. Burn clears sessionStorage, **not** remembered TURN. Details: [`TURN.md`](TURN.md).  
-CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_headers`](../public/_headers) is a sample for hosts that honor headers (Netlify/CF); Pages does **not** apply `_headers`, so `frame-ancestors` / `X-Frame-Options` are not present on the default github.io deploy.
+Optional TURN: `sessionStorage` (`tazia:turn-config`) by default; remembered TURN only under `tazia:turn-config-persist`. Custom Nostr relays: `tazia:nostr-relays` / `tazia:nostr-relays-persist` (`wss:` only; empty → Trystero defaults). IP consent only under `tazia-ip-consent`. Legacy migration shims (`agora-ip-consent`, non-persist `localStorage` turn key) are gone. Burn clears sessionStorage; remembered prefs / IP consent stay unless you check the forget-device-prefs box on extinguish. Details: [`TURN.md`](TURN.md).  
+CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_headers`](../public/_headers) is a sample for hosts that honor headers (Netlify/CF); Pages does **not** apply `_headers`, so `frame-ancestors` / `X-Frame-Options` are not present on the default github.io deploy (meta CSP cannot set `frame-ancestors` — clickjacking mitigation needs real response headers on production hosts).
 
 **Extinguishing the flame** closes meshes, clears trust, wipes refs, `sessionStorage.clear`, and reloads. It is **not** forensic secure delete or practical deniability ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
 
@@ -101,9 +114,11 @@ CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_hea
 - **Extinguish vote ≠ global guarantee** — a peer that never received the completed ballot may still show the bonfire; there is no server that forces erasure everywhere.
 - **Sync delete cover skipped** — late joiners apply signed `DELETE_*` tombstones without re-checking electorate cover against their local online set (by design for agreed history).
 - **Nostr TOFU race** — first attested presence for a `userId` wins the pin; a wrong first pin needs SAS + `repin`.
+- **Shared Nostr room key** — every phrase holder derives the same fallback AES key and can decrypt room-layer envelopes (forum, presence, sync). On **Nostr fallback only**, Susurro uses **`dm-wrap` v3** (pairwise inner AES) so co-members no longer see DM metadata after room decrypt; legacy `v:2 dm` may still appear from older tabs. WebRTC Whispers stay **`seal: 2`** on the wire (not dm-wrap). Timing/size still leak. Not an MPCS ([SoK](https://petsymposium.org/popets/2024/popets-2024-0030.pdf)).
+- **Forum sigs unbound to `roomId`** — canonical forum payload has no room id; cross-zone replay of a signed event is an honest limit (sync-res and DM AAD do bind `roomId`).
 - **Client-only rate limits** — soft hedges; not enforced by relays or a referee.
 - **MLS / Double Ratchet / Key Transparency** — need durable identity or a log operator; incompatible with `identity: 'none'` + pure static hosting ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
-- **Tor** — out of scope.
+- **Tor / onion signaling / Anonymity Wrappers / TEE mailbox MPCS** — out of scope for static hosting (see [`papers/README.md`](papers/README.md)).
 - **Wake Lock** — optional; keeps the screen on, does not stop iOS from killing WebRTC when backgrounded.
 
 ---
@@ -111,7 +126,7 @@ CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_hea
 ## Deployment
 
 - Static hosting: `npm run build` → `dist/`.
-- Single HTML: `npm run build:single` → `release/tazia-single.html` + `.sha256` (verifiable build; how to open it: [`README.md`](../README.md)). Does not replace the multi-asset Pages deploy.
+- Single HTML: `npm run build:single` → `release/tazia-single.html` + `.sha256` (verifiable build; how to open it: [`README.md`](../README.md)). Does not replace the multi-asset Pages deploy. The Pages workflow also uploads that artifact (single-file CSP allows `unsafe-inline`; the `dist/` deploy does not).
 - SDP/QR spike: [`sdp-qr-spike.md`](sdp-qr-spike.md) — not in the app; does not replace Trystero.
 
 Suggested headers:

@@ -8,7 +8,12 @@ interface TaziaMarkProps {
   size?: number;
   /** When false, omit decorative title (parent supplies accessible name). */
   labelled?: boolean;
-  /** Per-part motion props for splash / boot choreography. */
+  /** Accessible name when `labelled` — prefer `t('brand')` from callers. */
+  ariaLabel?: string;
+  /**
+   * Per-part motion for splash assembly.
+   * Applied on `<g>` (not `<path>`) so scale/opacity transforms are reliable in SVG.
+   */
   partMotion?: Partial<Record<MarkPart, MotionProps>>;
 }
 
@@ -19,6 +24,7 @@ export function TaziaMark({
   className = '',
   size = 40,
   labelled = true,
+  ariaLabel = 'TAZIA',
   partMotion,
 }: TaziaMarkProps) {
   return (
@@ -30,13 +36,17 @@ export function TaziaMark({
       fill="none"
       role={labelled ? 'img' : 'presentation'}
       aria-hidden={labelled ? undefined : true}
-      aria-label={labelled ? 'TAZIA' : undefined}
+      aria-label={labelled ? ariaLabel : undefined}
     >
       {PAINT_ORDER.map((key) => {
         const { fill, d } = TAZIA_MARK_PATHS[key];
         const motionProps = partMotion?.[key];
         if (motionProps) {
-          return <motion.path key={key} fill={fill} d={d} {...motionProps} />;
+          return (
+            <motion.g key={key} {...motionProps}>
+              <path fill={fill} d={d} />
+            </motion.g>
+          );
         }
         return <path key={key} fill={fill} d={d} />;
       })}

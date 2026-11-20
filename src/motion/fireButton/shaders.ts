@@ -1,4 +1,6 @@
-/** Vertex + fragment shaders for the TopBar fire button (WebGL). */
+import { FIRE_MATH_GLSL } from './mathGlsl';
+
+/** Vertex + fragment shaders for the fire button crown (WebGL). */
 
 export const FIRE_BTN_VS = `
   attribute vec2 aPos;
@@ -33,106 +35,100 @@ export const FIRE_BTN_FS = `
   uniform float uFreqX;
   uniform float uSwayScale;
   uniform float uMaxWisps;
+  uniform float uEdgeInset;
   uniform vec3 uColor;
 
-  float hash1(float n) {
-    return fract(sin(n) * 4375.5453);
-  }
-
-  vec2 hash2(vec2 p) {
-    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-    return fract(sin(p) * 4375.5453);
-  }
-
-  float voronoi(vec2 uv, float tOffset) {
-    vec2 i_st = floor(uv);
-    vec2 f_st = uv - i_st;
-    float minDist = 8.0;
-
-    for (int y = -1; y <= 1; y++) {
-      for (int x = -1; x <= 1; x++) {
-        vec2 neighbor = vec2(float(x), float(y));
-        vec2 pt = hash2(i_st + neighbor);
-        pt = 0.5 + 0.36 * sin(tOffset + 6.2831 * pt);
-        vec2 diff = neighbor + pt - f_st;
-        minDist = min(minDist, length(diff));
-      }
-    }
-    return minDist;
-  }
+  ${FIRE_MATH_GLSL}
 
   float getBaseY(float ux) {
-    float cx = (ux - 0.5) * 1.84;
+    // Circular plate: base rides the top semicircle.
+    // Canvas tucks to button center (mask punches the face) — peak ≈ R/H.
+    float cx = (ux - 0.5) * 2.0;
     float circArc = sqrt(max(0.0, 1.0 - cx * cx));
-    return uArch * max(0.0, (circArc - 0.58) * 0.40);
+    // Canvas bottom = button center; peak ≈ R/H (~0.30) so roots sit on the rim.
+    float roundLift = max(0.0, circArc * 0.30);
+    // Pill keeps a flat baseline (uArch = 0).
+    return uArch * roundLift;
+  }
+
+  vec2 cursorVortex(vec2 uv, float mouseX, float wind) {
+    vec2 dv = vec2((uv.x - mouseX) * uAspect, uv.y - 0.36);
+    float r2 = dot(dv, dv);
+    float sigma2 = 0.26;
+    float gamma = wind * 0.035;
+    float psiM = gamma * exp(-r2 / sigma2);
+    float b = smoothstep(0.0, 0.35, uv.y);
+    return b * (-2.0 / sigma2) * psiM * vec2(dv.y, -dv.x);
   }
 
   float evalMainField(vec2 uv, float t, float scaleH, float baseShift, float wind, float upDraft, float mouseX, float hover, float press) {
     float yBase = getBaseY(uv.x);
     float yLocal = clamp((uv.y - yBase) / max(1.0 - yBase, 0.01), 0.0, 1.0);
+    float yBuoy = yLocal - 0.18 * yLocal * yLocal;
 
-    float sway = ((
-      sin(yLocal * 4.8 - t * 1.45 + uv.x * 5.2) * 0.034 +
-      sin(yLocal * 8.4 - t * 2.05 - uv.x * 7.2) * 0.011 +
-      sin(yLocal * 13.0 - t * 3.10 + uv.x * 11.0) * 0.0045
-    ) * yLocal - wind * 0.105 * pow(yLocal, 1.22)) * uSwayScale;
+    vec2 curlV = curlFluid(vec2(uv.x * uAspect * 0.95 * uFreqX, yLocal * 1.15 - t * 0.65), yLocal, 0.45);
+    vec2 vortexV = cursorVortex(vec2(uv.x, yLocal), mouseX, wind);
 
-    vec2 p = vec2((uv.x + sway) * uAspect * uFreqX, yLocal);
+    float advX = (curlV.x * 0.017 + vortexV.x - wind * 0.085 * pow(yLocal, 1.22)) * uSwayScale;
+    float advY = (curlV.y * 0.013 + vortexV.y) * uSwayScale;
 
-    float v1 = voronoi(vec2(p.x * 2.30, p.y * 0.54 - t * 0.62), t * 0.42);
-    float v2 = voronoi(vec2(p.x * 4.35 + 3.1, p.y * 0.96 - t * 0.94), t * 0.68);
-    float ridge = 0.60 * v1 + 0.40 * v2;
+    vec2 p = vec2((uv.x + advX) * uAspect * uFreqX, yBuoy + advY);
 
-    float edgePad = mix(0.072, 0.14, uArch);
+    float v1 = voronoi(vec2(p.x * 2.20, p.y * 0.54 - t * 0.66), t * 0.44);
+    float v2 = voronoi(vec2(p.x * 4.25 + 3.1, p.y * 1.00 - t * 1.02), t * 0.70);
+    float ridge = 0.62 * v1 + 0.38 * v2;
+
+    float edgePad = uEdgeInset;
     float edgeMask = smoothstep(0.0, edgePad, uv.x) * (1.0 - smoothstep(1.0 - edgePad, 1.0, uv.x));
-    float heightVar = 0.72 + 0.28 * sin(uv.x * 7.2 - t * 0.32 + 0.7) * cos(uv.x * 3.1 + t * 0.21);
+    float hNoise = snoiseGrad(vec2(uv.x * 2.8 - t * 0.16, 1.7)).x;
+    float heightVar = 0.76 + 0.24 * hNoise;
 
     float dx = uv.x - mouseX;
     float hoverBoost = 1.0 + hover * 0.15 * exp(-dx * dx * 10.0) + upDraft * 0.09 * exp(-dx * dx * 7.0);
     float pressScale = 1.0 - press * 0.08;
+    float maxH = max(edgeMask * heightVar * 0.84 * scaleH * hoverBoost * pressScale, 0.001);
 
-    float maxH = max(edgeMask * heightVar * 0.80 * scaleH * hoverBoost * pressScale, 0.001);
-
-    float erode = smoothstep(0.0, 0.20, yLocal);
-    float baseMain = 0.76 - baseShift - 1.13 * (yLocal / maxH);
-    return baseMain + erode * (ridge - 0.455) * 1.42;
+    float erode = smoothstep(0.0, 0.22, yLocal);
+    float baseMain = 0.78 - baseShift - 1.15 * (yLocal / maxH);
+    return baseMain + erode * (ridge - 0.45) * 1.44;
   }
 
   float evalBackField(vec2 uv, float t, float scaleH, float baseShift, float wind, float upDraft, float mouseX, float hover, float press) {
     float yBase = getBaseY(uv.x);
     float yLocal = clamp((uv.y - yBase) / max(1.0 - yBase, 0.01), 0.0, 1.0);
+    float yBuoy = yLocal - 0.16 * yLocal * yLocal;
 
-    float sway = ((
-      sin(yLocal * 4.8 - t * 1.45 + uv.x * 5.2) * 0.034 +
-      sin(yLocal * 8.4 - t * 2.05 - uv.x * 7.2) * 0.011 +
-      sin(yLocal * 13.0 - t * 3.10 + uv.x * 11.0) * 0.0045
-    ) * yLocal - wind * 0.092 * pow(yLocal, 1.22)) * uSwayScale;
+    vec2 curlV = curlFluid(vec2(uv.x * uAspect * 0.90 * uFreqX + 3.4, yLocal * 1.08 - t * 0.56), yLocal, 0.45);
+    vec2 vortexV = cursorVortex(vec2(uv.x, yLocal), mouseX, wind * 0.85);
 
-    vec2 p = vec2((uv.x + sway) * uAspect * uFreqX, yLocal);
+    float advX = (curlV.x * 0.015 + vortexV.x - wind * 0.075 * pow(yLocal, 1.22)) * uSwayScale;
+    float advY = (curlV.y * 0.011 + vortexV.y) * uSwayScale;
 
-    float vb1 = voronoi(vec2(p.x * 2.10 + 4.7, p.y * 0.52 - t * 0.54 + 2.1), t * 0.38 + 1.5);
-    float vb2 = voronoi(vec2(p.x * 3.85 + 8.3, p.y * 0.90 - t * 0.84), t * 0.60);
-    float ridgeBack = 0.62 * vb1 + 0.38 * vb2;
+    vec2 p = vec2((uv.x + advX) * uAspect * uFreqX, yBuoy + advY);
 
-    float edgePad = mix(0.072, 0.14, uArch);
+    float vb1 = voronoi(vec2(p.x * 2.05 + 4.7, p.y * 0.52 - t * 0.56 + 2.1), t * 0.38 + 1.5);
+    float vb2 = voronoi(vec2(p.x * 3.85 + 8.3, p.y * 0.94 - t * 0.88), t * 0.62);
+    float ridgeBack = 0.64 * vb1 + 0.36 * vb2;
+
+    float edgePad = uEdgeInset;
     float edgeMask = smoothstep(0.0, edgePad, uv.x) * (1.0 - smoothstep(1.0 - edgePad, 1.0, uv.x));
-    float heightVar = 0.74 + 0.26 * cos(uv.x * 6.2 + t * 0.26 - 1.1);
+    float hNoise = snoiseGrad(vec2(uv.x * 2.5 + t * 0.12, 4.2)).x;
+    float heightVar = 0.77 + 0.23 * hNoise;
 
     float dx = uv.x - mouseX;
     float hoverBoost = 1.0 + hover * 0.12 * exp(-dx * dx * 9.0) + upDraft * 0.07 * exp(-dx * dx * 6.0);
     float pressScale = 1.0 - press * 0.06;
+    float maxHBack = max(edgeMask * heightVar * 0.81 * scaleH * hoverBoost * pressScale, 0.001);
 
-    float maxHBack = max(edgeMask * heightVar * 0.78 * scaleH * hoverBoost * pressScale, 0.001);
-
-    float erode = smoothstep(0.0, 0.20, yLocal);
-    float baseBack = 0.73 - baseShift - 1.09 * (yLocal / maxHBack);
-    return baseBack + erode * (ridgeBack - 0.455) * 1.34;
+    float erode = smoothstep(0.0, 0.22, yLocal);
+    float baseBack = 0.75 - baseShift - 1.11 * (yLocal / maxHBack);
+    return baseBack + erode * (ridgeBack - 0.45) * 1.36;
   }
 
   void main() {
     vec2 uv = vUv;
-    float inst = clamp(uIntensity, 0.0, 1.05);
-    float wInst = clamp(uWispIntensity, 0.0, 1.0);
+    float inst = clamp(uIntensity, 0.0, 1.45);
+    float wInst = clamp(uWispIntensity, 0.0, 1.35);
 
     if (inst <= 0.001 && wInst <= 0.001) {
       gl_FragColor = vec4(0.0);
@@ -141,27 +137,28 @@ export const FIRE_BTN_FS = `
 
     float yBase = getBaseY(uv.x);
     float yLocal = clamp((uv.y - yBase) / max(1.0 - yBase, 0.01), 0.0, 1.0);
-    float localInst = clamp(inst * 1.18 - abs(uv.x - uClickX) * 0.18, 0.0, 1.0);
+    float localInst = clamp(inst * 1.18 - abs(uv.x - uClickX) * 0.18, 0.0, 1.05);
 
-    float alphaFade = smoothstep(0.0, 0.60, localInst);
+    float alphaFade = smoothstep(0.0, 0.58, localInst);
     float scaleH = 0.12 + 0.88 * smoothstep(0.0, 1.0, localInst);
-    float baseShift = (1.0 - smoothstep(0.0, 0.82, localInst)) * 0.42;
+    float baseShift = (1.0 - smoothstep(0.0, 0.78, localInst)) * 0.42;
 
     float fieldMain = evalMainField(uv, uTime, scaleH, baseShift, uWind, uUpDraft, uMouseX, uHover, uPress);
     float fieldBack = evalBackField(uv, uTime, scaleH, baseShift, uWind, uUpDraft, uMouseX, uHover, uPress);
 
     float mainAlpha = smoothstep(0.175, 0.205, fieldMain) * alphaFade;
     float backAlpha = smoothstep(0.175, 0.205, fieldBack) * 0.75 * alphaFade;
+    float heatGlow = smoothstep(0.02, 0.175, fieldMain) * (1.0 - mainAlpha) * alphaFade * 0.085;
 
     vec3 subColor  = uColor * vec3(0.75, 0.79, 0.58);
     vec3 rimColor  = uColor * vec3(0.81, 0.85, 0.64);
     vec3 coreColor = mix(uColor, vec3(0.96, 1.0, 0.83), 0.50);
 
-    float edgeCorePad = mix(0.05, 0.14, uArch);
+    float edgeCorePad = max(0.04, uEdgeInset * 0.85);
     float edgeCore = smoothstep(edgeCorePad, edgeCorePad + 0.11, uv.x)
                    * (1.0 - smoothstep(1.0 - edgeCorePad - 0.11, 1.0 - edgeCorePad, uv.x));
-    float coreYMask = smoothstep(0.11, 0.22, yLocal) * (1.0 - smoothstep(0.44, 0.68, yLocal));
-    float coreBand = smoothstep(0.45, 0.478, fieldMain - (1.0 - coreYMask * edgeCore) * 0.34);
+    float coreYMask = smoothstep(0.11, 0.22, yLocal) * (1.0 - smoothstep(0.45, 0.70, yLocal));
+    float coreBand = smoothstep(0.43, 0.46, fieldMain) * coreYMask * edgeCore;
 
     float rimBand = (smoothstep(0.175, 0.205, fieldMain) - smoothstep(0.21, 0.238, fieldMain))
                   * smoothstep(0.09, 0.21, yLocal);
@@ -190,7 +187,7 @@ export const FIRE_BTN_FS = `
 
       float life = rawLife / activeFrac;
 
-      float xMin = mix(0.10, 0.20, uArch);
+      float xMin = max(0.06, uEdgeInset + 0.03);
       float x0 = xMin + (1.0 - 2.0 * xMin) * hash1(seed + 13.3 + cycleId * 3.1);
       float bestX = x0;
       float bestF = -99.0;
@@ -207,15 +204,15 @@ export const FIRE_BTN_FS = `
 
       float bY = getBaseY(bestX);
       float tipLocal = 0.0;
-      for (int s = 0; s < 6; s++) {
-        float tyLocal = 0.22 + float(s) * 0.08;
+      for (int s = 0; s < 7; s++) {
+        float tyLocal = 0.20 + float(s) * 0.065;
         float sampleY = bY + tyLocal * (1.0 - bY);
         if (evalMainField(vec2(bestX, sampleY), tBirth, 1.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0) > 0.18) {
           tipLocal = tyLocal;
         }
       }
 
-      if (tipLocal < 0.21) continue;
+      if (tipLocal < 0.19) continue;
 
       float varSize = hash1(seed + cycleId * 5.7 + 1.1);
       float varStretch = hash1(seed + cycleId * 3.9 + 4.2);
@@ -223,10 +220,10 @@ export const FIRE_BTN_FS = `
       float varDrift = (hash1(seed + cycleId * 6.1 + 8.4) - 0.5) * 0.09 * uSwayScale;
       float waveFreq = 3.5 + 3.5 * hash1(seed + cycleId * 4.4);
 
-      float riseCurve = 1.0 - pow(1.0 - life, 1.55);
+      float riseCurve = pow(life, 0.82);
       float tipScreenY = bY + (tipLocal - 0.02) * (1.0 - bY);
       float wy = min(0.92, tipScreenY + riseCurve * (varRise + uUpDraft * 0.06) * (1.0 - bY));
-      float wx = bestX + varDrift * riseCurve + sin(life * waveFreq + seed) * 0.015 * uSwayScale + uWind * 0.105 * uSwayScale * life;
+      float wx = bestX + varDrift * riseCurve + sin(life * waveFreq + seed) * 0.016 * uSwayScale + uWind * 0.105 * uSwayScale * life;
 
       vec2 d = vec2((uv.x - wx) * uAspect, uv.y - wy);
       float tilt = varDrift * 1.4 + cos(life * waveFreq + seed) * 0.18 + uWind * 0.48;
@@ -235,7 +232,6 @@ export const FIRE_BTN_FS = `
       float baseR = 0.030 + 0.026 * varSize;
       float shrink = 1.0 - 0.65 * life;
       float stretch = 1.05 + 1.15 * varStretch;
-
       float taper = d.y > 0.0 ? (1.0 - (0.35 + 0.42 * varStretch) * clamp(d.y / (baseR * stretch), 0.0, 1.0)) : 1.0;
       float rw = baseR * shrink * max(taper, 0.28);
       float rh = baseR * stretch * (1.0 - 0.45 * life);
@@ -252,12 +248,12 @@ export const FIRE_BTN_FS = `
       wispAlphaTotal = wa + wispAlphaTotal * (1.0 - wa);
     }
 
-    vec3 premul = subColor * backAlpha;
-    float alpha = backAlpha;
-
+    vec3 premul = uColor * heatGlow;
+    float alpha = heatGlow;
+    premul = subColor * backAlpha + premul * (1.0 - backAlpha);
+    alpha = backAlpha + alpha * (1.0 - backAlpha);
     premul = wispPremul + premul * (1.0 - wispAlphaTotal);
     alpha = wispAlphaTotal + alpha * (1.0 - wispAlphaTotal);
-
     premul = mainColor * mainAlpha + premul * (1.0 - mainAlpha);
     alpha = mainAlpha + alpha * (1.0 - mainAlpha);
 

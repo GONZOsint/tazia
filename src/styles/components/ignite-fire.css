@@ -1,0 +1,465 @@
+@layer components {
+  /*
+   * Ignite intro overlay — black screen burned away (mockup 7).
+   */
+  .ignite-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    /* Match AppSplash veil so splash exit doesn’t flash the shell underneath. */
+    background: color-mix(in oklab, var(--color-bg) 28%, #000);
+    transition: opacity 0.42s var(--ease-out-expo);
+  }
+  /* Burn canvas owns the plate once the ritual starts. */
+  .ignite-overlay.is-starting {
+    background: transparent;
+  }
+  .ignite-overlay.is-done {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .ignite-overlay .burn-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .ignite-overlay.is-starting .fire-btn {
+    pointer-events: none;
+  }
+  /*
+   * Shared splash / ignite composition — one flex column centered in the
+   * viewport (mark + copy + CTAs as a unit). Keeps brand optically centered
+   * instead of parking the mark alone at 50% with text hanging below.
+   */
+  :root {
+    /* Keep in sync with APP_SPLASH.markPx */
+    --brand-intro-mark: 128px;
+  }
+  .brand-intro-layout {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.75rem;
+    box-sizing: border-box;
+    padding:
+      max(3.25rem, calc(env(safe-area-inset-top, 0px) + 2.75rem))
+      1.5rem
+      max(2.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.75rem));
+    pointer-events: none;
+  }
+  .brand-intro-cluster {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.15rem;
+    pointer-events: none;
+  }
+  .brand-intro-cluster__mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    pointer-events: auto;
+  }
+  .brand-intro-cluster__mark > svg {
+    width: var(--brand-intro-mark);
+    height: var(--brand-intro-mark);
+  }
+
+  .intro-btn-wrap {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    pointer-events: auto;
+  }
+  .ignite-overlay.is-starting .intro-btn-wrap,
+  .ignite-overlay.is-burning-btn .intro-btn-wrap {
+    pointer-events: none;
+  }
+  .intro-copy-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Reserve title+body so the mark doesn’t jump when copy fades in. */
+    min-height: 4.75rem;
+  }
+  .intro-heading {
+    margin: 0;
+    font-size: clamp(1.75rem, 5vw, 1.875rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: #fff;
+  }
+  .intro-copy {
+    margin: 0;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.52);
+    max-width: 15rem;
+    line-height: 1.45;
+  }
+
+  /* Shell underlay during ignite — soft stagger, no scale punch */
+  .app-shell--prelit .reveal-item {
+    opacity: 0.5;
+    transform: translateY(6px);
+    filter: brightness(0.9);
+    transition:
+      transform 0.36s var(--ease-out-expo),
+      opacity 0.28s ease,
+      filter 0.36s ease;
+  }
+  .app-shell--prelit.is-revealed .reveal-item {
+    opacity: 1;
+    transform: translateY(0);
+    filter: brightness(1);
+  }
+  .app-shell--prelit.is-revealed .reveal-footer {
+    transition-delay: 0.02s;
+  }
+  .app-shell--prelit.is-revealed .reveal-main {
+    transition-delay: 0.06s;
+  }
+  .app-shell--prelit.is-revealed .reveal-header {
+    /* Header first — extinguish control should be ready as the veil lifts. */
+    transition-delay: 0s;
+  }
+
+  /*
+   * Session fire button (WebGL crown) — accent plate; canvas sits above the
+   * control so overflow must stay visible.
+   */
+  .fire-btn {
+    --mx: 50%;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.75rem;
+    border: none;
+    background-color: var(--color-accent);
+    background-image: radial-gradient(
+      120px circle at var(--mx) 118%,
+      color-mix(in oklab, #fff 22%, transparent),
+      transparent 72%
+    );
+    color: var(--color-on-accent);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    isolation: isolate;
+    overflow: visible;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+      0 3px 12px color-mix(in oklab, #000 26%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 28%, transparent);
+    transition:
+      transform 0.22s var(--ease-out-expo),
+      box-shadow 0.85s var(--ease-out-expo),
+      filter var(--dur-micro) ease,
+      opacity var(--dur-micro) ease;
+  }
+  @keyframes fireIdleBreath {
+    0%,
+    100% {
+      box-shadow:
+        0 3px 12px color-mix(in oklab, #000 26%, transparent),
+        0 0 0 0 color-mix(in oklab, var(--color-accent) 0%, transparent),
+        inset 0 1px 0 color-mix(in oklab, #fff 28%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 5px 16px color-mix(in oklab, #000 30%, transparent),
+        0 0 20px 0 color-mix(in oklab, var(--color-accent) 12%, transparent),
+        inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
+    }
+  }
+  .ignite-overlay:not(.is-starting):not(.is-burning-btn) .fire-btn--breath:not(.is-lit):not(:hover) {
+    animation: fireIdleBreath 3.2s ease-in-out infinite;
+  }
+  .btn-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .btn-shine::after {
+    content: '';
+    position: absolute;
+    inset: -20% 0;
+    background: linear-gradient(
+      112deg,
+      transparent 26%,
+      color-mix(in oklab, #fff 44%, transparent) 48%,
+      color-mix(in oklab, #fff 12%, transparent) 58%,
+      transparent 74%
+    );
+    transform: translateX(-125%);
+    opacity: 0;
+  }
+  .fire-btn.is-igniting .btn-shine::after {
+    opacity: 1;
+    animation: fireDuoShine 0.65s var(--ease-out-expo) forwards;
+  }
+  @keyframes fireDuoShine {
+    0% {
+      transform: translateX(-115%);
+    }
+    100% {
+      transform: translateX(125%);
+    }
+  }
+  .fire-btn:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 6px 18px color-mix(in oklab, #000 32%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 42%, transparent);
+  }
+  /* Press scale comes from Motion whileTap only — avoid double transform with CSS. */
+  .fire-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+  .fire-btn:disabled {
+    opacity: 0.8;
+    cursor: default;
+  }
+  .fire-btn.is-lit {
+    box-shadow:
+      0 0 22px color-mix(in oklab, var(--color-accent) 16%, transparent),
+      0 5px 18px color-mix(in oklab, #000 30%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 45%, transparent);
+  }
+  .fire-btn.is-lit:hover {
+    box-shadow:
+      0 0 28px color-mix(in oklab, var(--color-accent) 24%, transparent),
+      0 7px 20px color-mix(in oklab, #000 34%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 54%, transparent);
+  }
+  .fire-btn--circle {
+    --fire-btn-size: 2rem;
+    --fire-btn-r: calc(var(--fire-btn-size) / 2);
+    --fire-crown-h: 36px;
+    width: var(--fire-btn-size);
+    height: var(--fire-btn-size);
+    padding: 0;
+    border-radius: 9999px;
+    /* Fill lives on .fire-btn__plate so the crown can sit under the face. */
+    background-color: transparent;
+    background-image: none;
+  }
+  .fire-btn--pill {
+    width: 9.75rem;
+    padding: 0 0.75rem;
+    border-radius: var(--radius-ctrl);
+  }
+  /*
+   * Opaque circular face above the WebGL crown. Without this, z-index:-1 still
+   * paints over the button background (stacking: neg-z children above bg).
+   */
+  .fire-btn__plate {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background-color: var(--color-accent);
+    background-image: radial-gradient(
+      80px circle at var(--mx) 118%,
+      color-mix(in oklab, #fff 22%, transparent),
+      transparent 72%
+    );
+    box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 28%, transparent);
+    pointer-events: none;
+  }
+  .fire-btn--circle:hover .fire-btn__plate {
+    background-color: var(--color-accent-hover);
+  }
+  .fire-btn__icon {
+    transition: transform 0.28s var(--ease-out-expo);
+  }
+  .fire-btn--circle .fire-btn__icon {
+    height: 0.8125rem;
+    width: 0.8125rem;
+  }
+  .fire-btn--circle .fire-btn__icon svg {
+    height: 0.8125rem;
+    width: 0.8125rem;
+  }
+  .fire-btn:hover .fire-btn__icon,
+  .fire-btn.is-lit .fire-btn__icon {
+    transform: scale(1.08);
+  }
+  .fire-btn .fire-canvas {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /*
+   * Circle crown: canvas tucks to the button center; a circular mask punches
+   * out the face so flames follow the round top rim (not a flat shelf cut).
+   */
+  .fire-btn--circle .fire-canvas {
+    left: 0;
+    width: 100%;
+    bottom: calc(100% - var(--fire-btn-r));
+    height: calc(var(--fire-btn-r) + var(--fire-crown-h));
+    /* Punch the circular face so the crown follows the round rim. */
+    -webkit-mask-image: radial-gradient(
+      circle var(--fire-btn-r) at 50% 100%,
+      transparent calc(var(--fire-btn-r) - 1px),
+      #000 var(--fire-btn-r)
+    );
+    mask-image: radial-gradient(
+      circle var(--fire-btn-r) at 50% 100%,
+      transparent calc(var(--fire-btn-r) - 1px),
+      #000 var(--fire-btn-r)
+    );
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+  .fire-btn--pill .fire-canvas {
+    left: 3px;
+    width: calc(100% - 6px);
+    bottom: calc(100% - 7px);
+    height: 62px;
+    z-index: -1;
+  }
+  .fire-btn--header.fire-btn--circle {
+    --fire-crown-h: 32px;
+  }
+  .fire-btn--header.fire-btn--pill .fire-canvas {
+    bottom: calc(100% - 16px);
+    height: 44px;
+  }
+  .topbar-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .topbar--fire-clearance {
+    /* Room for the WebGL crown above the burn control (shell clips at y=0). */
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1.45rem);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fire-btn,
+    .fire-btn.is-lit,
+    .fire-btn__icon,
+    .reveal-item,
+    .intro-btn-wrap,
+    .intro-brand,
+    .ignite-overlay {
+      animation: none !important;
+      transition-duration: 0.2s !important;
+      transition-delay: 0s !important;
+    }
+    .btn-shine {
+      display: none;
+    }
+    .fire-btn:hover,
+    .fire-btn:active {
+      transform: none;
+    }
+    .fire-btn:hover .fire-btn__icon,
+    .fire-btn.is-lit .fire-btn__icon {
+      transform: none;
+    }
+    .app-shell--prelit .reveal-item {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  .burn-heat {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+      border-color var(--dur-micro) var(--ease-out-expo),
+      box-shadow var(--dur-medium) var(--ease-out-expo),
+      color var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo),
+      filter var(--dur-micro) ease,
+      opacity var(--dur-micro) ease;
+  }
+  .burn-heat.fire-btn {
+    overflow: visible;
+  }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    /* Session fire plate stays accent — warm flicker, never danger-red hover. */
+    .fire-btn.burn-heat:hover:not(.is-dying) {
+      background-color: var(--color-accent-hover);
+      border-color: color-mix(in oklab, var(--color-accent) 40%, transparent);
+      box-shadow:
+        0 6px 18px color-mix(in oklab, #000 32%, transparent),
+        inset 0 1px 0 color-mix(in oklab, #fff 42%, transparent),
+        0 0 12px color-mix(in srgb, var(--fire-mid) 12%, transparent);
+    }
+    .fire-btn--circle.burn-heat:hover:not(.is-dying) {
+      background-color: transparent;
+    }
+    .fire-btn--circle.burn-heat:hover:not(.is-dying) .fire-btn__plate {
+      background-color: var(--color-accent-hover);
+      box-shadow:
+        inset 0 1px 0 color-mix(in oklab, #fff 42%, transparent),
+        0 0 12px color-mix(in srgb, var(--fire-mid) 12%, transparent);
+    }
+    .fire-btn.burn-heat:hover:not(.is-dying) .burn-flame-icon {
+      color: var(--color-on-accent);
+      animation: flame-flicker-hover 560ms ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 4px color-mix(in srgb, var(--fire-mid) 40%, transparent));
+    }
+  }
+  .burn-heat .burn-flame-icon {
+    transition:
+      color var(--dur-micro) var(--ease-out-expo),
+      filter var(--dur-micro) ease;
+  }
+  /* Session “apagar llama” — cool down / die (not heat-up). */
+  .burn-heat.is-dying {
+    animation: burn-flame-die var(--dur-burn-heat-glow) ease-in-out forwards;
+    border-color: color-mix(in oklab, var(--fire-edge) 40%, var(--color-danger-border)) !important;
+    color: color-mix(in oklab, var(--color-danger-ink) 70%, var(--color-ink-muted)) !important;
+    background-color: color-mix(in oklab, var(--color-danger-bg) 70%, var(--color-bg)) !important;
+    box-shadow:
+      0 0 8px color-mix(in oklab, var(--fire-edge) 12%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--color-bg) 18%, transparent);
+    filter: saturate(0.55) brightness(0.88);
+  }
+  .fire-btn.is-dying {
+    background-image: none;
+    background-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-bg)) !important;
+    color: color-mix(in oklab, var(--color-on-accent) 55%, var(--color-ink-muted)) !important;
+    box-shadow:
+      0 0 8px color-mix(in oklab, var(--fire-edge) 10%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--color-bg) 18%, transparent);
+    filter: saturate(0.45) brightness(0.9);
+  }
+  .burn-heat.is-dying .burn-flame-icon {
+    color: color-mix(in oklab, var(--fire-edge) 55%, var(--color-ink-muted));
+    filter: drop-shadow(0 0 2px color-mix(in oklab, var(--fire-edge) 18%, transparent));
+    opacity: 0.45;
+  }
+}

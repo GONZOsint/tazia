@@ -1,167 +1,277 @@
-import { clampDt } from '../fire/burnFrame';
-import { getFirePalette, refreshFirePalette, rgbaFire } from '../fire/palette';
+import { exactSpring } from '../fireButton/exactSpring';
 import { QR_SECRET_FIRE } from './budget';
-import { drawFireSegment } from './filament';
-import {
-  spawnEmber,
-  spawnSpark,
-  updateAndDrawFlames,
-  updateAndDrawSparks,
-  type Flame,
-  type Spark,
-} from './particles';
-import { getPerimeterPoint, type QrSecretFireGeom } from './perimeter';
+import type { QrSecretFireGeom } from './perimeter';
+import { QR_FIRE_FS, QR_FIRE_VS } from './shaders';
 
+function compile(gl: WebGLRenderingContext, type: number, src: string): WebGLShader | null {
+  const s = gl.createShader(type);
+  if (!s) return null;
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    gl.deleteShader(s);
+    return null;
+  }
+  return s;
+}
+
+const FALLBACK_ACCENT: [number, number, number] = [0.863, 0.992, 0.475];
+let cachedAccent: [number, number, number] | null = null;
+let cachedAccentRaw = '';
+
+function accentRgb(): [number, number, number] {
+  try {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
+    if (cachedAccent && raw === cachedAccentRaw) return cachedAccent;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return FALLBACK_ACCENT;
+    ctx.fillStyle = raw || '#dcfd79';
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    cachedAccentRaw = raw;
+    cachedAccent = [r / 255, g / 255, b / 255];
+    return cachedAccent;
+  } catch {
+    return FALLBACK_ACCENT;
+  }
+}
+
+type Uniforms = {
+  time: WebGLUniformLocation;
+  aspect: WebGLUniformLocation;
+  intensity: WebGLUniformLocation;
+  sweep: WebGLUniformLocation;
+  rectMin: WebGLUniformLocation;
+  rectMax: WebGLUniformLocation;
+  radius: WebGLUniformLocation;
+  color: WebGLUniformLocation;
+};
+
+/**
+ * WebGL perimeter fire for secret invite QR (replaces Canvas2D qrFire particles).
+ */
 export class QrSecretFireController {
   private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+  private gl: WebGLRenderingContext;
+  private program: WebGLProgram;
+  private vs: WebGLShader;
+  private fs: WebGLShader;
+  private buf: WebGLBuffer;
+  private uniforms: Uniforms;
   private geom: QrSecretFireGeom;
   private fireOn = false;
-  private firePower = 0;
-  private igniteSweep = 0;
-  private flames: Flame[] = [];
-  private sparks: Spark[] = [];
+  private intensity = 0;
+  private intensityVel = 0;
+  private sweep = 0;
+  private sweepVel = 0;
+  private flameTime = 1;
   private raf = 0;
   private lastTs = 0;
-  private elapsed = 0;
   private disposed = false;
+  private lastCssSize = -1;
+  private lastDpr = -1;
+  private color: [number, number, number] = [0.863, 0.992, 0.475];
+  private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  private readonly onFrame = (ts: number) => this.tick(ts);
+  private readonly onVisibility = () => {
+    if (document.hidden) {
+      if (this.raf) {
+        cancelAnimationFrame(this.raf);
+        this.raf = 0;
+      }
+      return;
+    }
+    if (this.fireOn || this.intensity > 0.01) this.ensureLoop();
+  };
 
   constructor(canvas: HTMLCanvasElement, geom: QrSecretFireGeom) {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('2d context unavailable');
+    const gl = canvas.getContext('webgl', {
+      alpha: true,
+      premultipliedAlpha: true,
+      antialias: false,
+    });
+    if (!gl) throw new Error('webgl unavailable');
+
+    const vs = compile(gl, gl.VERTEX_SHADER, QR_FIRE_VS);
+    const fs = compile(gl, gl.FRAGMENT_SHADER, QR_FIRE_FS);
+    if (!vs || !fs) throw new Error('qr fire shader compile failed');
+
+    const program = gl.createProgram();
+    if (!program) throw new Error('qr fire program failed');
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error('qr fire link failed');
+    }
+
+    gl.useProgram(program);
+    const buf = gl.createBuffer();
+    if (!buf) throw new Error('qr fire buffer failed');
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(program, 'aPos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
     this.canvas = canvas;
-    this.ctx = ctx;
+    this.gl = gl;
+    this.program = program;
+    this.vs = vs;
+    this.fs = fs;
+    this.buf = buf;
     this.geom = geom;
-    refreshFirePalette();
-    this.resize();
+    this.uniforms = {
+      time: gl.getUniformLocation(program, 'uTime')!,
+      aspect: gl.getUniformLocation(program, 'uAspect')!,
+      intensity: gl.getUniformLocation(program, 'uIntensity')!,
+      sweep: gl.getUniformLocation(program, 'uSweep')!,
+      rectMin: gl.getUniformLocation(program, 'uRectMin')!,
+      rectMax: gl.getUniformLocation(program, 'uRectMax')!,
+      radius: gl.getUniformLocation(program, 'uRadius')!,
+      color: gl.getUniformLocation(program, 'uColor')!,
+    };
+    this.color = accentRgb();
+    this.syncCanvasSize();
+    document.addEventListener('visibilitychange', this.onVisibility);
   }
 
   setGeom(geom: QrSecretFireGeom) {
     if (this.disposed) return;
     this.geom = geom;
-    this.resize();
+    this.syncCanvasSize();
   }
 
   setFireOn(on: boolean) {
     if (this.disposed) return;
     this.fireOn = on;
-    if (on) refreshFirePalette();
-    if (on || this.firePower > 0.01 || this.flames.length || this.sparks.length) {
-      this.ensureLoop();
+    if (on) this.color = accentRgb();
+    if (this.reducedMotion.matches) {
+      this.intensity = on ? 1 : 0;
+      this.sweep = on ? 0.5 : 0;
+      this.intensityVel = 0;
+      this.sweepVel = 0;
+      this.draw();
+      return;
     }
+    if (on || this.intensity > 0.01) this.ensureLoop();
   }
 
   dispose() {
     this.disposed = true;
     this.fireOn = false;
-    this.firePower = 0;
-    this.igniteSweep = 0;
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
-    this.flames.length = 0;
-    this.sparks.length = 0;
-    this.ctx.clearRect(0, 0, this.geom.canvasSize, this.geom.canvasSize);
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    const { gl } = this;
+    gl.deleteProgram(this.program);
+    gl.deleteShader(this.vs);
+    gl.deleteShader(this.fs);
+    gl.deleteBuffer(this.buf);
+    this.canvas.width = 0;
+    this.canvas.height = 0;
   }
 
-  private resize() {
+  private syncCanvasSize() {
     const dpr = Math.min(window.devicePixelRatio || 1, QR_SECRET_FIRE.maxDpr);
-    const css = this.geom.canvasSize;
-    this.canvas.width = Math.round(css * dpr);
-    this.canvas.height = Math.round(css * dpr);
+    const css = Math.max(0, this.geom.canvasSize);
+    if (css === this.lastCssSize && dpr === this.lastDpr) return;
+    this.lastCssSize = css;
+    this.lastDpr = dpr;
+    const px = Math.round(css * dpr);
+    this.canvas.width = px;
+    this.canvas.height = px;
     this.canvas.style.width = `${css}px`;
     this.canvas.style.height = `${css}px`;
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.gl.viewport(0, 0, px, px);
   }
 
   private ensureLoop() {
-    if (this.disposed || this.raf) return;
+    if (this.disposed || this.raf || document.hidden) return;
     this.lastTs = performance.now();
-    this.raf = requestAnimationFrame((t) => this.tick(t));
+    this.raf = requestAnimationFrame(this.onFrame);
+  }
+
+  private draw() {
+    const { gl, geom } = this;
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    if (this.intensity <= 0.002) return;
+
+    const css = Math.max(1, geom.canvasSize);
+    const min = geom.lineOffset / css;
+    const max = (geom.lineOffset + geom.lineSize) / css;
+    const radius = geom.lineRadius / css;
+
+    gl.useProgram(this.program);
+    gl.uniform1f(this.uniforms.time, this.reducedMotion.matches ? 1.5 : this.flameTime);
+    gl.uniform1f(this.uniforms.aspect, 1);
+    gl.uniform1f(this.uniforms.intensity, Math.max(0, this.intensity));
+    gl.uniform1f(this.uniforms.sweep, Math.max(0, Math.min(0.5, this.sweep)));
+    gl.uniform2f(this.uniforms.rectMin, min, min);
+    gl.uniform2f(this.uniforms.rectMax, max, max);
+    gl.uniform1f(this.uniforms.radius, radius);
+    gl.uniform3f(this.uniforms.color, this.color[0], this.color[1], this.color[2]);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
   private tick(now: number) {
     if (this.disposed) {
       this.raf = 0;
-      this.ctx.clearRect(0, 0, this.geom.canvasSize, this.geom.canvasSize);
+      return;
+    }
+    if (document.hidden) {
+      this.raf = 0;
       return;
     }
 
-    const dt = clampDt(now, this.lastTs);
+    this.syncCanvasSize();
+    const dt = Math.min(0.05, Math.max(0.001, (now - this.lastTs) / 1000));
     this.lastTs = now;
-    this.elapsed += dt;
 
-    if (this.fireOn) {
-      this.firePower = Math.min(1, this.firePower + dt * 3.0);
-      this.igniteSweep = Math.min(1, this.igniteSweep + dt * 2.3);
-    } else {
-      this.firePower = Math.max(0, this.firePower - dt * 2.6);
-      if (this.firePower <= 0.01) this.igniteSweep = 0;
+    const target = this.fireOn ? 1 : 0;
+    [this.intensity, this.intensityVel] = exactSpring(
+      this.intensity,
+      this.intensityVel,
+      target,
+      this.fireOn ? 7.2 : 5.6,
+      1.02,
+      dt
+    );
+    // 0.52 clears the bottom of the perimeter (arc max ≈ 0.5).
+    [this.sweep, this.sweepVel] = exactSpring(
+      this.sweep,
+      this.sweepVel,
+      this.fireOn ? 0.52 : 0,
+      5.0,
+      0.95,
+      dt
+    );
+
+    if (this.intensity < 0) {
+      this.intensity = 0;
+      this.intensityVel = 0;
+    }
+    if (this.sweep < 0) {
+      this.sweep = 0;
+      this.sweepVel = 0;
     }
 
-    const { canvasSize, lineOffset: ox, lineSize: s, lineRadius: r } = this.geom;
-    const ctx = this.ctx;
-    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    this.flameTime += dt * (0.82 + 1.05 * Math.min(1, this.intensity));
+    this.draw();
 
-    if (this.firePower > 0.01) {
-      if (this.igniteSweep < 0.999) {
-        const half = 0.5 * this.igniteSweep;
-        const steps = Math.max(8, Math.floor(85 * this.igniteSweep));
-        drawFireSegment(ctx, ox, s, r, 0, half, steps, this.firePower, this.elapsed);
-        drawFireSegment(ctx, ox, s, r, 0, -half, steps, this.firePower, this.elapsed);
-
-        for (const tip of [
-          getPerimeterPoint(half, ox, ox, s, s, r),
-          getPerimeterPoint(-half, ox, ox, s, s, r),
-        ]) {
-          const { tip: tipColor, mid } = getFirePalette();
-          const g = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, 5);
-          g.addColorStop(0, rgbaFire(tipColor, 0.9 * this.firePower));
-          g.addColorStop(0.5, rgbaFire(mid, 0.45 * this.firePower));
-          g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.arc(tip.x, tip.y, 5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      } else {
-        drawFireSegment(ctx, ox, s, r, 0, 1, 160, this.firePower, this.elapsed);
-      }
-
-      if (
-        this.flames.length < QR_SECRET_FIRE.maxFlames &&
-        Math.random() < 0.45 * this.firePower * this.igniteSweep
-      ) {
-        const t = (Math.random() - 0.5) * this.igniteSweep;
-        spawnEmber(this.flames, getPerimeterPoint(t, ox, ox, s, s, r), this.firePower);
-      }
-      if (
-        this.sparks.length < QR_SECRET_FIRE.maxSparks &&
-        Math.random() < 0.18 * this.firePower * this.igniteSweep
-      ) {
-        const t = (Math.random() - 0.5) * this.igniteSweep;
-        spawnSpark(this.sparks, getPerimeterPoint(t, ox, ox, s, s, r));
-      }
-    }
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    updateAndDrawFlames(ctx, this.flames, this.geom, dt, this.elapsed);
-    updateAndDrawSparks(ctx, this.sparks, this.geom, dt);
-    ctx.restore();
-
-    if (this.disposed) {
-      this.raf = 0;
-      ctx.clearRect(0, 0, canvasSize, canvasSize);
-      return;
-    }
-
-    const needsFire =
-      this.fireOn || this.firePower > 0.01 || this.flames.length > 0 || this.sparks.length > 0;
-    if (needsFire) {
-      this.raf = requestAnimationFrame((t) => this.tick(t));
+    const needs =
+      this.fireOn || this.intensity > 0.003 || Math.abs(this.intensityVel) > 0.01;
+    if (needs) {
+      this.raf = requestAnimationFrame(this.onFrame);
     } else {
       this.raf = 0;
-      ctx.clearRect(0, 0, canvasSize, canvasSize);
+      this.intensity = 0;
+      this.sweep = 0;
+      this.draw();
     }
   }
 }

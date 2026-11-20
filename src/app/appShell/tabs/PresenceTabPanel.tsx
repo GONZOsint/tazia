@@ -8,6 +8,7 @@ export function PresenceTabPanel(props: {
   active: boolean;
   roomView: ActiveRoomView;
   syncNow: RoomPanelActions['syncNow'];
+  resolvePeerTrust: RoomPanelActions['resolvePeerTrust'];
   selectTab: (tab: 'rooms') => void;
 }) {
   const v = props.roomView;
@@ -34,6 +35,7 @@ export function PresenceTabPanel(props: {
           onSyncNow={props.syncNow}
           isSyncing={v.isSyncing}
           onGoToRooms={() => props.selectTab('rooms')}
+          onPeerTrustResolved={props.resolvePeerTrust}
         />
       </Suspense>
     </div>

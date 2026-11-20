@@ -84,12 +84,7 @@ export function wireTrysteroIngress(
   );
   const presence = room.makeUserState<PresenceState>('presence', emptyPresence(), {
     maxBytes: MAX_PRESENCE_STATE_BYTES,
-    validate: (next) => {
-      if (!next || typeof next !== 'object') return false;
-      const alias = (next as PresenceState).alias;
-      if (alias === '') return true;
-      return isValidPresenceState(next);
-    },
+    validate: (next) => isValidPresenceState(next),
   });
 
   unsubs.push(

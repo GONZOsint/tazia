@@ -1,4 +1,5 @@
 import {
+  latchInvitePhrase,
   parseInviteInput,
   scrubPhraseFromLocationHash,
   takeBootstrappedInvitePhrase,
@@ -9,6 +10,7 @@ export function consumeInviteFromLocation() {
   const parsed = parseInviteInput(window.location.hash);
   if (!parsed) return null;
   if (parsed.phrase) {
+    latchInvitePhrase(parsed.roomId, parsed.phrase);
     scrubPhraseFromLocationHash(parsed.roomId);
     return parsed;
   }

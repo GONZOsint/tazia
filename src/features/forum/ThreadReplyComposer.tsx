@@ -1,5 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { ForumMessage } from '../../core/protocol';
 import { MAX_BODY_CHARS } from '../../core/protocol';
 import { useT } from '../../i18n';
@@ -34,24 +35,36 @@ export function ThreadReplyComposer({
   onSubmit,
 }: ThreadReplyComposerProps) {
   const t = useT();
+  const reduceMotion = useReducedMotion();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const replyAliasAt = replyAlias ? replyLabel.lastIndexOf(replyAlias) : -1;
+  const canSend = Boolean(replyBody.trim()) && !isBusy && !submitting;
+
+  useEffect(() => {
+    if (!replyParent) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+  }, [replyParent]);
 
   return (
     <form
       onSubmit={onSubmit}
-      className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 p-2 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-panel)] md:border md:p-3"
+      className="chrome-elev chrome-elev-md-flat fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface-raised/95 px-3 py-2.5 backdrop-blur-sm md:static md:bottom-auto md:z-auto md:mt-3 md:rounded-[var(--radius-panel)] md:border md:p-3"
     >
-      <div className="mx-auto max-w-[1280px]">
-        <AnimatePresence initial={false}>
+      <motion.div layout className="mx-auto max-w-[1280px]">
+        <AnimatePresence initial={false} mode="popLayout">
           {replyParent && (
             <motion.div
-              initial={disclosure.initial}
-              animate={disclosure.animate}
-              exit={disclosure.exit}
+              key={replyParent.msgId}
+              layout
+              initial={reduceMotion ? { opacity: 0 } : disclosure.initial}
+              animate={reduceMotion ? { opacity: 1 } : disclosure.animate}
+              exit={reduceMotion ? { opacity: 0 } : disclosure.exit}
               transition={disclosure.transition}
-              className="overflow-hidden"
+              className="mb-2 overflow-hidden"
             >
-              <div className="thread-quote thread-quote--composer mb-2 items-center justify-between">
+              <div className="thread-quote thread-quote--composer items-center justify-between">
                 <span className="type-caption min-w-0 flex-1 truncate">
                   {replyAliasAt < 0 ? (
                     <span className="font-semibold text-ink">{replyLabel}</span>
@@ -75,11 +88,12 @@ export function ThreadReplyComposer({
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="flex gap-2">
+        <div className="flex items-end gap-2">
           <label className="sr-only" htmlFor="thread-reply">
             {t('readerReply')}
           </label>
           <textarea
+            ref={textareaRef}
             id="thread-reply"
             value={replyBody}
             maxLength={MAX_BODY_CHARS}
@@ -90,11 +104,11 @@ export function ThreadReplyComposer({
             required
           />
           <motion.button
-            whileTap={replyBody.trim() && !submitting ? TAP : undefined}
+            whileTap={canSend && !reduceMotion ? TAP : undefined}
             transition={TAP_TRANSITION}
             type="submit"
-            disabled={!replyBody.trim() || isBusy || submitting}
-            className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            disabled={!canSend}
+            className="btn-accent-sheen inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-[var(--radius-ctrl)] bg-accent px-3 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <PlaneSendIcon
               planeKey={planeKey}
@@ -106,7 +120,7 @@ export function ThreadReplyComposer({
             </span>
           </motion.button>
         </div>
-      </div>
+      </motion.div>
     </form>
   );
 }

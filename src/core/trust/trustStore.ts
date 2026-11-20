@@ -181,6 +181,10 @@ export class TrustStore {
     if (rec.currentKeyB64 && rec.currentKeyB64 !== rec.pinnedKeyB64) return;
     rec.pinnedEncRawB64 = rec.currentEncRawB64;
     rec.currentEncRawB64 = null;
+    // Sign pin is stable — heal stale `changed` left after a flap that settled.
+    if (rec.level === 'changed' && !rec.currentKeyB64) {
+      rec.level = 'trusted';
+    }
     this.emitChange();
   }
 

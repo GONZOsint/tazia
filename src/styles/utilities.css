@@ -1,0 +1,93 @@
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel[data-active='true'] {
+  display: block;
+}
+
+/* Plaza (in-zone): fill the shell and scroll inside the workspace. */
+.tab-panel[data-active='true'][data-fill='true'] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * Tab enter is Motion-only (contentSwitch) — no CSS tab-panel-show.
+ * Swipe drag writes transform on the active panel via JS (not an inherited --tab-drag).
+ */
+@media (prefers-reduced-motion: no-preference) {
+  [data-swiping='true'] .tab-panel[data-active='true'] {
+    transition: none;
+  }
+}
+
+.mesh-radar-dot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  height: 8px;
+}
+/* Stable mesh: solid dot only — no infinite ping. */
+.mesh-radar-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background-color: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+.mesh-radar-dot.is-birthing::before {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mesh-radar-dot.is-birthing::before {
+    animation: mesh-birth-wave var(--dur-pulse) var(--ease-out-expo) 1;
+  }
+}
+.mesh-radar-dot > span {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: currentColor;
+}
+
+@keyframes wifi-wave-step {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+/* One-shot on mesh birth only (not idle). */
+.wifi-arc-1.is-birthing {
+  animation: wifi-wave-step var(--dur-birth) ease-in-out 1;
+}
+
+.card-container {
+  container-type: inline-size;
+}
+
+@container (max-width: 640px) {
+  .cq-stack {
+    grid-template-columns: 1fr !important;
+  }
+}

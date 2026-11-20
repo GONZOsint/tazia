@@ -26,7 +26,7 @@ export function useAppNavigation() {
   );
   const [initialInvite, setInitialInvite] = useState(consumeInviteFromLocation);
   const [inviteNonce, setInviteNonce] = useState(0);
-  const [dmPeerId, setDmPeerId] = useState<string | null>(null);
+  const [dmPeerId, setDmPeerIdState] = useState<string | null>(null);
 
   const forumTabFocusedRef = useRef(false);
   const dmsTabFocusedRef = useRef(false);
@@ -42,9 +42,11 @@ export function useAppNavigation() {
     clearDmUnread: () => {},
   });
 
-  useEffect(() => {
-    activeDmPeerIdRef.current = dmPeerId;
-  }, [dmPeerId]);
+  /** Sync ref in the same tick as state so inbound DMs see the open peer immediately. */
+  const setDmPeerId = useCallback((id: string | null) => {
+    activeDmPeerIdRef.current = id;
+    setDmPeerIdState(id);
+  }, []);
 
   const ensureMounted = useCallback((tab: ActiveTab) => {
     setMountedTabs((prev) => {
@@ -78,7 +80,10 @@ export function useAppNavigation() {
       }
 
       // Mobile-messenger pattern: leave thread when leaving Susurros.
-      if (tab !== 'dms') setDmPeerId(null);
+      if (tab !== 'dms') {
+        activeDmPeerIdRef.current = null;
+        setDmPeerIdState(null);
+      }
 
       ensureMounted(tab);
       setActiveTab(tab);
@@ -118,14 +123,11 @@ export function useAppNavigation() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, [applyTab]);
 
-  // Warm lazy tab chunks after first paint.
+  // Warm the next-most-likely tab chunks after first paint (not every panel).
   useEffect(() => {
     const warm = () => {
       void import('../../features/forum/ForumWorkspace');
       void import('../../features/presence/PresenceView');
-      void import('../../features/dms/DmListView');
-      void import('../../features/dms/DmConversationView');
-      void import('../../features/how/HowItWorksView');
     };
     const w = window as Window &
       typeof globalThis & {

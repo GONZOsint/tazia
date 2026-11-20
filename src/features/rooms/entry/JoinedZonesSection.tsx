@@ -30,7 +30,6 @@ type JoinedZonesSectionProps = {
   joinedRooms: RoomState[];
   activeRoomId: string | null;
   leavingId: string | null;
-  ashRoom: RoomState | null;
   reduceMotion: boolean | null;
   atCap: boolean;
   browserBlocked: boolean;
@@ -43,7 +42,6 @@ type JoinedZonesSectionProps = {
   onLeaveRoom?: (roomId: string) => Promise<void>;
   onSwitchRoom?: (roomId: string) => void;
   setLeaveTarget: (id: string | null) => void;
-  clearZoneAsh: () => void;
   onExitComplete: () => void;
   openEntry: (tab: 'create' | 'join') => void;
 };
@@ -53,7 +51,6 @@ export function JoinedZonesSection({
   joinedRooms,
   activeRoomId,
   leavingId,
-  ashRoom,
   reduceMotion,
   atCap,
   browserBlocked,
@@ -66,7 +63,6 @@ export function JoinedZonesSection({
   onLeaveRoom,
   onSwitchRoom,
   setLeaveTarget,
-  clearZoneAsh: _clearZoneAsh,
   onExitComplete,
   openEntry,
 }: JoinedZonesSectionProps) {
@@ -102,23 +98,16 @@ export function JoinedZonesSection({
             const showQr = qrRoomId === room.roomId;
             const justBorn = !seenRoomIdsRef.current.has(room.roomId);
             const justJoined = pulseRoomId === room.roomId || justBorn;
-            const ashing = ashRoom?.roomId === room.roomId;
             const enter = justBorn && !reduceMotion ? forgeEnter : listRowEnter;
             const zoneIcon = identiconVisualFromHex(room.roomId);
             return (
               <motion.li
                 key={room.roomId}
-                layout={ashRoom || reduceMotion ? false : 'position'}
+                layout={reduceMotion ? false : 'position'}
                 layoutDependency={leavingId ?? listRooms.length}
                 initial={enter.initial}
                 animate={enter.animate}
-                exit={
-                  ashing
-                    ? { opacity: 0, transition: { duration: 0 } }
-                    : reduceMotion
-                      ? zoneCardExit.exitReduced
-                      : zoneCardExit.exit
-                }
+                exit={reduceMotion ? zoneCardExit.exitReduced : zoneCardExit.exit}
                 transition={{
                   layout: reduceMotion
                     ? { duration: DUR.micro, ease: EASE.outExpo }
@@ -127,8 +116,6 @@ export function JoinedZonesSection({
                 data-zone-id={room.roomId}
                 data-zone-card={room.roomId}
                 className={`session-burn-target session-ignite-target relative overflow-hidden rounded-[var(--radius-ctrl)] border ${
-                  ashing ? 'zone-ash-target ' : ''
-                }${
                   isActive
                     ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                     : 'border-border bg-bg'
@@ -136,7 +123,6 @@ export function JoinedZonesSection({
                   room.relayFallbackActive ? 'relay-channel-tint' : ''
                 }`}
                 aria-current={isActive ? 'true' : undefined}
-                aria-busy={ashing ? true : undefined}
               >
                 {/*
                   Own layoutId only while pulseRoomId matches — survives the
@@ -155,8 +141,7 @@ export function JoinedZonesSection({
                   <button
                     type="button"
                     onClick={() => onSwitchRoom?.(room.roomId)}
-                    disabled={ashing}
-                    className="pressable flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-3.5 disabled:opacity-60"
+                    className="pressable flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-3.5"
                     aria-label={
                       isActive
                         ? `${t('roomsGoToChat')}: ${room.roomId}`
@@ -227,9 +212,8 @@ export function JoinedZonesSection({
                         haptic(HAPTIC_TAP);
                         setQrRoomId((cur) => (cur === room.roomId ? null : room.roomId));
                       }}
-                      disabled={ashing}
                       aria-pressed={showQr}
-                      className={`icon-action pressable focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 ${
+                      className={`icon-action pressable focus-visible:outline-2 focus-visible:outline-accent ${
                         showQr ? 'is-active' : 'icon-action--ghost'
                       }`}
                       title={showQr ? t('roomsHideQr') : t('roomsShowQr')}
@@ -241,8 +225,7 @@ export function JoinedZonesSection({
                       <button
                         type="button"
                         onClick={() => setLeaveTarget(room.roomId)}
-                        disabled={ashing || Boolean(ashRoom)}
-                        className="icon-action icon-action--danger pressable focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+                        className="icon-action icon-action--danger pressable focus-visible:outline-2 focus-visible:outline-accent"
                         title={t('roomsLeaveRoom')}
                         aria-label={t('roomsLeaveRoom')}
                       >

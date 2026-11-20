@@ -7,6 +7,8 @@ interface IpConsentModalProps {
   open: boolean;
   onAccept: () => void;
   onCancel: () => void;
+  /** Close modal and jump to Zones → Fix (TURN / Nostr). */
+  onOpenFix?: () => void;
 }
 
 function IpExposureDiagram() {
@@ -45,7 +47,7 @@ function IpExposureDiagram() {
   );
 }
 
-export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps) {
+export function IpConsentModal({ open, onAccept, onCancel, onOpenFix }: IpConsentModalProps) {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -92,25 +94,39 @@ export function IpConsentModal({ open, onAccept, onCancel }: IpConsentModalProps
             </h2>
             <IpExposureDiagram />
             <p className="type-lede mt-2">{t('consentBody')}</p>
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <motion.button
-                whileTap={TAP}
-                transition={TAP_TRANSITION}
-                type="button"
-                onClick={onCancel}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] border border-border bg-bg px-4 py-2 type-ui font-medium text-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                {t('consentCancel')}
-              </motion.button>
+            <p className="type-caption mt-3 text-muted">{t('consentHideIpNote')}</p>
+            <div className="mt-5 flex flex-col gap-2">
               <motion.button
                 whileTap={TAP}
                 transition={TAP_TRANSITION}
                 type="button"
                 onClick={onAccept}
-                className="btn-accent-sheen inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-ctrl)] bg-accent px-4 py-2 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
+                className="btn-accent-sheen inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-ctrl)] bg-accent px-4 py-2.5 type-ui font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent"
               >
                 {t('consentAccept')}
               </motion.button>
+              <div className={`grid gap-2 ${onOpenFix ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                <motion.button
+                  whileTap={TAP}
+                  transition={TAP_TRANSITION}
+                  type="button"
+                  onClick={onCancel}
+                  className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-ctrl)] border border-border bg-bg px-4 py-2 type-ui font-medium text-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  {t('consentCancel')}
+                </motion.button>
+                {onOpenFix ? (
+                  <motion.button
+                    whileTap={TAP}
+                    transition={TAP_TRANSITION}
+                    type="button"
+                    onClick={onOpenFix}
+                    className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-ctrl)] border border-border bg-bg px-4 py-2 text-center type-ui font-medium text-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    {t('consentOpenFix')}
+                  </motion.button>
+                ) : null}
+              </div>
             </div>
           </motion.div>
         </motion.div>

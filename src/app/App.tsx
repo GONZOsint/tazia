@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useToast } from '../components/ui/ToastHost';
 import { useRoomManager } from '../hooks/useRoomManager';
 import { useSessionFlame } from '../hooks/useSessionFlame';
@@ -33,15 +33,6 @@ export default function App() {
     onNavigateTab,
   } = useAppNavigation();
 
-  const { lit: sessionLit, ignite } = useSessionFlame({
-    autoIgnite: Boolean(initialInvite?.roomId),
-  });
-
-  const onHelpFromIgnite = useCallback(() => {
-    ignite();
-    selectTab('how');
-  }, [ignite, selectTab]);
-
   /** Bridge: zone chrome hook runs after manager (needs activeRoomId). */
   const zoneIgniteRef = useRef<(roomId: string) => void>(() => {});
   const onZoneIgnited = useCallback((roomId: string) => {
@@ -57,6 +48,7 @@ export default function App() {
     isJoining,
     joinError,
     burnNotice,
+    dismissBurnNotice,
     ipConsentNeeded,
     totalForumUnread,
     totalDmUnread,
@@ -66,6 +58,7 @@ export default function App() {
     leaveRoom,
     switchRoom,
     burnSession,
+    setSessionTearingDown,
     publish,
     syncNow,
     sendDm,
@@ -81,6 +74,18 @@ export default function App() {
     onZoneIgnited,
   });
 
+  // Peek before room-manager consume is already done; burnNotice state is source of truth.
+  // Cold-load invite auto-lit only when not returning from an extinguish.
+  const { lit: sessionLit, ignite } = useSessionFlame({
+    autoIgnite: Boolean(initialInvite?.roomId) && !burnNotice,
+    burnNotice,
+  });
+
+  const igniteSession = useCallback(() => {
+    dismissBurnNotice();
+    ignite();
+  }, [dismissBurnNotice, ignite]);
+
   roomCtxRef.current = {
     activeRoomId,
     clearForumUnread,
@@ -95,6 +100,10 @@ export default function App() {
 
   useWakeLock(Boolean(activeRoomId));
 
+  const onBurnStart = useCallback(() => {
+    setSessionTearingDown(true);
+  }, [setSessionTearingDown]);
+
   const {
     burnConfirmOpen,
     burnPlaying,
@@ -102,7 +111,11 @@ export default function App() {
     openBurnConfirm,
     cancelBurnConfirm,
     confirmBurn,
-  } = useAppModals(burnSession, ipConsentNeeded);
+  } = useAppModals(burnSession, ipConsentNeeded, onBurnStart);
+
+  useEffect(() => {
+    setSessionTearingDown(burnPlaying);
+  }, [burnPlaying, setSessionTearingDown]);
 
   const roomView = useActiveRoomView(
     activeRoom,
@@ -132,6 +145,36 @@ export default function App() {
   const fillLocked = plazaLocked || dmsThreadOpen;
   const splashShort = Boolean(initialInvite?.roomId);
 
+  const activeZone = useMemo(
+    () =>
+      activeRoom
+        ? {
+            roomId: activeRoom.roomId,
+            meshStatus: activeRoom.meshStatus,
+            onlineUserIds: activeRoom.onlineUserIds,
+            selfUserId: activeRoom.selfUserId,
+            relayActive: activeRoom.relayFallbackActive,
+          }
+        : null,
+    [
+      activeRoom?.roomId,
+      activeRoom?.meshStatus,
+      activeRoom?.onlineUserIds,
+      activeRoom?.selfUserId,
+      activeRoom?.relayFallbackActive,
+    ]
+  );
+
+  const resolvePeerTrust = useCallback(
+    (userId: string) => {
+      if (!activeRoomId) return;
+      // Caller already applied applyTrustSasConfirm; only refresh crypto + dismiss alert.
+      void activeRoom?.session.invalidatePeerKey(userId);
+      dismissKeyChange(activeRoomId, userId);
+    },
+    [activeRoom, activeRoomId, dismissKeyChange]
+  );
+
   const roomActions = useMemo(
     () => ({
       publish,
@@ -142,6 +185,7 @@ export default function App() {
       joinRoom,
       switchRoom,
       leaveRoom,
+      resolvePeerTrust,
     }),
     [
       publish,
@@ -152,6 +196,7 @@ export default function App() {
       joinRoom,
       switchRoom,
       leaveRoom,
+      resolvePeerTrust,
     ]
   );
 
@@ -189,37 +234,34 @@ export default function App() {
     <AppShellLayout
       splashShort={splashShort}
       sessionLit={sessionLit}
-      onIgnite={ignite}
-      onHelpFromIgnite={onHelpFromIgnite}
-      burnNotice={burnNotice}
+      onIgnite={igniteSession}
       activeTab={activeTab}
       selectTab={selectTab}
       isInRoom={roomView.isInRoom}
       totalForumUnread={totalForumUnread}
       totalDmUnread={totalDmUnread}
       roomsCount={roomList.length}
-      activeZone={
-        activeRoom
-          ? {
-              roomId: activeRoom.roomId,
-              meshStatus: activeRoom.meshStatus,
-              onlineUserIds: activeRoom.onlineUserIds,
-              selfUserId: activeRoom.selfUserId,
-              relayActive: activeRoom.relayFallbackActive,
-            }
-          : null
-      }
+      activeZone={activeZone}
       burnHeating={burnPlaying}
       igniting={Boolean(igniteRoomId && activeRoomId === igniteRoomId)}
       zoneSwitchPulse={zoneSwitchPulse}
       onBurnSession={openBurnConfirm}
-      swipeDisabled={modalOpen || burnPlaying}
+      swipeDisabled={modalOpen || burnPlaying || fillLocked}
       overlays={
         <AppOverlays
-          burnNotice={false}
           ipConsentNeeded={ipConsentNeeded}
           onAcceptIpConsent={() => void confirmIpConsent()}
           onCancelIpConsent={cancelIpConsent}
+          onOpenFix={() => {
+            selectTab('rooms');
+            window.dispatchEvent(new Event('tazia:open-fix'));
+            requestAnimationFrame(() => {
+              document.getElementById('turn-relay-settings')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+            });
+          }}
           burnConfirmOpen={burnConfirmOpen}
           onCancelBurnConfirm={cancelBurnConfirm}
           onConfirmBurn={confirmBurn}
@@ -228,7 +270,6 @@ export default function App() {
           keyChangeAlerts={roomView.keyChangeAlerts}
           presence={roomView.presence}
           dismissKeyChange={dismissKeyChange}
-          leaveRoom={leaveRoom}
         />
       }
       panels={

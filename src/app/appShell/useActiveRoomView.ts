@@ -50,6 +50,8 @@ export type RoomPanelActions = {
   }) => Promise<void>;
   switchRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => Promise<void>;
+  /** After Tribu SAS repin — refresh peer crypto + dismiss key-change alert. */
+  resolvePeerTrust: (userId: string) => void;
 };
 
 export function useActiveRoomView(

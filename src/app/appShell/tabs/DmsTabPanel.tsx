@@ -62,7 +62,15 @@ export function DmsTabPanel(props: {
                 messages={v.dmMessages[dmPeerId] ?? []}
                 onSend={async (body) => {
                   const ok = await actions.sendDm(dmPeerId, body);
-                  if (!ok) toast.push(t('toastDmFailed'), 'error');
+                  if (!ok) {
+                    const level = v.trustStore?.get(dmPeerId)?.level;
+                    toast.push(
+                      level === 'changed'
+                        ? t('toastDmFailedKeyChanged')
+                        : t('toastDmFailed'),
+                      'error'
+                    );
+                  }
                   return ok;
                 }}
                 onBack={() => {

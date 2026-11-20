@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Flame } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
@@ -7,7 +7,7 @@ import {
   type PeerVisual,
 } from '../../core/crypto/identity';
 import {
-  peerAvatarSeed,
+  resolvePeerAvatarSeed,
   rememberPeerAvatarSeeds,
 } from '../../core/avatar/peerSeedCache';
 import type { ThreadDeleteBallot } from '../../core/forum/threadDelete';
@@ -15,6 +15,11 @@ import { useLocale, useT } from '../../i18n';
 import type { ForumMessage } from '../../core/protocol';
 import { usePlaneLaunch } from '../../hooks/usePlaneLaunch';
 import { haptic, HAPTIC_TAP } from '../../motion/haptic';
+import {
+  FIRE_BTN_TITLE_RIM,
+  mountFireButton,
+  type FireButtonHandle,
+} from '../../motion/fireButton';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 import { PostCard } from './PostCard';
 import { resolveForumAlias } from './resolveForumAlias';
@@ -67,6 +72,16 @@ export function ThreadReader({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const titleBannerRef = useRef<HTMLDivElement>(null);
+  const titleFireCanvasRef = useRef<HTMLCanvasElement>(null);
+  const titleFireHandleRef = useRef<FireButtonHandle | null>(null);
+  /** True after the WebGL crown has a non-zero canvas — safe to animate setLit. */
+  const titleFireReadyRef = useRef(false);
+  /** Crown stays lit until confirm / ballot — confirm previews the extinguish. */
+  const titleBurning = !deleteBallot;
+  const crownLit = titleBurning && !deleteConfirmOpen && !deleteBusy;
+  const crownLitRef = useRef(crownLit);
+  crownLitRef.current = crownLit;
 
   const posts = useMemo(
     () => [thread.rootPost, ...thread.replies],
@@ -116,6 +131,69 @@ export function ThreadReader({
     return () => window.clearTimeout(tmr);
   }, [highlightId]);
 
+  useEffect(() => {
+    if (reduceMotion) return;
+    const banner = titleBannerRef.current;
+    const canvas = titleFireCanvasRef.current;
+    if (!banner || !canvas) return;
+
+    const inViewRef = { current: true };
+    const handle = mountFireButton(banner, canvas, FIRE_BTN_TITLE_RIM, {
+      isActiveZone: () => false,
+      // Softer than the TopBar crown — fewer, calmer tongues on a wide rim.
+      intensityGain: 0.78,
+      shouldRun: () => inViewRef.current,
+    });
+    titleFireHandleRef.current = handle;
+    titleFireReadyRef.current = false;
+    if (!handle) return;
+
+    // Stay dark until the canvas has a real layout box — otherwise the ignite
+    // spring finishes while the buffer is 0×0 and the crown pops in fully lit.
+    handle.setLit(false, 0.5, 'instant');
+    let cancelled = false;
+    let raf = 0;
+    let tries = 0;
+    const igniteWhenReady = () => {
+      if (cancelled || titleFireHandleRef.current !== handle) return;
+      if (canvas.clientWidth <= 0 || canvas.clientHeight <= 0) {
+        if (tries++ < 45) raf = window.requestAnimationFrame(igniteWhenReady);
+        return;
+      }
+      titleFireReadyRef.current = true;
+      handle.setLit(crownLitRef.current, 0.5);
+    };
+    raf = window.requestAnimationFrame(() => {
+      raf = window.requestAnimationFrame(igniteWhenReady);
+    });
+
+    let io: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        (entries) => {
+          inViewRef.current = Boolean(entries[0]?.isIntersecting);
+          handle.syncLoop();
+        },
+        { threshold: 0.05, rootMargin: '24px' }
+      );
+      io.observe(banner);
+    }
+
+    return () => {
+      cancelled = true;
+      titleFireReadyRef.current = false;
+      window.cancelAnimationFrame(raf);
+      io?.disconnect();
+      handle.destroy();
+      if (titleFireHandleRef.current === handle) titleFireHandleRef.current = null;
+    };
+  }, [reduceMotion, thread.threadId]);
+
+  useEffect(() => {
+    if (!titleFireReadyRef.current) return;
+    titleFireHandleRef.current?.setLit(crownLit, 0.5);
+  }, [crownLit]);
+
   const aliasOpts = {
     presenceAliases,
     selfUserId,
@@ -145,15 +223,25 @@ export function ThreadReader({
   }, [deleteBallot, presenceAliases, selfUserId, identity.alias, authorVisuals, t]);
 
   const handleProposeDelete = async () => {
-    if (isBusy || deleteBusy || deleteBallot) return;
+    if (isBusy || deleteBusy || deleteBallot) {
+      setDeleteConfirmOpen(false);
+      return;
+    }
+    setDeleteConfirmOpen(false);
     setDeleteBusy(true);
     try {
-      const electorate = [...new Set([selfUserId, ...onlineUserIds.filter(Boolean)])];
+      const electorate = [
+        ...new Set([
+          selfUserId,
+          ...onlineUserIds.filter(Boolean),
+          ...Object.keys(presenceAliases),
+          ...Object.keys(presenceAvatarSeeds),
+        ]),
+      ].sort();
       const ok = await onProposeDeleteThread(thread.threadId, electorate);
       if (ok) haptic(HAPTIC_TAP);
     } finally {
       setDeleteBusy(false);
-      setDeleteConfirmOpen(false);
     }
   };
 
@@ -218,8 +306,10 @@ export function ThreadReader({
           avatarSeed={
             msg.authorUserId === selfUserId
               ? identity.avatarSeed
-              : presenceAvatarSeeds[msg.authorUserId] ||
-                peerAvatarSeed(msg.authorUserId)
+              : resolvePeerAvatarSeed(
+                  presenceAvatarSeeds[msg.authorUserId],
+                  msg.authorUserId
+                ) ?? undefined
           }
           isSelf={msg.authorUserId === selfUserId}
           depth={depth}
@@ -251,9 +341,19 @@ export function ThreadReader({
   const replyLabel = replyParent ? t('readerReplyingTo', { alias: replyAlias }) : '';
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="plaza-title flex shrink-0 items-start justify-between gap-2">
-        <h2 className="type-title min-w-0 flex-1 text-ink">{thread.title}</h2>
+    <div className="plaza-reader flex min-h-0 flex-1 flex-col">
+      <div
+        ref={titleBannerRef}
+        className={`plaza-title shrink-0 ${crownLit ? 'is-lit' : 'is-dying'}`}
+      >
+        {!reduceMotion && (
+          <canvas
+            ref={titleFireCanvasRef}
+            className="plaza-title__fire"
+            aria-hidden="true"
+          />
+        )}
+        <h2 className="plaza-title__label type-title">{thread.title}</h2>
         {!deleteBallot && (
           <motion.button
             whileTap={TAP}
@@ -263,7 +363,7 @@ export function ThreadReader({
             disabled={isBusy || deleteBusy}
             aria-label={t('readerDeleteTalk')}
             title={t('readerDeleteTalk')}
-            className="icon-action icon-action--danger shrink-0 disabled:opacity-50"
+            className="plaza-title__extinguish icon-action disabled:opacity-50"
           >
             <Flame className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
           </motion.button>

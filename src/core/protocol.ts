@@ -14,6 +14,9 @@ import {
   DELETE_VOTE_AYE,
   isValidDeleteElectorateBody,
 } from './forum/threadDelete';
+import { MAX_ALIAS_CHARS, normalizePresenceAlias } from './presenceAlias';
+
+export { MAX_ALIAS_CHARS } from './presenceAlias';
 
 export const PROTOCOL_NAME = 'tazep-v2';
 export const PROTOCOL_VERSION = 2 as const;
@@ -97,7 +100,6 @@ export const MESH_SOFT_WARN_PEERS = 6;
 export const MAX_SYNC_PEER_TARGETS = 8;
 export const MAX_BODY_CHARS = 8000;
 export const MAX_TITLE_CHARS = 200;
-export const MAX_ALIAS_CHARS = 40;
 export const MAX_USER_ID_CHARS = 64;
 export const MAX_SIG_B64_CHARS = 128;
 /**
@@ -124,8 +126,18 @@ export const MAX_SYNC_TOTAL_BYTES = 2 * 1024 * 1024;
 export const MAX_RECEIVE_BYTES = MAX_SYNC_TOTAL_BYTES + 512 * 1024;
 /** Soft cap for presence makeUserState JSON. */
 export const MAX_PRESENCE_STATE_BYTES = 4_096;
+/**
+ * Max base64 chars for one Nostr fallback EVENT `content` (sealed envelope).
+ * Rejected before schnorr verify / AES-GCM decrypt to bound CPU/RAM griefing.
+ */
+export const MAX_FALLBACK_CIPHER_B64_CHARS = 96_000;
 /** Soft cap for Nostr EVENT created_at skew (±5 min). */
 export const NOSTR_EVENT_CLOCK_SKEW_SEC = 300;
+
+/** True when Nostr EVENT content length is within the fallback ciphertext ceiling. */
+export function isFallbackCipherWithinCap(content: string): boolean {
+  return content.length <= MAX_FALLBACK_CIPHER_B64_CHARS;
+}
 
 export type MeshStatus = 'connecting' | 'alone' | 'mesh' | 'syncing';
 
@@ -306,9 +318,9 @@ export function isValidForumEvent(
 export function isValidPresenceState(value: unknown): value is PresenceState {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (typeof v.alias !== 'string' || v.alias.length === 0 || v.alias.length > MAX_ALIAS_CHARS) {
-    return false;
-  }
+  if (typeof v.alias !== 'string') return false;
+  // Canonical only — reject bidi controls / outer whitespace (do not mutate).
+  if (normalizePresenceAlias(v.alias) !== v.alias) return false;
   if (typeof v.signPubKeySpkiB64 !== 'string' || !isValidEd25519SpkiB64(v.signPubKeySpkiB64)) {
     return false;
   }

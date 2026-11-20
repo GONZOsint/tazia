@@ -44,11 +44,11 @@ export function BottomNav({
                 aria-label={
                   badge > 0
                     ? `${t(labelKey)} — ${t('navUnreadAria', { n: badge })}`
-                    : t(labelKey)
+                    : undefined
                 }
                 onClick={() => onSelectTab(id)}
-                className={`bottom-nav__item type-label relative flex w-full flex-col items-center justify-center gap-0.5 px-0.5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
-                  active ? 'text-ink' : 'text-muted'
+                className={`bottom-nav__item type-label relative flex w-full cursor-pointer select-none touch-manipulation flex-col items-center justify-center gap-0.5 px-0.5 transition-colors duration-[var(--dur-micro)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
+                  active ? 'text-ink' : 'text-muted hover:text-ink'
                 }`}
               >
                 <span className="bottom-nav__icon-slot relative inline-flex items-center justify-center">
@@ -61,6 +61,7 @@ export function BottomNav({
                     />
                   )}
                   <motion.span
+                    initial={false}
                     className="relative z-[1] inline-flex"
                     animate={{ scale: active ? 1 : 0.96 }}
                     transition={{ duration: DUR.micro, ease: EASE.outExpo }}
@@ -97,11 +98,12 @@ function AnimateBadge({ count }: { count: number }) {
       {count > 0 && (
         <motion.span
           key="badge"
+          aria-hidden="true"
           initial={badgeMelt.initial}
           animate={badgeMelt.animate}
           exit={badgeMelt.exit}
           transition={badgeMelt.transition}
-          className="type-badge bottom-nav__badge absolute z-[2] flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-on-accent"
+          className="type-badge bottom-nav__badge pointer-events-none absolute z-[2] flex h-4 min-w-4 select-none items-center justify-center rounded-full bg-accent px-1 text-on-accent"
         >
           {count > 9 ? '9+' : count}
         </motion.span>

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Identicon } from './Identicon';
 import { FlameAvatar } from './FlameAvatar';
 import { AvatarPreviewModal } from './AvatarPreviewModal';
@@ -7,10 +7,10 @@ import { isValidAvatarSeed } from '../../core/avatar/avatarSeed';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 import { useT } from '../../i18n';
 
-interface PeerAvatarProps {
+export interface PeerAvatarProps {
   /** Flame seed from presence / cache; falls back to Identicon when missing/invalid. */
   avatarSeed?: string | null;
-  matrix?: boolean[];
+  matrix?: readonly boolean[];
   size?: number;
   label?: string;
   fg?: string;
@@ -33,61 +33,83 @@ export function PeerAvatar({
   label,
   fg,
   bg,
-  className,
+  className = '',
   animated,
   previewable = true,
 }: PeerAvatarProps) {
   const t = useT();
+  const reduceMotion = useReducedMotion();
   const [previewOpen, setPreviewOpen] = useState(false);
-  const hasFlame = Boolean(avatarSeed && isValidAvatarSeed(avatarSeed));
-  const canPreview = previewable && hasFlame;
 
-  const flame = hasFlame ? (
-    <FlameAvatar
-      seed={avatarSeed!}
-      size={size}
-      label={label}
-      className={className}
-      animated={animated}
-    />
-  ) : null;
+  const safeSize = Number.isFinite(size) && size > 0 ? size : 28;
+  const validSeed = avatarSeed && isValidAvatarSeed(avatarSeed) ? avatarSeed : null;
+  const canPreview = previewable && validSeed !== null;
 
-  if (hasFlame && canPreview) {
+  useEffect(() => {
+    if (!canPreview) setPreviewOpen(false);
+  }, [canPreview]);
+
+  if (validSeed !== null && canPreview) {
+    const alias = label || t('presenceNoAlias');
+    const openLabel = t('avatarPreviewOpen', { alias });
+
     return (
       <>
         <motion.button
           type="button"
-          whileTap={TAP}
+          whileTap={reduceMotion ? undefined : TAP}
           transition={TAP_TRANSITION}
           onClick={(e) => {
             e.stopPropagation();
             setPreviewOpen(true);
           }}
-          className="flame-avatar-hit shrink-0 rounded-[var(--radius-ctrl)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          aria-label={t('avatarPreviewOpen', { alias: label || t('presenceNoAlias') })}
+          className={`flame-avatar-hit shrink-0 cursor-pointer select-none rounded-[var(--radius-ctrl)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`}
+          aria-label={openLabel}
+          title={openLabel}
         >
-          {flame}
+          {/* Decorative inside the button so screen readers don't see a nested img label. */}
+          <FlameAvatar seed={validSeed} size={safeSize} animated={animated} />
         </motion.button>
         <AvatarPreviewModal
           open={previewOpen}
-          seed={avatarSeed!}
-          alias={label || t('presenceNoAlias')}
+          seed={validSeed}
+          alias={alias}
           onClose={() => setPreviewOpen(false)}
         />
       </>
     );
   }
 
-  if (hasFlame) return flame;
+  if (validSeed !== null) {
+    return (
+      <FlameAvatar
+        seed={validSeed}
+        size={safeSize}
+        label={label}
+        className={className}
+        animated={animated}
+      />
+    );
+  }
 
   if (!matrix || matrix.length === 0) {
     return (
       <div
-        className={`shrink-0 rounded-[var(--radius-ctrl)] bg-[var(--flame-plate)] ${className ?? ''}`}
-        style={{ width: size, height: size }}
-        aria-hidden
+        className={`shrink-0 rounded-[var(--radius-ctrl)] bg-[var(--flame-plate)] ${className}`}
+        style={{ width: safeSize, height: safeSize }}
+        aria-hidden="true"
       />
     );
   }
-  return <Identicon matrix={matrix} size={size} label={label} fg={fg} bg={bg} />;
+
+  return (
+    <Identicon
+      matrix={matrix}
+      size={safeSize}
+      label={label}
+      fg={fg}
+      bg={bg}
+      className={className}
+    />
+  );
 }

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { ChevronDown, KeyRound, Loader2, QrCode } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { evaluatePassphraseStrength } from '../../core/crypto/passphraseWords';
+import { MAX_ALIAS_CHARS } from '../../core/protocol';
 import { buildInviteUrl, parseInviteInput } from '../../core/utils/inviteLink';
 import type { RoomJoinParams } from '../../hooks/useRoomManager';
 import { useMdUp } from '../../hooks/useMdUp';
@@ -66,6 +67,9 @@ export function JoinRoomForm({
         setShowJoinPhrase(false);
         setPhraseScrubbedHint(true);
       } else {
+        // Room-only paste must not keep a previous zone's phrase.
+        setJoinPhrase('');
+        setPhraseScrubbedHint(false);
         setJoinInviteInput(raw);
       }
     } else {
@@ -245,6 +249,7 @@ export function JoinRoomForm({
                         id="join-alias"
                         value={joinAlias}
                         onChange={(e) => setJoinAlias(e.target.value)}
+                        maxLength={MAX_ALIAS_CHARS}
                         className="input-base mt-2"
                         placeholder={t('roomsAliasPlaceholder')}
                       />

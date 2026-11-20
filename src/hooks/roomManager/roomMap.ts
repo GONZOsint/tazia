@@ -13,6 +13,35 @@ export function sameOnlineIdSet(a: string[], b: string[]): boolean {
   return true;
 }
 
+function sameDmUnread(
+  a: RoomState['dmUnread'],
+  b: RoomState['dmUnread']
+): boolean {
+  if (a === b) return true;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+/**
+ * Fields the zone list / nav badges read for non-active rooms.
+ * Message/presence body churn on background zones can skip React commits.
+ */
+export function roomListChromeEqual(a: RoomState, b: RoomState): boolean {
+  return (
+    a.unreadCount === b.unreadCount &&
+    a.meshStatus === b.meshStatus &&
+    a.relayFallbackActive === b.relayFallbackActive &&
+    a.selfUserId === b.selfUserId &&
+    sameOnlineIdSet(a.onlineUserIds, b.onlineUserIds) &&
+    sameDmUnread(a.dmUnread, b.dmUnread)
+  );
+}
+
 export function applyRoomUpdate(
   prev: Map<string, RoomState>,
   roomId: string,

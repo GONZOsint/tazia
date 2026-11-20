@@ -26,24 +26,52 @@ export function clearAllSyncTimers(refs: SyncEngineRefs) {
   }
 }
 
+/** Hard ceiling so a hung peer sync cannot leave meshStatus stuck on syncing. */
+export const SYNC_REQUEST_TIMEOUT_MS = 15_000;
+
 export async function runSync(refs: SyncEngineRefs, roomId: string) {
   const room = refs.roomsRef.current.get(roomId);
   if (!room || refs.syncInFlightRef.current.has(roomId)) return;
   refs.syncInFlightRef.current.add(roomId);
   refs.updateRoom(roomId, (r) => ({ ...r, isSyncing: true }));
   try {
-    await room.session.requestSyncFromPeers();
+    await Promise.race([
+      room.session.requestSyncFromPeers(),
+      new Promise<void>((_, reject) =>
+        window.setTimeout(() => reject(new Error('sync-timeout')), SYNC_REQUEST_TIMEOUT_MS)
+      ),
+    ]);
+    const forumFocusedHere =
+      refs.forumFocusedRef?.current === true && roomId === refs.activeRoomIdRef.current;
+    refs.updateRoom(roomId, (r) => {
+      if (forumFocusedHere) {
+        return {
+          ...r,
+          isSyncing: false,
+          rejectedSyncCount: r.session.getRejectedSyncCount(),
+          unreadCount: 0,
+        };
+      }
+      // Recompute: recent non-self content while away (covers live posts gated during isSyncing).
+      const recentUnread = r.messages.reduce((n, m) => {
+        if (m.authorUserId === r.selfUserId) return n;
+        if (m.type === 'DELETE_VOTE' || m.type === 'DELETE_PROPOSE') return n;
+        if (Date.now() - m.createdAtMs >= 90_000) return n;
+        return n + 1;
+      }, 0);
+      return {
+        ...r,
+        isSyncing: false,
+        rejectedSyncCount: r.session.getRejectedSyncCount(),
+        unreadCount: Math.max(r.unreadCount, recentUnread),
+      };
+    });
+  } catch {
     refs.updateRoom(roomId, (r) => ({
       ...r,
       isSyncing: false,
       rejectedSyncCount: r.session.getRejectedSyncCount(),
-      unreadCount:
-        refs.forumFocusedRef?.current === true && roomId === refs.activeRoomIdRef.current
-          ? 0
-          : r.unreadCount,
     }));
-  } catch {
-    refs.updateRoom(roomId, (r) => ({ ...r, isSyncing: false }));
   } finally {
     refs.syncInFlightRef.current.delete(roomId);
   }

@@ -1,5 +1,7 @@
 import { DUR, EASE } from './base';
-import { REGION_ASH } from './climax';
+
+/** Reduced-motion zone card exit (ms → s). */
+const ZONE_EXIT_REDUCED_S = 0.18;
 
 export const TAP = { scale: 0.97 } as const;
 export const TAP_TRANSITION = { duration: DUR.tap } as const;
@@ -31,30 +33,18 @@ const zoneCardExitMotion = {
 
 const zoneCardExitReducedMotion = {
   opacity: 0,
-  transition: { duration: REGION_ASH.reducedMs / 1000, ease: EASE.easeIn },
+  transition: { duration: ZONE_EXIT_REDUCED_S, ease: EASE.easeIn },
 } as const;
 
 /**
- * Cold leave (zone card) — reduced-motion / fallback only.
- * Full motion uses RegionAshOverlay (ZONE_ASH) then instant unmount — do not pair
- * Motion exit with `.incinerated-collapse` (opacity/filter/transform fight).
- *
- * Reduced choreography: optimistic unmount → AnimatePresence popLayout `exit`
- * while siblings spring via `zoneListLayout`.
+ * Zone card leave — AnimatePresence popLayout `exit` while siblings spring
+ * via `zoneListLayout`.
  */
 export const zoneCardExit = {
   initial: { opacity: 1, scale: 1, y: 0 },
   /** Popped-out leave — plays while remaining cards layout-spring upward. */
   exit: zoneCardExitMotion,
   exitReduced: zoneCardExitReducedMotion,
-  /** @deprecated Prefer `exit` — kept for any leftover incinerate callers. */
-  incinerate: zoneCardExitMotion,
-  incinerateReduced: {
-    opacity: 0,
-    scale: 0.98,
-    y: 0,
-    transition: { duration: REGION_ASH.reducedMs / 1000, ease: EASE.easeIn },
-  },
 };
 
 /** Sibling zone cards settling into vacated slot (pair with layout + popLayout). */
@@ -108,21 +98,26 @@ export const zoneBootMark = {
 } as const;
 
 /**
- * ZONE_BOOT mark — revisit / post-splash: settle only.
- * High initial opacity — splash already owned the brand beat; opacity 0 reads as flicker.
+ * ZONE_BOOT mark — revisit / post-splash: hold the splash seat (no second beat).
  */
 export const zoneBootMarkShort = {
-  /** Near-opaque — post-splash must not flash a second brand beat from low opacity. */
-  initial: { opacity: 0.96, scale: 0.99 },
+  initial: { opacity: 1, scale: 1 },
   animate: { opacity: 1, scale: 1 },
-  transition: { duration: DUR.switch, ease: EASE.outExpo },
+  transition: { duration: 0 },
 } as const;
 
-/** ZONE_BOOT copy / steps / CTAs — soft rise (no blank frame). */
+/** ZONE_BOOT copy / steps / CTAs — soft rise after splash/veil clears. */
 export const zoneBootCopy = {
-  initial: { opacity: 0.9, y: 4 },
+  initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: DUR.switch, ease: EASE.outExpo },
+  transition: { duration: 0.48, ease: EASE.outExpo },
+} as const;
+
+/** Ignite CTA stack — enters a beat after copy. */
+export const zoneBootCta = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5, ease: EASE.outExpo, delay: 0.14 },
 } as const;
 
 /** ZONE_BOOT reduced-motion: soft fade only. */
@@ -182,14 +177,13 @@ export const modalSheet = {
   transition: { duration: DUR.modal, ease: EASE.outExpo },
 };
 
-/** Toast stack card. */
+/** Toast stack card — soft rise, no punchy scale. */
 export const toastEnter = {
-  initial: { opacity: 0, y: 10, scale: 0.96 },
-  animate: { opacity: 1, y: 0, scale: 1, x: 0 },
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0, x: 0 },
   exit: {
     opacity: 0,
-    y: 8,
-    scale: 0.97,
+    y: 4,
     transition: { duration: DUR.micro, ease: EASE.easeIn },
   },
   transition: { duration: DUR.medium, ease: EASE.outExpo },
@@ -238,9 +232,6 @@ export const peerMaterialize = {
   },
 };
 
-/** @deprecated Prefer listRowEnter — kept as alias for peer rows. */
-export const peerRowEnter = listRowEnter;
-
 export const peerRowExit = {
   opacity: 0,
   scale: 0.97,
@@ -272,29 +263,17 @@ export const badgeMelt = {
   transition: { duration: DUR.micro, ease: EASE.outExpo },
 };
 
-/** Top-of-app notice banner (burn notice, etc.). */
-export const bannerEnter = {
-  initial: { opacity: 0, y: -6 },
-  animate: { opacity: 1, y: 0 },
-  exit: {
-    opacity: 0,
-    y: -4,
-    transition: { duration: DUR.micro, ease: EASE.easeIn },
-  },
-  transition: { duration: DUR.medium, ease: EASE.outExpo },
-};
-
 /**
  * Icon / label swap inside mode="wait" AnimatePresence
  * (theme, copy, secret phrase, lang). Soft opacity — avoid chrome flicker.
  */
 export const iconSwap = {
-  initial: { opacity: 0.85, scale: 0.9, y: 2 },
-  animate: { opacity: 1, scale: 1, y: 0 },
+  /* Soft opacity only — avoid stacking scale with whileTap on CopyButton. */
+  initial: { opacity: 0.85, y: 1 },
+  animate: { opacity: 1, y: 0 },
   exit: {
     opacity: 0.85,
-    scale: 0.9,
-    y: -2,
+    y: -1,
     transition: { duration: DUR.micro, ease: EASE.easeIn },
   },
   transition: { duration: DUR.tab, ease: EASE.outExpo },

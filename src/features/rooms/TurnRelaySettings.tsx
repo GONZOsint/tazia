@@ -3,6 +3,11 @@ import { ChevronDown, Wrench } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n';
 import { disclosure } from '../../motion/tokens';
+import {
+  NETWORK_PREFS_CLEARED_EVENT,
+  emitNetworkPrefsCleared,
+} from './nostrRelayConfig';
+import { NostrRelaySettings } from './NostrRelaySettings';
 
 /** Session-scoped by default — credentials leave with the tab. */
 const SS_KEY = 'tazia:turn-config';
@@ -69,15 +74,11 @@ export function loadTurnConfig(): TurnConfig {
   try {
     const fromSession = parseTurn(sessionStorage.getItem(SS_KEY));
     if (fromSession) return fromSession;
-    const fromPersist =
-      parseTurn(localStorage.getItem(LS_KEY)) ??
-      parseTurn(localStorage.getItem('tazia:turn-config'));
+    const fromPersist = parseTurn(localStorage.getItem(LS_KEY));
     if (fromPersist) {
-      const migrated = { ...fromPersist, rememberDevice: true };
-      sessionStorage.setItem(SS_KEY, JSON.stringify(migrated));
-      localStorage.setItem(LS_KEY, JSON.stringify(migrated));
-      localStorage.removeItem('tazia:turn-config');
-      return migrated;
+      const remembered = { ...fromPersist, rememberDevice: true };
+      sessionStorage.setItem(SS_KEY, JSON.stringify(remembered));
+      return remembered;
     }
     return DEFAULT;
   } catch {
@@ -119,20 +120,48 @@ export function buildRtcConfig(turn: TurnConfig = loadTurnConfig()): {
   };
 }
 
-function saveTurnConfig(cfg: TurnConfig): void {
+function saveTurnConfig(cfg: TurnConfig): TurnConfig {
+  const safe = sanitizeTurnConfig(cfg);
   try {
-    const safe = sanitizeTurnConfig(cfg);
     sessionStorage.setItem(SS_KEY, JSON.stringify(safe));
     if (safe.rememberDevice) {
       localStorage.setItem(LS_KEY, JSON.stringify(safe));
     } else {
-      localStorage.removeItem(LS_KEY);
-      // Legacy key from older builds that always used localStorage.
-      localStorage.removeItem('tazia:turn-config');
+      clearPersistedTurnConfig();
     }
   } catch {
     /* private mode / quota */
   }
+  return safe;
+}
+
+/** True when opt-in TURN JSON is still on this device (survives tab close / default burn). */
+export function hasPersistedTurnConfig(): boolean {
+  try {
+    return Boolean(localStorage.getItem(LS_KEY));
+  } catch {
+    return false;
+  }
+}
+
+/** Drop remembered TURN credentials from localStorage. */
+export function clearPersistedTurnConfig(): void {
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Drop session + persisted TURN (Help forget / burn prefs). */
+export function clearTurnConfig(opts?: { emitCleared?: boolean }): void {
+  try {
+    sessionStorage.removeItem(SS_KEY);
+  } catch {
+    /* private mode */
+  }
+  clearPersistedTurnConfig();
+  if (opts?.emitCleared !== false) emitNetworkPrefsCleared();
 }
 
 interface TurnRelaySettingsProps {
@@ -150,11 +179,34 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
     if (forceOpen) setOpen(true);
   }, [forceOpen]);
 
+  useEffect(() => {
+    const openFromHash = () => {
+      if (location.hash === '#turn-relay-settings' || location.hash === '#fix') {
+        setOpen(true);
+      }
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+    const onOpenFix = () => setOpen(true);
+    window.addEventListener('tazia:open-fix', onOpenFix);
+    return () => {
+      window.removeEventListener('hashchange', openFromHash);
+      window.removeEventListener('tazia:open-fix', onOpenFix);
+    };
+  }, []);
+
   const update = (patch: Partial<TurnConfig>) => {
-    const next = { ...config, ...patch };
-    setConfig(next);
-    saveTurnConfig(next);
+    const safe = saveTurnConfig({ ...config, ...patch });
+    setConfig(safe);
   };
+
+  useEffect(() => {
+    const reload = () => setConfig(loadTurnConfig());
+    window.addEventListener(NETWORK_PREFS_CLEARED_EVENT, reload);
+    return () => window.removeEventListener(NETWORK_PREFS_CLEARED_EVENT, reload);
+  }, []);
+
+  const { relayOnly: iceRelayOnly } = buildRtcConfig(config);
 
   return (
     <div
@@ -201,7 +253,8 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                     onChange={(e) =>
                       update({
                         enabled: e.target.checked,
-                        ...(e.target.checked ? {} : { relayOnly: false }),
+                        // Privacy default: hide peer-facing IP when TURN is on (LAN P2P → uncheck).
+                        relayOnly: e.target.checked ? true : false,
                       })
                     }
                   />
@@ -220,6 +273,17 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
 
               {config.enabled && (
                 <div className="space-y-3">
+                  <p
+                    className={`type-caption rounded-[var(--radius-ctrl)] border px-3 py-2 ${
+                      iceRelayOnly
+                        ? 'border-accent/30 bg-accent-soft text-ink'
+                        : 'border-warn-border bg-warn-bg/50 text-warn-ink'
+                    }`}
+                    role="status"
+                  >
+                    {iceRelayOnly ? t('turnIpStatusRelay') : t('turnIpStatusP2p')}
+                  </p>
+                  <p className="type-caption">{t('turnOperatorSeesIp')}</p>
                   <div>
                     <label htmlFor="turn-url" className="type-label text-ink">
                       {t('turnServerUrl')}
@@ -269,7 +333,19 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                     />
                   </div>
 
-                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-ink">
+                  {forceOpen && !config.relayOnly ? (
+                    <p className="type-caption rounded-[var(--radius-ctrl)] border border-warn-border bg-warn-bg/50 px-3 py-2 text-warn-ink">
+                      {t('turnHideIpPrompt')}
+                    </p>
+                  ) : null}
+
+                  <label
+                    className={`flex min-h-[44px] cursor-pointer items-center gap-3 text-xs text-ink ${
+                      forceOpen && !config.relayOnly
+                        ? 'rounded-[var(--radius-ctrl)] border border-accent/40 bg-accent-soft px-3 py-2'
+                        : ''
+                    }`}
+                  >
                     <span className="relative inline-flex">
                       <input
                         type="checkbox"
@@ -330,6 +406,8 @@ export function TurnRelaySettings({ forceOpen = false }: TurnRelaySettingsProps)
                   </p>
                 )}
               </div>
+
+              <NostrRelaySettings />
             </div>
           </motion.div>
         )}

@@ -1,0 +1,260 @@
+@layer components {
+  .invite-panel {
+    min-width: 0;
+    max-width: 100%;
+    border-radius: var(--radius-sheet);
+    border: 1px solid color-mix(in oklab, var(--color-accent) 22%, var(--color-border));
+    background:
+      radial-gradient(
+        ellipse at 50% 0%,
+        color-mix(in oklab, var(--color-accent) 10%, transparent),
+        transparent 58%
+      ),
+      var(--color-bg);
+    padding: 0.85rem 1rem 1rem;
+    transition:
+      border-color var(--dur-medium) var(--ease-out-expo),
+      box-shadow var(--dur-medium) var(--ease-out-expo);
+  }
+  /* Clip only the vertical disclosure — never clip invite rows horizontally. */
+  .invite-panel--collapse {
+    overflow-x: visible;
+    overflow-y: clip;
+  }
+  .invite-panel.invite-panel--fire {
+    border-color: color-mix(in oklab, var(--fire-mid) 32%, var(--color-border));
+    box-shadow:
+      0 0 28px color-mix(in oklab, var(--fire-edge) 8%, transparent),
+      inset 0 1px 0 color-mix(in oklab, var(--fire-core) 12%, transparent);
+  }
+  /* Nested under panel-surface / zone card — avoid double frame */
+  .invite-panel--embedded {
+    margin-top: 0.5rem;
+    border: 0;
+    border-radius: 0;
+    border-top: 1px solid color-mix(in oklab, var(--color-accent) 18%, var(--color-border));
+    background: transparent;
+    /* Match zone row px-3 so Invitar / copy / phrase aren't flush to the card edge */
+    padding: 0.55rem 0.75rem 0.85rem;
+    box-shadow: none;
+  }
+  @media (min-width: 640px) {
+    .invite-panel--embedded {
+      padding-left: 0.875rem;
+      padding-right: 0.875rem;
+    }
+  }
+  .invite-panel--embedded.invite-panel--fire {
+    border-top-color: color-mix(in oklab, var(--fire-mid) 36%, var(--color-border));
+    box-shadow: none;
+  }
+
+  .invite-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .invite-controls--compact {
+    gap: 0.45rem;
+  }
+
+  /* QR shadow/fire bleed must not widen the invite column (was clipping copy/badge). */
+  .invite-qr-slot {
+    max-width: 100%;
+    /* Let the perimeter fire show on all sides (clip was cutting left/right). */
+    overflow: visible;
+    /* Slight air above the QR so the perimeter fire isn't flush to the chrome. */
+    padding-top: 0.35rem;
+  }
+  .invite-qr-slot .qr-perspective {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .invite-copy-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0.55rem 0.55rem 0.55rem 0.75rem;
+    border-radius: var(--radius-ctrl);
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface-raised) 70%, var(--color-bg));
+    transition:
+      border-color var(--dur-tap) var(--ease-out-expo),
+      background-color var(--dur-tap) var(--ease-out-expo);
+  }
+  @media (hover: hover) {
+    .invite-copy-row:hover {
+      border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+      background: color-mix(in oklab, var(--color-accent-soft) 35%, var(--color-surface-raised));
+    }
+  }
+  .invite-copy-info {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .invite-copy-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .invite-link-preview {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.6875rem;
+    color: var(--color-muted);
+    transition: color var(--dur-medium) var(--ease-out-expo);
+  }
+  .invite-panel--fire .invite-link-preview {
+    color: color-mix(in oklab, var(--fire-core) 55%, var(--color-muted));
+  }
+  .invite-copy-btn {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 0.65rem;
+    border-radius: calc(var(--radius-ctrl) - 2px);
+    border: 1px solid color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    background: color-mix(in oklab, var(--color-accent-soft) 55%, transparent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+  @media (hover: hover) {
+    .invite-copy-btn:hover:not([data-copied]) {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: var(--color-on-accent);
+    }
+  }
+  .invite-copy-btn[data-copied] {
+    background: var(--color-ok-bg);
+    border-color: var(--color-ok-border);
+    color: var(--color-ok-ink);
+  }
+  .invite-copy-btn[data-copied] .text-ok,
+  .invite-copy-btn[data-copied] .copy-ember-check {
+    color: var(--color-ok-ink);
+  }
+  /* Generic copy / icon-action success chrome */
+  button[data-copied]:not(.invite-copy-btn) {
+    color: var(--color-ok-ink);
+  }
+  button[data-copied]:not(.invite-copy-btn) .text-ok,
+  button[data-copied]:not(.invite-copy-btn) .copy-ember-check {
+    color: var(--color-ok-ink);
+  }
+
+  .invite-phrase-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    min-height: 44px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem 0.75rem;
+    border-radius: var(--radius-ctrl);
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface-raised) 55%, transparent);
+    cursor: pointer;
+    transition:
+      border-color var(--dur-tap) var(--ease-out-expo),
+      background-color var(--dur-tap) var(--ease-out-expo),
+      box-shadow var(--dur-tap) var(--ease-out-expo);
+  }
+  .invite-phrase-toggle.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  @media (hover: hover) {
+    .invite-phrase-toggle:not(.is-disabled):hover {
+      background: color-mix(in oklab, var(--color-accent) 6%, var(--color-surface-raised));
+      border-color: color-mix(in oklab, var(--color-accent) 22%, var(--color-border));
+    }
+  }
+  .invite-phrase-toggle.is-active {
+    border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+    background: color-mix(in oklab, var(--color-accent-soft) 40%, transparent);
+  }
+  .invite-phrase-left {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .invite-phrase-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+  .invite-phrase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 0 0 auto;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    background: color-mix(in oklab, var(--color-ink) 5%, transparent);
+    transition:
+      color var(--dur-tap) var(--ease-out-expo),
+      background-color var(--dur-tap) var(--ease-out-expo);
+  }
+  .invite-phrase-badge__dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.45;
+    transition:
+      background-color var(--dur-tap) var(--ease-out-expo),
+      opacity var(--dur-tap) var(--ease-out-expo),
+      box-shadow var(--dur-tap) var(--ease-out-expo);
+  }
+  .invite-phrase-badge.is-ember {
+    color: color-mix(in oklab, var(--fire-core) 70%, var(--color-warn));
+    background: color-mix(in oklab, var(--fire-edge) 14%, transparent);
+  }
+  .invite-phrase-badge.is-ember .invite-phrase-badge__dot {
+    background: var(--fire-mid);
+    opacity: 1;
+    box-shadow: 0 0 6px color-mix(in oklab, var(--fire-mid) 70%, transparent);
+  }
+
+  .invite-opt {
+    border-radius: var(--radius-ctrl);
+    padding-inline: 0.35rem;
+    transition: background-color var(--dur-tap) var(--ease-out-expo), color var(--dur-tap) var(--ease-out-expo);
+  }
+  @media (hover: hover) {
+    .invite-opt:hover {
+      background-color: color-mix(in oklab, var(--color-accent) 8%, transparent);
+      color: var(--color-ink);
+    }
+  }
+}

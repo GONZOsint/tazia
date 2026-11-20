@@ -25,7 +25,8 @@ interface EmojiVerifyModalProps {
   selfEncB64?: string;
   peerEncB64?: string;
   roomId?: string;
-  onVerify: () => void;
+  /** Apply trust commit; return false to abort celebration (e.g. key drift). */
+  onVerify: () => boolean;
   onClose: () => void;
 }
 
@@ -71,7 +72,11 @@ export function EmojiVerifyModal({
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    if (!open || !selfKeyB64 || !peerKeyB64) return;
+    if (!open) return;
+    if (!selfKeyB64 || !peerKeyB64) {
+      setCode(null);
+      return;
+    }
     let cancelled = false;
     void deriveEmojiSafetyCode(selfKeyB64, peerKeyB64, roomId, selfEncB64, peerEncB64).then(
       (c) => {
@@ -82,6 +87,15 @@ export function EmojiVerifyModal({
       cancelled = true;
     };
   }, [open, selfKeyB64, peerKeyB64, selfEncB64, peerEncB64, roomId]);
+
+  // Key snapshot refreshed while open — drop success chrome so user re-confirms new SAS.
+  // Skip while committing/celebrating (trust apply may clear currentKey → parent refreshes props).
+  useEffect(() => {
+    if (!open || verifying || handshakeDone) return;
+    setVerifying(false);
+    setHandshakeDone(false);
+    setConfetti(false);
+  }, [open, peerKeyB64, peerEncB64, verifying, handshakeDone]);
 
   useEffect(() => {
     if (!open) {
@@ -205,6 +219,12 @@ export function EmojiVerifyModal({
   const handleMatch = async () => {
     if (verifying) return;
     setVerifying(true);
+    // Commit trust before celebration — never show success for a failed/noop apply.
+    const ok = onVerify();
+    if (!ok) {
+      setVerifying(false);
+      return;
+    }
     if (!reduceMotion) {
       haptic(HAPTIC_RITUAL);
     }
@@ -250,7 +270,7 @@ export function EmojiVerifyModal({
           : Math.max(VERIFY.tickHoldMs, CONFETTI.ms * 0.85)
       )
     );
-    onVerify();
+    onClose();
   };
 
   const sheet = (

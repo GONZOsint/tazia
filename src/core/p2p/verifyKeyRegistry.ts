@@ -62,11 +62,19 @@ export class VerifyKeyRegistry {
     }
 
     const trustLevel = this.trustStore.observe(userId, spkiB64, encRawB64);
-    const pinned = this.trustStore.get(userId)?.pinnedKeyB64;
-    if (!pinned) return null;
+    const rec = this.trustStore.get(userId);
+    if (!rec?.pinnedKeyB64) return null;
+    const pinned = rec.pinnedKeyB64;
 
-    if (trustLevel === 'changed') {
-      this.onKeyChange?.(userId, trustLevel);
+    const encPending =
+      Boolean(rec.currentEncRawB64) &&
+      Boolean(rec.pinnedEncRawB64) &&
+      rec.currentEncRawB64 !== rec.pinnedEncRawB64;
+
+    // Sign rotation → changed; enc-only rotation under same SPKI also needs UI
+    // (acceptEncRepin) or Susurros stay sealed to the stale pinned enc.
+    if (trustLevel === 'changed' || encPending) {
+      this.onKeyChange?.(userId, 'changed');
     }
 
     return this.loadPinned(userId, pinned);

@@ -67,6 +67,7 @@ export function AppTabPanels({
           active={activeTab === 'presence'}
           roomView={roomView}
           syncNow={roomActions.syncNow}
+          resolvePeerTrust={roomActions.resolvePeerTrust}
           selectTab={selectTab}
         />
       )}

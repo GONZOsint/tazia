@@ -1,21 +1,16 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import { BottomNav } from '../../components/layout/BottomNav';
 import { TopBar, type ActiveTab, type ActiveZoneChip } from '../../components/layout/TopBar';
 import { AppSplash } from '../../components/brand/AppSplash';
-import { AlertBanner } from '../../components/ui/AlertBanner';
 import { IgniteLanding } from '../../features/session/IgniteLanding';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
-import { useT } from '../../i18n';
-import { bannerEnter } from '../../motion/tokens';
 import { ALL_TABS } from './constants';
 
 type AppShellLayoutProps = {
   splashShort: boolean;
   sessionLit: boolean;
   onIgnite: () => void;
-  onHelpFromIgnite: () => void;
-  burnNotice: boolean;
   activeTab: ActiveTab;
   selectTab: (tab: ActiveTab) => void;
   isInRoom: boolean;
@@ -36,8 +31,6 @@ export function AppShellLayout({
   splashShort,
   sessionLit,
   onIgnite,
-  onHelpFromIgnite,
-  burnNotice,
   activeTab,
   selectTab,
   isInRoom,
@@ -53,8 +46,15 @@ export function AppShellLayout({
   overlays,
   panels,
 }: AppShellLayoutProps) {
-  const t = useT();
   const mainRef = useRef<HTMLDivElement>(null);
+  const [shellRevealed, setShellRevealed] = useState(sessionLit);
+  /** Keep burn overlay up until ritual finishes — independent of sessionLit. */
+  const [landingOpen, setLandingOpen] = useState(!sessionLit);
+  const [splashActive, setSplashActive] = useState(false);
+
+  useEffect(() => {
+    if (sessionLit) setShellRevealed(true);
+  }, [sessionLit]);
 
   useSwipeTabs(mainRef, {
     tabs: ALL_TABS,
@@ -63,65 +63,86 @@ export function AppShellLayout({
     disabled: swipeDisabled || !sessionLit,
   });
 
-  const burnNoticeBanner = (
-    <AnimatePresence initial={false}>
-      {burnNotice && (
-        <motion.div
-          initial={bannerEnter.initial}
-          animate={bannerEnter.animate}
-          exit={bannerEnter.exit}
-          transition={bannerEnter.transition}
-          className="w-full"
-        >
-          <AlertBanner tone="success" role="status" className="w-full">
-            {t('burnNotice')}
-          </AlertBanner>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  // Light session as the veil lifts so TopBar extinguish is already mounted.
+  const onReveal = useCallback(() => {
+    setShellRevealed(true);
+    onIgnite();
+  }, [onIgnite]);
+
+  const handleIgniteComplete = useCallback(() => {
+    setShellRevealed(true);
+    onIgnite();
+    setLandingOpen(false);
+  }, [onIgnite]);
+
+  const showOverlay = landingOpen;
+  const shellClass = [
+    'app-shell relative flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-0',
+    showOverlay ? 'app-shell--prelit' : '',
+    showOverlay && shellRevealed ? 'is-revealed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <MotionConfig reducedMotion="user">
-      <AppSplash short={splashShort} />
-      {!sessionLit ? (
-        <IgniteLanding
-          onIgnite={onIgnite}
-          onHelp={onHelpFromIgnite}
-          notice={burnNotice ? burnNoticeBanner : undefined}
-        />
-      ) : (
-        <div
-          ref={mainRef}
-          className="flex h-dvh flex-col overflow-hidden bg-bg text-ink pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-0"
-        >
-          <TopBar
-            activeTab={activeTab}
-            onSelectTab={selectTab}
-            sessionLit={sessionLit}
-            hasActiveRoom={isInRoom}
-            forumUnread={totalForumUnread}
-            dmUnread={totalDmUnread}
-            roomsCount={roomsCount}
-            activeZone={activeZone}
-            burnHeating={burnHeating}
-            igniting={igniting}
-            zoneSwitchPulse={zoneSwitchPulse}
-            onBurnSession={onBurnSession}
-          />
+      <AppSplash short={splashShort} onActiveChange={setSplashActive} />
+      <div
+        className="relative h-dvh overflow-hidden"
+        aria-hidden={splashActive || undefined}
+        inert={splashActive || undefined}
+      >
+        <div ref={mainRef} className={shellClass}>
+          <div className="reveal-item reveal-header shrink-0">
+            <TopBar
+              activeTab={activeTab}
+              onSelectTab={selectTab}
+              sessionLit={sessionLit}
+              hasActiveRoom={isInRoom}
+              forumUnread={totalForumUnread}
+              dmUnread={totalDmUnread}
+              roomsCount={roomsCount}
+              activeZone={activeZone}
+              burnHeating={burnHeating}
+              igniting={igniting}
+              zoneSwitchPulse={zoneSwitchPulse}
+              onBurnSession={onBurnSession}
+              reserveFire={showOverlay}
+            />
+          </div>
 
+          {/* Always mount overlays so IP consent / burn confirm stay reachable. */}
           {overlays}
 
-          {panels}
+          <div className="reveal-item reveal-main relative flex min-h-0 flex-1 flex-col">
+            {panels}
+          </div>
 
-          <BottomNav
-            activeTab={activeTab}
-            onSelectTab={selectTab}
-            forumUnread={totalForumUnread}
-            dmUnread={totalDmUnread}
-          />
+          <div className="reveal-item reveal-footer shrink-0">
+            <BottomNav
+              activeTab={activeTab}
+              onSelectTab={selectTab}
+              forumUnread={totalForumUnread}
+              dmUnread={totalDmUnread}
+            />
+          </div>
         </div>
-      )}
+
+        <AnimatePresence initial={false}>
+          {showOverlay ? (
+            <motion.div
+              key="ignite-landing"
+              className="absolute inset-0 z-40"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <IgniteLanding onIgnite={handleIgniteComplete} onReveal={onReveal} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </MotionConfig>
   );
 }

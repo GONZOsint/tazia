@@ -11,3 +11,10 @@ coverage/
 docs/papers/*.pdf
 !docs/papers/README.md
 !docs/papers/README.es.md
+
+# Native TURN helper build outputs (rebuild with tools/tazia-turn/build/)
+tools/tazia-turn/dist/
+tools/tazia-turn/android/app/build/
+tools/tazia-turn/android/.gradle/
+tools/tazia-turn/android/local.properties
+tools/tazia-turn/android/app/src/main/jniLibs/

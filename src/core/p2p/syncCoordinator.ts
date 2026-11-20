@@ -53,5 +53,6 @@ export function sampleSyncTargets(allTargets: string[], max = MAX_SYNC_PEER_TARG
 }
 
 export function clampSyncEvents(events: ForumEvent[]): ForumEvent[] {
-  return events.slice(0, MAX_SYNC_MESSAGES);
+  // Match snapshotForSync: keep the newest window, not the oldest.
+  return events.slice(-MAX_SYNC_MESSAGES);
 }

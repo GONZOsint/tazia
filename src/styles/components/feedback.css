@@ -1,0 +1,91 @@
+@layer components {
+  .session-burn-target {
+    /* Large ceiling so collapse can animate without clipping tall zone cards */
+    max-height: 80rem;
+    transition:
+      box-shadow var(--dur-medium) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo),
+      background-color var(--dur-micro) var(--ease-out-expo),
+      filter var(--dur-medium) var(--ease-out-expo);
+  }
+  .tazia-check {
+    display: inline-flex;
+    height: 1.25rem;
+    width: 1.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: calc(var(--radius-ctrl) - 4px);
+    border: 1.5px solid var(--color-border);
+    background: var(--color-surface-raised);
+    transition:
+      background-color var(--dur-micro) var(--ease-out-expo),
+      border-color var(--dur-micro) var(--ease-out-expo),
+      transform var(--dur-medium) var(--ease-spring);
+  }
+  .tazia-check[data-checked='true'] {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .tazia-check[data-checked='true'] {
+      transform: scale(1.06);
+    }
+  }
+  .tazia-check svg path {
+    stroke-dasharray: 22;
+    stroke-dashoffset: 22;
+    transition: stroke-dashoffset var(--dur-medium) var(--ease-out-expo) 40ms;
+  }
+  .tazia-check[data-checked='true'] svg path {
+    stroke-dashoffset: 0;
+  }
+
+  .tazia-toast-card {
+    position: relative;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    filter: drop-shadow(var(--shadow-toast));
+  }
+  /* Soft confirmations (phrase-in-link, etc.) — lighter presence. */
+  .tazia-toast-card[data-tone='info'],
+  .tazia-toast-card[data-tone='success'] {
+    filter: drop-shadow(
+      0 4px 14px color-mix(in oklab, #000 18%, transparent)
+    );
+  }
+  .tazia-toast-card[data-tone='info'] .tazia-toast-progress {
+    height: 1.5px;
+    opacity: 0.55;
+  }
+  .tazia-toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  }
+  .tazia-toast-progress > span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--color-accent);
+    transform-origin: left center;
+    /* Fallback matches TOAST.infoMs — live value set via --toast-ttl on the card. */
+    animation: toast-progress-drain var(--toast-ttl, 1800ms) linear forwards;
+  }
+  .tazia-toast-card[data-tone='warning'] .tazia-toast-progress > span {
+    background: var(--color-warn);
+  }
+  .tazia-toast-card[data-tone='error'] .tazia-toast-progress > span {
+    background: var(--color-danger);
+  }
+  .tazia-toast-card[data-tone='success'] .tazia-toast-progress > span {
+    background: var(--color-ok);
+  }
+  .tazia-toast-card:hover .tazia-toast-progress > span {
+    animation-play-state: paused;
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import {
+  DESKTOP_IDLE_BREATH,
   FOLLOW,
   IDLE_BREATH,
   IDLE_BREATH_MS,
@@ -52,6 +53,9 @@ export function useQrCardParallax(opts: {
     let raf = 0;
     let running = true;
     let dragging = false;
+    /** Desktop: true when pointer is away — light idle breath instead of a frozen rest. */
+    let desktopIdle = !isTouch;
+    const breathAmp = isTouch ? IDLE_BREATH : DESKTOP_IDLE_BREATH;
     const current: QrPose = { ...rest };
     let target: QrPose = { ...rest };
     let lastTs = performance.now();
@@ -76,10 +80,10 @@ export function useQrCardParallax(opts: {
       const a = Math.sin(t * Math.PI * 2);
       const b = Math.cos(t * Math.PI * 2 * 0.85 + 0.4);
       return {
-        rotX: rest.rotX + a * IDLE_BREATH.rotX,
-        rotY: rest.rotY + b * IDLE_BREATH.rotY,
-        z: rest.z + (0.5 + 0.5 * a) * IDLE_BREATH.z,
-        scale: 1,
+        rotX: rest.rotX + a * breathAmp.rotX,
+        rotY: rest.rotY + b * breathAmp.rotY,
+        z: rest.z + (0.5 + 0.5 * a) * breathAmp.z,
+        scale: rest.scale + (0.5 + 0.5 * a) * breathAmp.scale,
       };
     };
 
@@ -89,16 +93,19 @@ export function useQrCardParallax(opts: {
       lastTs = ts;
       const frame = dt / 16.67;
 
-      // Touch idle: keep a living desk-lamp sway until a finger locks the pose.
-      if (isTouch && !dragging) {
+      // Idle: living desk-lamp sway (touch always; desktop only when pointer is away).
+      if ((isTouch && !dragging) || (!isTouch && desktopIdle)) {
         target = idleBreath(ts);
         const sway = Math.sin(((ts - t0) / IDLE_BREATH_MS) * Math.PI * 2);
-        targetGlareX = 38 + sway * 10;
-        targetGlareY = 22 + Math.cos(((ts - t0) / IDLE_BREATH_MS) * Math.PI * 2 * 0.85) * 8;
+        const glareSpan = isTouch ? 10 : 4;
+        targetGlareX = (isTouch ? 38 : 42) + sway * glareSpan;
+        targetGlareY =
+          (isTouch ? 22 : 28) +
+          Math.cos(((ts - t0) / IDLE_BREATH_MS) * Math.PI * 2 * 0.85) * (glareSpan * 0.8);
       }
 
-      const towardRest = !isTouch && poseNearlyEqual(target, rest);
-      const k = 1 - Math.pow(1 - (towardRest ? ret : follow), frame);
+      const breathing = (isTouch && !dragging) || (!isTouch && desktopIdle);
+      const k = 1 - Math.pow(1 - (breathing ? ret : follow), frame);
       const glareK = 1 - Math.pow(1 - (isTouch ? 0.12 : 0.16), frame);
 
       current.rotX = lerp(current.rotX, target.rotX, k);
@@ -110,7 +117,8 @@ export function useQrCardParallax(opts: {
       writePose(el, current, liftZ);
       writeGlare(el, glareX, glareY);
 
-      if (isTouch) {
+      // Keep the loop alive while idle-breathing; only park when desktop is mid-tilt settle.
+      if (isTouch || desktopIdle) {
         raf = requestAnimationFrame(tick);
         return;
       }
@@ -119,17 +127,15 @@ export function useQrCardParallax(opts: {
         poseNearlyEqual(current, target) &&
         Math.abs(glareX - targetGlareX) < 0.15 &&
         Math.abs(glareY - targetGlareY) < 0.15;
-      if (!settled || !towardRest) {
+      if (!settled) {
         raf = requestAnimationFrame(tick);
       } else {
         raf = 0;
-        writePose(el, rest, liftZ);
-        writeGlare(el, 42, 28);
         setTilting(false);
       }
     };
 
-    const kick = (promote = !isTouch) => {
+    const kick = (promote = false) => {
       if (promote) setTilting(true);
       if (raf) return;
       lastTs = performance.now();
@@ -141,31 +147,41 @@ export function useQrCardParallax(opts: {
       return Boolean(node?.closest('[aria-modal="true"], .tazia-toast-card'));
     };
 
-    const applyPointer = (clientX: number, clientY: number, locked: boolean) => {
-      target = targetFromPointer(stage, clientX, clientY, rest, tiltRange, liftZ, locked);
-      const g = glareFromPointer(stage, clientX, clientY);
-      targetGlareX = g.gx;
-      targetGlareY = g.gy;
-      kick();
-    };
-
-    const onMove = (e: PointerEvent) => {
-      if (overlayBlocksTilt(e.target)) return;
-      applyPointer(e.clientX, e.clientY, false);
-    };
-
-    const onLeave = () => {
-      target = { ...rest };
-      targetGlareX = 42;
-      targetGlareY = 28;
-      kick();
-    };
-
     const pointerNearStage = (clientX: number, clientY: number) => {
       const r = stage.getBoundingClientRect();
       const nx = (clientX - (r.left + r.width / 2)) / (r.width * 0.5);
       const ny = (clientY - (r.top + r.height / 2)) / (r.height * 0.5);
       return Math.hypot(nx, ny) <= IDLE_DIST;
+    };
+
+    const applyPointer = (clientX: number, clientY: number, locked: boolean) => {
+      if (!isTouch) desktopIdle = false;
+      target = targetFromPointer(stage, clientX, clientY, rest, tiltRange, liftZ, locked);
+      const g = glareFromPointer(stage, clientX, clientY);
+      targetGlareX = g.gx;
+      targetGlareY = g.gy;
+      kick(true);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (overlayBlocksTilt(e.target)) return;
+      if (!pointerNearStage(e.clientX, e.clientY)) {
+        if (!desktopIdle) {
+          desktopIdle = true;
+          setTilting(false);
+          kick(false);
+        }
+        return;
+      }
+      applyPointer(e.clientX, e.clientY, false);
+    };
+
+    const onLeave = () => {
+      desktopIdle = true;
+      targetGlareX = 42;
+      targetGlareY = 28;
+      setTilting(false);
+      kick(false);
     };
 
     const onPointerUp = (e: PointerEvent) => {
@@ -178,10 +194,13 @@ export function useQrCardParallax(opts: {
         dragging = false;
         if (isTouch) {
           target = idleBreath(performance.now());
-          kick();
+          kick(false);
         } else {
           onLeave();
         }
+      } else if (!isTouch) {
+        desktopIdle = true;
+        kick(false);
       }
     };
 
@@ -224,12 +243,13 @@ export function useQrCardParallax(opts: {
       stage.addEventListener('pointerup', onTouchEnd, { passive: true });
       stage.addEventListener('pointercancel', onTouchEnd, { passive: true });
       document.addEventListener('visibilitychange', onVisibility);
-      kick();
+      kick(false);
     } else {
       window.addEventListener('pointermove', onMove, { passive: true });
       window.addEventListener('pointerup', onPointerUp, { passive: true });
       document.addEventListener('visibilitychange', onVisibility);
       document.addEventListener('mouseleave', onLeave);
+      kick(false);
     }
 
     return () => {

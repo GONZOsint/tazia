@@ -9,12 +9,12 @@ import { formatClockTime } from '../../core/utils/inviteLink';
 import { EmptyZoneCta } from '../../components/ui/AccentButton';
 import { PeerAvatar } from '../../components/content/PeerAvatar';
 import {
-  peerAvatarSeed,
+  resolvePeerAvatarSeed,
   rememberPeerAvatarSeed,
 } from '../../core/avatar/peerSeedCache';
-import { listRowEnter, peerRowExit } from '../../motion/tokens';
+import { DUR, EASE, listRowEnter, peerRowExit } from '../../motion/tokens';
 
-interface DmListViewProps {
+export interface DmListViewProps {
   selfUserId: string | null;
   presence: Record<string, PresenceState>;
   onlineUserIds: string[];
@@ -46,44 +46,58 @@ export function DmListView({
     return trustStore.onChange(() => setTrustTick((n) => n + 1));
   }, [trustStore]);
 
+  const onlineSet = useMemo(() => new Set(onlineUserIds), [onlineUserIds]);
+
   const peerIds = useMemo(() => {
     const ids = Array.from(
-      new Set([
-        ...Object.keys(dmMessages),
-        ...onlineUserIds.filter((id) => id !== selfUserId),
-      ]),
-    );
+      new Set([...Object.keys(dmMessages), ...onlineUserIds]),
+    ).filter((id) => id !== selfUserId);
+
     ids.sort((a, b) => {
-      const aLast = dmMessages[a]?.[dmMessages[a].length - 1]?.createdAtMs ?? 0;
-      const bLast = dmMessages[b]?.[dmMessages[b].length - 1]?.createdAtMs ?? 0;
+      const aMsgs = dmMessages[a];
+      const bMsgs = dmMessages[b];
+      const aLast = aMsgs?.length ? aMsgs[aMsgs.length - 1]!.createdAtMs : 0;
+      const bLast = bMsgs?.length ? bMsgs[bMsgs.length - 1]!.createdAtMs : 0;
       if (bLast !== aLast) return bLast - aLast;
       const aUnread = dmUnread[a] ?? 0;
       const bUnread = dmUnread[b] ?? 0;
       if (bUnread !== aUnread) return bUnread - aUnread;
-      const aOnline = onlineUserIds.includes(a) ? 1 : 0;
-      const bOnline = onlineUserIds.includes(b) ? 1 : 0;
+      const aOnline = onlineSet.has(a) ? 1 : 0;
+      const bOnline = onlineSet.has(b) ? 1 : 0;
       return bOnline - aOnline;
     });
     return ids;
-  }, [dmMessages, dmUnread, onlineUserIds, selfUserId]);
+  }, [dmMessages, dmUnread, onlineSet, onlineUserIds, selfUserId]);
 
   const hasAnyThread = peerIds.some((id) => (dmMessages[id]?.length ?? 0) > 0);
 
+  const missingKey = useMemo(
+    () => peerIds.filter((id) => !visuals[id]).join('|'),
+    [peerIds, visuals],
+  );
+
   useEffect(() => {
+    if (!missingKey) return;
     let cancelled = false;
-    void (async () => {
-      const next: typeof visuals = { ...visuals };
-      for (const id of peerIds) {
-        if (next[id]) continue;
-        next[id] = await visualFromUserId(id);
-      }
-      if (!cancelled) setVisuals(next);
-    })();
+    const ids = missingKey.split('|');
+
+    void Promise.all(ids.map(async (id) => [id, await visualFromUserId(id)] as const)).then(
+      (entries) => {
+        if (cancelled) return;
+        setVisuals((prev) => {
+          const next = { ...prev };
+          for (const [id, visual] of entries) {
+            next[id] = visual;
+          }
+          return next;
+        });
+      },
+    );
+
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [peerIds.join('|')]);
+  }, [missingKey]);
 
   useEffect(() => {
     for (const [id, state] of Object.entries(presence)) {
@@ -123,14 +137,24 @@ export function DmListView({
       <ul className="mt-4 space-y-1" role="list">
         <AnimatePresence mode="popLayout" initial={false}>
           {peerIds.map((id) => {
+            const peerPresence = presence[id];
             const visual = visuals[id];
             const alias =
-              presence[id]?.alias || visual?.suggestedAlias || t('presenceNoAlias');
+              peerPresence?.alias || visual?.suggestedAlias || t('presenceNoAlias');
             const msgs = dmMessages[id] ?? [];
-            const lastMsg = msgs[msgs.length - 1];
+            const lastMsg = msgs.length ? msgs[msgs.length - 1] : undefined;
             const unread = dmUnread[id] ?? 0;
-            const isOnline = onlineUserIds.includes(id);
+            const isOnline = onlineSet.has(id);
             const verified = trustTick >= 0 && trustStore?.getLevel(id) === 'verified';
+
+            const accessibleLabel = [
+              alias,
+              verified ? t('trustVerified') : null,
+              isOnline ? t('peerOnline') : null,
+              unread > 0 ? t('dmsUnread', { n: unread }) : null,
+            ]
+              .filter(Boolean)
+              .join(' — ');
 
             return (
               <motion.li
@@ -138,21 +162,26 @@ export function DmListView({
                 layout={!reduceMotion}
                 initial={reduceMotion ? { opacity: 0 } : listRowEnter.initial}
                 animate={reduceMotion ? { opacity: 1 } : listRowEnter.animate}
-                exit={reduceMotion ? { opacity: 0 } : peerRowExit}
+                exit={
+                  reduceMotion
+                    ? { opacity: 0, transition: { duration: DUR.micro, ease: EASE.easeIn } }
+                    : peerRowExit
+                }
               >
                 <div
-                  className={`list-row pressable flex w-full min-h-[64px] items-center gap-3 px-3.5 py-2.5 text-left ${
+                  className={`list-row pressable relative flex min-h-[64px] w-full items-center gap-3 px-3.5 py-2.5 text-left ${
                     unread > 0 ? 'ring-1 ring-accent/40' : ''
                   }`}
                 >
-                  <div className="relative shrink-0">
+                  <div className="relative z-[1] shrink-0">
                     <PeerAvatar
-                      avatarSeed={presence[id]?.avatarSeed || peerAvatarSeed(id)}
+                      avatarSeed={resolvePeerAvatarSeed(peerPresence?.avatarSeed, id)}
                       matrix={visual?.identiconMatrix}
                       size={36}
                       label={alias}
                       fg={visual?.fg}
                       bg={visual?.bg}
+                      animated={false}
                     />
                     {isOnline && (
                       <span
@@ -165,14 +194,8 @@ export function DmListView({
                   <button
                     type="button"
                     onClick={() => onSelectPeer(id)}
-                    aria-label={
-                      unread > 0
-                        ? `${alias} — ${t('dmsUnread', { n: unread })}`
-                        : isOnline
-                          ? `${alias} — ${t('peerOnline')}`
-                          : alias
-                    }
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-2 focus-visible:outline-accent"
+                    aria-label={accessibleLabel}
+                    className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-3 rounded-sm text-left before:absolute before:inset-0 before:rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
@@ -185,12 +208,12 @@ export function DmListView({
                           {verified && (
                             <ShieldCheck
                               className="h-3.5 w-3.5 shrink-0 text-ok"
-                              aria-label={t('trustVerified')}
+                              aria-hidden="true"
                               strokeWidth={2.25}
                             />
                           )}
                         </p>
-                        {lastMsg && (
+                        {lastMsg && Number.isFinite(lastMsg.createdAtMs) && (
                           <time
                             className={`type-caption shrink-0 tabular-nums ${
                               unread > 0 ? 'font-semibold text-accent' : ''
@@ -215,7 +238,10 @@ export function DmListView({
                       )}
                     </div>
                     {unread > 0 && (
-                      <span className="type-badge shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-on-accent">
+                      <span
+                        aria-hidden="true"
+                        className="type-badge shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-on-accent"
+                      >
                         {unread > 9 ? '9+' : unread}
                       </span>
                     )}

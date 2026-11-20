@@ -1,0 +1,147 @@
+@layer base {
+  html {
+    overflow-x: clip;
+    /* Respect user/browser root size (a11y); scale lives in rem tokens. */
+    font-size: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--type-ui);
+    line-height: var(--leading-ui);
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: var(--tracking-headline);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-weight: 700;
+  }
+  h2, h3 {
+    font-weight: 600;
+  }
+
+  .font-mono {
+    font-variant-ligatures: none;
+    font-feature-settings: "ss01" 0, "calt" 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Type roles — prefer these over ad-hoc text-[Npx] / mixed Tailwind sizes.
+   * Hierarchy: weight + color first; size only when roles differ.
+   */
+  .type-display {
+    font-family: var(--font-display);
+    font-size: var(--type-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+  @media (min-width: 640px) {
+    .type-display {
+      font-size: var(--type-display-lg);
+    }
+  }
+
+  .type-headline {
+    font-family: var(--font-display);
+    font-size: var(--type-headline);
+    font-weight: 700;
+    letter-spacing: var(--tracking-headline);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  .type-title {
+    font-family: var(--font-display);
+    font-size: var(--type-title);
+    font-weight: 600;
+    letter-spacing: var(--tracking-title);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  .type-subtitle {
+    font-family: var(--font-display);
+    font-size: var(--type-title);
+    font-weight: 600;
+    letter-spacing: var(--tracking-title);
+    line-height: var(--leading-snug);
+    text-wrap: balance;
+  }
+  @media (min-width: 640px) {
+    .type-subtitle {
+      font-size: 1.25rem; /* 20 — one step under headline */
+    }
+  }
+
+  .type-ui {
+    font-size: var(--type-ui);
+    line-height: var(--leading-ui);
+  }
+
+  .type-lede {
+    font-size: var(--type-body);
+    line-height: var(--leading-body);
+    color: var(--color-muted);
+    text-wrap: pretty;
+  }
+
+  .type-message {
+    font-size: var(--type-body);
+    line-height: var(--leading-message);
+    text-wrap: pretty;
+  }
+
+  .type-label {
+    font-size: var(--type-caption);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    line-height: var(--leading-snug);
+  }
+
+  .type-caption {
+    font-size: var(--type-caption);
+    font-weight: 500;
+    letter-spacing: var(--tracking-caption);
+    line-height: var(--leading-snug);
+    color: var(--color-muted);
+  }
+
+  .type-badge {
+    font-size: var(--type-badge);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Alias kept for earlier call sites */
+  .type-meta {
+    font-size: var(--type-caption);
+    font-weight: 500;
+    letter-spacing: var(--tracking-caption);
+    line-height: var(--leading-snug);
+    color: var(--color-muted);
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}

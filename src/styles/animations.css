@@ -1,0 +1,273 @@
+@keyframes dice-anticipate {
+  0% { transform: rotate(0deg) scale(1); }
+  22% { transform: rotate(-28deg) scale(0.88); }
+  72% { transform: rotate(382deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.dice-rolling {
+  display: inline-flex;
+  animation: dice-anticipate var(--dur-plane) var(--ease-spring);
+}
+
+/* Plane launch is Motion-only (usePlaneLaunch + PlaneSendIcon). */
+
+@keyframes passphrase-douse {
+  0% { transform: translateX(0); filter: brightness(1); }
+  20% { transform: translateX(-3px); filter: brightness(0.85) saturate(0.7); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); filter: brightness(0.7) saturate(0.5); }
+  100% { transform: translateX(0); filter: brightness(1); opacity: 1; }
+}
+.passphrase-douse {
+  animation: passphrase-douse var(--dur-ritual) var(--ease-out-expo) 1;
+}
+
+@keyframes qr-success-ring {
+  0% { transform: scale(0.85); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: scale(1.12); opacity: 0; }
+}
+.qr-success-ring {
+  animation: qr-success-ring var(--dur-ritual) var(--ease-out-expo) 1 forwards;
+}
+
+@keyframes cta-ignite-spark {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 0%, transparent); }
+  40% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 4px color-mix(in oklab, var(--color-accent) 35%, transparent),
+      0 0 18px color-mix(in oklab, var(--color-accent) 40%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cta-ignite-spark {
+    animation: cta-ignite-spark var(--dur-ignite) var(--ease-out-expo) 1;
+  }
+}
+
+/* Transform + box-shadow only — filter drop-shadow flickers on Windows GPUs. */
+@keyframes flame-flicker-hover {
+  0% {
+    transform: scale(1) rotate(-2deg);
+    box-shadow: 0 0 1px color-mix(in oklab, var(--fire-mid) 35%, transparent);
+  }
+  100% {
+    transform: scale(1.05) rotate(2deg);
+    box-shadow: 0 0 4px color-mix(in oklab, var(--fire-core) 42%, transparent);
+  }
+}
+
+@keyframes burn-flame-die {
+  0% {
+    opacity: 1;
+    filter: saturate(0.85) brightness(0.95);
+    box-shadow:
+      0 0 10px color-mix(in oklab, var(--fire-mid) 14%, transparent),
+      inset 0 0 6px color-mix(in oklab, var(--fire-edge) 8%, transparent);
+  }
+  55% {
+    opacity: 0.72;
+    filter: saturate(0.45) brightness(0.82);
+    box-shadow:
+      0 0 6px color-mix(in oklab, var(--fire-edge) 10%, transparent),
+      inset 0 0 10px color-mix(in oklab, var(--color-bg) 12%, transparent);
+  }
+  100% {
+    opacity: 0.35;
+    filter: saturate(0.25) brightness(0.7);
+    box-shadow: none;
+  }
+}
+
+@keyframes zone-join-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in oklab, var(--color-accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.zone-join-pulse {
+  animation: zone-join-pulse var(--dur-pulse) var(--ease-out-expo) 1;
+}
+
+/* --- Microinteraction one-shots (opt-in motion; final state always visible) --- */
+
+.session-ignite-target.igniting-front {
+  position: relative;
+  border-color: color-mix(in oklab, var(--color-accent) 70%, var(--color-border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent),
+    0 0 18px color-mix(in oklab, var(--color-accent) 28%, transparent),
+    inset 0 0 14px color-mix(in oklab, var(--color-accent) 12%, transparent);
+  transition:
+    border-color var(--dur-ignite) var(--ease-out-expo),
+    box-shadow var(--dur-ignite) var(--ease-out-expo);
+}
+.session-ignite-target.igniting-front::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 1.5px solid color-mix(in oklab, var(--color-accent) 55%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .session-ignite-target.igniting-front::after {
+    animation: ignite-ring-expand var(--dur-ignite-ring) var(--ease-out-expo) 1;
+  }
+}
+@keyframes ignite-ring-expand {
+  0% { opacity: 0.75; transform: scale(0.92); }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+
+@keyframes mesh-connected-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-ok) 0%, transparent);
+  }
+  35% {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-ok) var(--glow-mesh-ring), transparent),
+      0 0 14px color-mix(in oklab, var(--color-ok) var(--glow-mesh-bloom), transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.mesh-connected-flash {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: mesh-connected-flash var(--dur-flash) var(--ease-out-expo) 1;
+  }
+}
+
+.relay-channel-tint {
+  border-color: color-mix(in oklab, var(--color-warn) 55%, var(--color-border)) !important;
+  background-color: color-mix(in oklab, var(--color-warn) 10%, var(--color-surface));
+  color: var(--color-warn-ink);
+}
+
+@keyframes copy-ember {
+  0% { color: var(--fire-mid); filter: drop-shadow(0 0 2px color-mix(in oklab, var(--fire-mid) 40%, transparent)); }
+  55% { color: var(--fire-core); }
+  100% { color: var(--color-ok); filter: none; }
+}
+
+.copy-ember-check {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: copy-ember var(--dur-plane) var(--ease-out-expo) 1 forwards;
+  }
+  color: var(--color-ok);
+}
+
+@keyframes strength-accept-tremor {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+.strength-accept-tremor {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: strength-accept-tremor var(--dur-flash) var(--ease-out-expo) 1;
+  }
+}
+
+.strength-accept-tremor [aria-hidden='true'] > span {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+
+/* Opacity/tracking only — CSS filter blur flickers on Windows GPUs. */
+@keyframes phrase-ignite {
+  0% { opacity: 0.55; letter-spacing: 0.04em; }
+  100% { opacity: 1; letter-spacing: normal; }
+}
+
+@keyframes phrase-douse {
+  0% { opacity: 1; letter-spacing: normal; }
+  100% { opacity: 0.7; letter-spacing: 0.02em; }
+}
+
+/* Hero idle presence — long-period decorative loops (paused when tab hidden / reduced). */
+@keyframes hero-mark-breath {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.68;
+    transform: scale(1.04);
+  }
+}
+@keyframes hero-cta-sheen-idle {
+  0%,
+  70% {
+    transform: translateX(-130%);
+  }
+  88% {
+    transform: translateX(130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+@keyframes hero-cta-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-2px);
+  }
+  70% {
+    transform: translateY(0);
+  }
+}
+
+/* ZONE_BOOT one-shots (finite boot ritual). */
+@keyframes zone-boot-glow {
+  0% { opacity: 0; transform: scale(0.94); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.phrase-ignite {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: phrase-ignite var(--dur-ritual) var(--ease-out-expo) 1;
+  }
+}
+
+.phrase-douse {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: phrase-douse var(--dur-ritual) var(--ease-exit) 1;
+  }
+}
+
+@keyframes peer-join-dot {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  40% { opacity: 1; transform: scale(1.35); }
+  70% { opacity: 0.85; transform: scale(1.1); }
+}
+
+.peer-join-dot {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: peer-join-dot var(--dur-pulse) var(--ease-out-expo) 1;
+  }
+  background-color: var(--color-accent) !important;
+  opacity: 1;
+}
+
+@keyframes toast-progress-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@keyframes mesh-birth-wave {
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(2.6); opacity: 0; }
+}

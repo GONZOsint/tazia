@@ -5,8 +5,22 @@
  * Inbound EVENTs are schnorr-verified before decrypt. Presence/goodbye require attestSig.
  * sync-res requires fromUserId + Ed25519 sig (verified in SyncVerify via fallbackIngress).
  */
-import { NOSTR_EVENT_CLOCK_SKEW_SEC, type DirectMessage, type ForumEvent, type PresenceState } from '../protocol';
-import { decryptJson, deriveSessionMaterial, encryptJson } from './roomCrypto';
+import {
+  isFallbackCipherWithinCap,
+  NOSTR_EVENT_CLOCK_SKEW_SEC,
+  type DirectMessage,
+  type ForumEvent,
+  type PresenceState,
+} from '../protocol';
+// isFallbackCipherWithinCap shared with inbound path — publish must not exceed the same ceiling.
+import {
+  decryptJson,
+  deriveDmWrapKey,
+  deriveSessionMaterial,
+  encryptDmWrap,
+  encryptJson,
+  tryDecryptDmWrapForSelf,
+} from './roomCrypto';
 import type { SyncResPayload } from './syncVerify';
 import {
   createSignedEvent,
@@ -37,6 +51,8 @@ export type FallbackEnvelope =
       attestSig: string;
     }
   | { v: 2; t: 'dm'; dm: DirectMessage }
+  /** Pairwise-wrapped DM — room decrypt yields no from/to metadata for co-members. */
+  | { v: 3; t: 'dm-wrap'; blobB64: string }
   | { v: 2; t: 'sync-req'; fromUserId: string; reqId: string }
   | {
       v: 2;
@@ -83,7 +99,8 @@ export interface NostrFallbackHandlers {
 }
 
 export interface NostrFallbackBus {
-  publish: (env: FallbackEnvelope) => Promise<void>;
+  /** True only if at least one open relay socket accepted the wire frame. */
+  publish: (env: FallbackEnvelope) => Promise<boolean>;
   stop: () => void;
 }
 
@@ -91,7 +108,8 @@ export async function startNostrFallback(
   roomId: string,
   password: string,
   selfUserId: string,
-  handlers: NostrFallbackHandlers
+  handlers: NostrFallbackHandlers,
+  opts?: { getDmPeerCandidates?: () => string[] }
 ): Promise<NostrFallbackBus> {
   const { roomKey: key, topicId: topic } = await deriveSessionMaterial(roomId, password);
   const kind = topicToKind(topic);
@@ -139,8 +157,23 @@ export async function startNostrFallback(
         }
         break;
       case 'dm':
+        // Legacy v2 — co-members can still see metadata after room decrypt.
         if (env.dm.toUserId === selfUserId) handlers.onDirectMessage(env.dm, nostrPubkey);
         break;
+      case 'dm-wrap': {
+        if (typeof env.blobB64 !== 'string' || !env.blobB64) break;
+        void tryDecryptDmWrapForSelf(
+          roomId,
+          password,
+          selfUserId,
+          opts?.getDmPeerCandidates?.() ?? [],
+          env.blobB64
+        ).then((dm) => {
+          if (stopped || !dm) return;
+          handlers.onDirectMessage(dm, nostrPubkey);
+        });
+        break;
+      }
       case 'sync-req': {
         if (env.fromUserId === selfUserId) break;
         void handlers.onSyncRequest(env.fromUserId, env.reqId, nostrPubkey).then((payload) => {
@@ -209,6 +242,7 @@ export async function startNostrFallback(
     ) {
       return;
     }
+    if (!isFallbackCipherWithinCap(ev.content)) return;
     const nowSec = Math.floor(Date.now() / 1000);
     if (Math.abs(nowSec - ev.created_at) > NOSTR_EVENT_CLOCK_SKEW_SEC) return;
     const tagOk = ev.tags.some((t) => t[0] === 'x' && t[1] === topic);
@@ -230,7 +264,7 @@ export async function startNostrFallback(
     });
     if (!okSig) return;
     const env = await decryptJson<FallbackEnvelope>(key, ev.content, roomId);
-    if (!env || env.v !== 2) return;
+    if (!env || (env.v !== 2 && env.v !== 3)) return;
     handlePayload(env, ev.pubkey);
   };
 
@@ -268,20 +302,64 @@ export async function startNostrFallback(
   attach();
   attachTimer = window.setInterval(attach, 12_000);
 
-  const publish = async (env: FallbackEnvelope) => {
-    if (stopped) return;
+  /**
+   * Relays often still CONNECTING right after ensure()/attach(). A single
+   * openSockets() snapshot then returns [] and publish falsely fails — which
+   * surfaces as intermittent "could not send" on NEW_THREAD / Susurro.
+   */
+  const waitForOpenSockets = async (maxAttempts = 10): Promise<WebSocket[]> => {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (stopped) return [];
+      attach();
+      const sockets = openSockets();
+      if (sockets.length > 0) return sockets;
+      await new Promise((r) => window.setTimeout(r, 120 + attempt * 40));
+    }
+    return openSockets();
+  };
+
+  const publish = async (env: FallbackEnvelope): Promise<boolean> => {
+    if (stopped) return false;
     await new Promise((r) => window.setTimeout(r, Math.floor(Math.random() * 280)));
-    if (stopped) return;
-    const content = await encryptJson(key, env, roomId);
+    if (stopped) return false;
+    let wireEnv: FallbackEnvelope = env;
+    if (env.t === 'dm') {
+      const wrapKey = await deriveDmWrapKey(
+        roomId,
+        password,
+        env.dm.fromUserId,
+        env.dm.toUserId
+      );
+      const blobB64 = await encryptDmWrap(wrapKey, env.dm, roomId);
+      wireEnv = { v: 3, t: 'dm-wrap', blobB64 };
+    }
+    const content = await encryptJson(key, wireEnv, roomId);
+    if (!isFallbackCipherWithinCap(content)) return false;
     const wire = await createSignedEvent(topic, content, signer);
-    attach();
-    for (const ws of openSockets()) {
+    const sockets = await waitForOpenSockets();
+    if (stopped || sockets.length === 0) return false;
+    let sent = 0;
+    for (const ws of sockets) {
       try {
         ws.send(wire);
+        sent += 1;
       } catch {
         /* ignore */
       }
     }
+    // One more pass if every send threw (socket closed between snapshot and send).
+    if (sent === 0) {
+      attach();
+      for (const ws of openSockets()) {
+        try {
+          ws.send(wire);
+          sent += 1;
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    return sent > 0;
   };
 
   return {

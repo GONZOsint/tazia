@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useReducedMotion } from 'motion/react';
 import type { PassphraseStrengthId } from '../../core/crypto/passphraseWords';
 import { useT, type MessageKey } from '../../i18n';
 import { DUR } from '../../motion/tokens';
@@ -22,7 +23,7 @@ const ACCEPTABLE = new Set<PassphraseStrengthId>(['ok', 'good', 'strong']);
 function filledCount(id: PassphraseStrengthId, score: 0 | 1 | 2 | 3): number {
   if (id === 'empty') return 0;
   if (id === 'weak' || id === 'short') return 1;
-  return Math.min(SEGMENT_COUNT, score + 1);
+  return Math.min(SEGMENT_COUNT, Math.max(0, score + 1));
 }
 
 function segmentTone(id: PassphraseStrengthId, index: number, filled: number): string {
@@ -33,7 +34,7 @@ function segmentTone(id: PassphraseStrengthId, index: number, filled: number): s
   return 'bg-ok';
 }
 
-interface PassphraseStrengthBarProps {
+export interface PassphraseStrengthBarProps {
   id: PassphraseStrengthId;
   score: 0 | 1 | 2 | 3;
   className?: string;
@@ -48,43 +49,66 @@ export function PassphraseStrengthBar({
   douseKey = 0,
 }: PassphraseStrengthBarProps) {
   const t = useT();
-  const copy = STRENGTH_COPY[id];
+  const reduceMotion = useReducedMotion();
+  const copy = STRENGTH_COPY[id] ?? STRENGTH_COPY.empty;
   const filled = filledCount(id, score);
   const title = `${t(copy.label)}: ${t(copy.hint)}`;
-  const prevId = useRef(id);
-  const prevDouseKey = useRef(douseKey);
+
+  const [prevId, setPrevId] = useState(id);
+  const [prevDouseKey, setPrevDouseKey] = useState(douseKey);
   const [tremor, setTremor] = useState(false);
-  const [douse, setDouse] = useState(false);
+  const [dousePulse, setDousePulse] = useState(0);
+
+  if (prevId !== id) {
+    setPrevId(id);
+    if (!reduceMotion) {
+      if (!ACCEPTABLE.has(prevId) && ACCEPTABLE.has(id)) {
+        setTremor(true);
+        setDousePulse(0);
+      } else if (ACCEPTABLE.has(prevId) && !ACCEPTABLE.has(id) && id !== 'empty') {
+        setTremor(false);
+        setDousePulse((n) => n + 1);
+      } else if (!ACCEPTABLE.has(id)) {
+        setTremor(false);
+      }
+    }
+  }
+
+  if (prevDouseKey !== douseKey) {
+    setPrevDouseKey(douseKey);
+    if (!reduceMotion && douseKey > 0) {
+      setTremor(false);
+      setDousePulse((n) => n + 1);
+    }
+  }
 
   useEffect(() => {
-    const prev = prevId.current;
-    prevId.current = id;
-    if (!ACCEPTABLE.has(prev) && ACCEPTABLE.has(id)) {
-      setTremor(true);
-      const timer = window.setTimeout(() => setTremor(false), TREMOR_MS);
-      return () => window.clearTimeout(timer);
-    }
-    if (ACCEPTABLE.has(prev) && !ACCEPTABLE.has(id) && id !== 'empty') {
-      setDouse(true);
-      const timer = window.setTimeout(() => setDouse(false), DOUSE_MS);
-      return () => window.clearTimeout(timer);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (douseKey <= 0 || douseKey === prevDouseKey.current) return;
-    prevDouseKey.current = douseKey;
-    setDouse(true);
-    const timer = window.setTimeout(() => setDouse(false), DOUSE_MS);
+    if (!tremor) return;
+    const timer = window.setTimeout(() => setTremor(false), TREMOR_MS);
     return () => window.clearTimeout(timer);
-  }, [douseKey]);
+  }, [tremor]);
+
+  useEffect(() => {
+    if (dousePulse === 0) return;
+    const timer = window.setTimeout(() => setDousePulse(0), DOUSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [dousePulse]);
+
+  const douse = dousePulse > 0;
+  const rootClassName = [
+    tremor ? 'strength-accept-tremor' : '',
+    douse ? 'passphrase-douse' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
-      className={`${tremor ? 'strength-accept-tremor' : ''} ${douse ? 'passphrase-douse' : ''} ${className}`}
+      className={rootClassName}
       title={title}
       role="status"
-      aria-label={title}
+      aria-atomic="true"
     >
       <div className="flex gap-1" aria-hidden="true">
         {Array.from({ length: SEGMENT_COUNT }, (_, i) => (

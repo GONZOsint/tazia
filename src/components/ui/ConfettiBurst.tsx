@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { CONFETTI, DUR, EASE } from '../../motion/tokens';
 
@@ -88,11 +88,15 @@ export function ConfettiBurst({
     []
   );
 
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
   useEffect(() => {
     if (!play) return;
-    const id = window.setTimeout(() => onDone?.(), CONFETTI.ms);
+    // Deps only [play] — inline onDone from parents must not reset the timer.
+    const id = window.setTimeout(() => onDoneRef.current?.(), CONFETTI.ms);
     return () => window.clearTimeout(id);
-  }, [play, onDone]);
+  }, [play]);
 
   const dur = CONFETTI.ms / 1000;
 

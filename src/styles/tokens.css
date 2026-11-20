@@ -1,0 +1,196 @@
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --tap-min: 44px;
+  /* Mobile bottom nav content row (excludes safe-area) — keep App/composer offsets in sync */
+  --bottom-nav-h: 3.75rem;
+  /*
+   * Product type scale (≤7 steps). Tight steps for dense UI scanning;
+   * bigger jumps only at the top. Roles map to Material display/headline/
+   * title/body/label — not a marketing modular ratio.
+   *   badge 11 · caption 12 · ui 14 · body 16 · title 18 · headline 24 · display 36/48
+   */
+  --type-badge: 0.6875rem; /* 11 — pills / unread only */
+  --type-caption: 0.75rem; /* 12 — meta, helpers, mono keys */
+  --type-ui: 0.875rem; /* 14 — buttons, lists, nav, form chrome */
+  --type-body: 1rem; /* 16 — reading, messages, ledes */
+  --type-title: 1.125rem; /* 18 — section / modal / thread */
+  --type-headline: 1.5rem; /* 24 — page titles */
+  --type-display: 2.25rem; /* 36 — landing brand */
+  --type-display-lg: 3rem; /* 48 — landing brand sm+ */
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-ui: 1.4;
+  --leading-body: 1.5;
+  --leading-message: 1.55;
+  --tracking-display: -0.02em;
+  --tracking-headline: -0.02em;
+  --tracking-title: -0.015em;
+  --tracking-label: 0.04em;
+  --tracking-caption: 0.01em;
+  --radius-ctrl: 10px;
+  --radius-msg: 14px;
+  --radius-panel: 16px;
+  --radius-sheet: 20px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+
+  /* Mirror src/motion/tokens.ts DUR (seconds → ms) */
+  --dur-tap: 100ms;
+  --dur-micro: 140ms;
+  --dur-tab: 160ms;
+  --dur-medium: 200ms;
+  --dur-switch: 220ms;
+  --dur-modal: 220ms;
+  --dur-plane: 260ms;
+  --dur-sheen: 300ms;
+  --dur-flash: 280ms;
+  --dur-pulse: 360ms;
+  --dur-ring: 360ms;
+  /* QR secret outer-line draw (SECRET_FRAME_MS in motion/tokens.ts). */
+  --dur-secret-frame: 820ms;
+  /* QR laser sweep — keep in sync with InviteQr SCAN_SWEEP_MS. */
+  --dur-qr-scan: 1350ms;
+  --dur-ignite: 280ms;
+  --dur-ignite-ring: 320ms;
+  --dur-birth: 280ms;
+  --dur-ritual: 220ms;
+  --dur-confetti: 400ms;
+  /* APP_SPLASH / ZONE_BOOT — mirror src/motion/tokens/boot.ts */
+  --dur-splash-finish: 1690ms;
+  --dur-splash-exit: 240ms;
+  --dur-boot-spark: 80ms;
+  --dur-boot-glow: 200ms;
+  --dur-boot-chain: 280ms;
+  /* Mirror ZONE_BOOT.finishMs / revisitMs in motion/tokens.ts */
+  --dur-boot-finish: 520ms;
+  --dur-boot-revisit: 320ms;
+  /* HERO_IDLE — mirror src/motion/tokens.ts */
+  --dur-hero-breath: 7200ms;
+  --dur-hero-sheen: 7200ms;
+  --dur-hero-nudge: 680ms;
+  /* Session extinguish cool-down on FireBurnButton (.is-dying). */
+  --dur-burn-heat-glow: 720ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  /*
+   * Warm-stone + lime brand.
+   * Elevation (light): raised > bg > surface (surface = recessed / press-in).
+   */
+  --color-bg: #e4e1da;
+  --color-surface: #d6d2c9;
+  --color-surface-raised: #f1eee8;
+  --color-ink: #141310;
+  --color-muted: #454139;
+  --color-faint: #6a655c;
+  --color-border: #a8a195;
+  --color-accent: #ccff66;
+  --color-accent-hover: #b5e84f;
+  --color-on-accent: #0a0d06;
+  --color-on-danger: #ffffff;
+  /* Brand mark cream (splash wordmark + SVG outline) — fixed across themes */
+  --color-brand-cream: #f0eee6;
+  /* Lime glow strength — softer on warm-stone light, fuller on olive dark */
+  --glow-hero-1: 14%;
+  --glow-hero-2: 7%;
+  --glow-hero-3: 5%;
+  --glow-mark: 16%;
+  --glow-mark-opacity: 0.38;
+  --glow-eyebrow: 40%;
+  --glow-help-active: 28%;
+  --glow-mark-ring: 32%;
+  --glow-mark-elevation: 8%;
+  --glow-mesh-ring: 28%;
+  --glow-mesh-bloom: 16%;
+  /* Semantic: warm/stone-adjacent; info = teal (sits with lime, not sky-blue) */
+  --color-danger: #c93c3c;
+  --color-danger-ink: #8f1f1f;
+  --color-warn: #c9780a;
+  --color-warn-ink: #8a4b08;
+  --color-ok: #1f7a5c;
+  --color-ok-ink: #0f4f3a;
+  --color-info: #0f7f78;
+  --color-info-ink: #0a524e;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 22%, var(--color-surface-raised));
+  --color-danger-bg: color-mix(in oklab, var(--color-danger) 10%, var(--color-surface-raised));
+  --color-danger-border: color-mix(in oklab, var(--color-danger) 28%, var(--color-border));
+  --color-warn-bg: color-mix(in oklab, var(--color-warn) 12%, var(--color-surface-raised));
+  --color-warn-border: color-mix(in oklab, var(--color-warn) 30%, var(--color-border));
+  --color-ok-bg: color-mix(in oklab, var(--color-ok) 10%, var(--color-surface-raised));
+  --color-ok-border: color-mix(in oklab, var(--color-ok) 28%, var(--color-border));
+  --color-info-bg: color-mix(in oklab, var(--color-info) 10%, var(--color-surface-raised));
+  --color-info-border: color-mix(in oklab, var(--color-info) 28%, var(--color-border));
+  --color-scrim: color-mix(in oklab, #000 48%, transparent);
+  --color-scrim-strong: color-mix(in oklab, #000 68%, transparent);
+
+  --shadow-chrome: 0 -2px 10px color-mix(in oklab, #000 5%, transparent);
+  --shadow-toast: 0 8px 24px color-mix(in oklab, #000 10%, transparent);
+  --shadow-sheet: 0 16px 40px color-mix(in oklab, #000 14%, transparent);
+  --shadow-logo: 0 1px 2px color-mix(in oklab, #000 8%, transparent);
+
+  /* Warm amber fire — sits with warn + stone */
+  --fire-core: #e8b84a;
+  --fire-mid: #c9780a;
+  --fire-edge: #9a4f0a;
+}
+
+html.dark {
+  /* Olive-black stack: bg < surface < raised; lime accent unchanged */
+  --color-bg: #0b0d09;
+  --color-surface: #12140f;
+  --color-surface-raised: #1b1e16;
+  --color-ink: #f1f1ea;
+  --color-muted: #a8a996;
+  --color-faint: #7d7e70;
+  --color-border: #2e3128;
+  --color-accent: #ccff66;
+  --color-accent-hover: #d9ff88;
+  --color-on-accent: #0a0d06;
+  --color-on-danger: #ffffff;
+  --color-brand-cream: #f0eee6;
+  --glow-hero-1: 26%;
+  --glow-hero-2: 12%;
+  --glow-hero-3: 8%;
+  --glow-mark: 28%;
+  --glow-mark-opacity: 0.52;
+  --glow-eyebrow: 70%;
+  --glow-help-active: 45%;
+  --glow-mark-ring: 50%;
+  --glow-mark-elevation: 16%;
+  --glow-mesh-ring: 45%;
+  --glow-mesh-bloom: 28%;
+  --color-danger: #f07a7a;
+  --color-danger-ink: #ffd0d0;
+  --color-warn: #f0c14d;
+  --color-warn-ink: #fde68a;
+  --color-ok: #4ecf9a;
+  --color-ok-ink: #b6f0d4;
+  --color-info: #3ecfc4;
+  --color-info-ink: #b8f5ef;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 14%, transparent);
+  --color-danger-bg: color-mix(in oklab, var(--color-danger) 14%, var(--color-bg));
+  --color-danger-border: color-mix(in oklab, var(--color-danger) 32%, var(--color-border));
+  --color-warn-bg: color-mix(in oklab, var(--color-warn) 12%, var(--color-bg));
+  --color-warn-border: color-mix(in oklab, var(--color-warn) 30%, var(--color-border));
+  --color-ok-bg: color-mix(in oklab, var(--color-ok) 12%, var(--color-bg));
+  --color-ok-border: color-mix(in oklab, var(--color-ok) 28%, var(--color-border));
+  --color-info-bg: color-mix(in oklab, var(--color-info) 12%, var(--color-bg));
+  --color-info-border: color-mix(in oklab, var(--color-info) 28%, var(--color-border));
+  --color-scrim: color-mix(in oklab, #000 55%, transparent);
+  --color-scrim-strong: color-mix(in oklab, #000 72%, transparent);
+
+  --shadow-chrome: 0 -2px 12px color-mix(in oklab, #000 35%, transparent);
+  --shadow-toast: 0 10px 28px color-mix(in oklab, #000 45%, transparent);
+  --shadow-sheet: 0 18px 48px color-mix(in oklab, #000 55%, transparent);
+  --shadow-logo: 0 1px 3px color-mix(in oklab, #000 40%, transparent);
+
+  --fire-core: #f0c14d;
+  --fire-mid: #e8a317;
+  --fire-edge: #c2410c;
+}

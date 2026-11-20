@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -11,7 +12,7 @@ import { AnimatePresence, motion, useReducedMotion, type PanInfo } from 'motion/
 import { AlertBanner } from './AlertBanner';
 import { TOAST, toastEnter } from '../../motion/tokens';
 
-type ToastTone = 'success' | 'error' | 'warning' | 'info';
+export type ToastTone = 'success' | 'error' | 'warning' | 'info';
 
 interface ToastItem {
   id: string;
@@ -30,9 +31,11 @@ export type ToastPush =
       durationMs?: number;
     };
 
-interface ToastApi {
+export interface ToastApi {
   push: (messageOrOpts: ToastPush, tone?: ToastTone) => void;
 }
+
+const MAX_TOASTS = 2;
 
 const DURATION: Record<ToastTone, number> = {
   success: TOAST.successMs,
@@ -45,22 +48,29 @@ type TimerState = {
   handle: number;
   /** Wall-clock deadline while running; unused while paused. */
   deadline: number;
-  /** Remaining ms when paused (hover). */
+  /** Remaining ms when paused (hover / focus). */
   remaining: number | null;
+};
+
+let fallbackSeq = 0;
+function nextToastId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  fallbackSeq += 1;
+  return `toast-${Date.now()}-${fallbackSeq}`;
+}
+
+const NOOP_TOAST_API: ToastApi = {
+  push: () => {
+    /* no-op outside provider */
+  },
 };
 
 const ToastContext = createContext<ToastApi | null>(null);
 
 export function useToast(): ToastApi {
-  const ctx = useContext(ToastContext);
-  if (!ctx) {
-    return {
-      push: () => {
-        /* no-op outside provider */
-      },
-    };
-  }
-  return ctx;
+  return useContext(ToastContext) ?? NOOP_TOAST_API;
 }
 
 function ToastCard({
@@ -75,8 +85,22 @@ function ToastCard({
   onResume: (id: string) => void;
 }) {
   const reduceMotion = useReducedMotion();
+  const hoveredRef = useRef(false);
+  const focusedRef = useRef(false);
+  const [paused, setPaused] = useState(false);
+
+  const syncPause = () => {
+    const shouldPause = hoveredRef.current || focusedRef.current;
+    setPaused(shouldPause);
+    if (shouldPause) {
+      onPause(item.id);
+    } else {
+      onResume(item.id);
+    }
+  };
+
   const onDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x > 85 || info.offset.y < -45) {
+    if (Math.abs(info.offset.x) > 85 || info.offset.y < -45) {
       onDismiss(item.id);
     }
   };
@@ -84,24 +108,51 @@ function ToastCard({
   return (
     <motion.div
       layout="position"
-      initial={toastEnter.initial}
-      animate={toastEnter.animate}
-      exit={toastEnter.exit}
-      transition={toastEnter.transition}
-      drag={reduceMotion ? false : true}
+      initial={reduceMotion ? { opacity: 0 } : toastEnter.initial}
+      animate={reduceMotion ? { opacity: 1 } : toastEnter.animate}
+      exit={reduceMotion ? { opacity: 0 } : toastEnter.exit}
+      transition={reduceMotion ? { duration: 0.12 } : toastEnter.transition}
+      drag={!reduceMotion}
       dragConstraints={reduceMotion ? undefined : { left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={reduceMotion ? undefined : 0.72}
       onDragEnd={reduceMotion ? undefined : onDragEnd}
-      onPointerEnter={() => onPause(item.id)}
-      onPointerLeave={() => onResume(item.id)}
+      onPointerEnter={() => {
+        hoveredRef.current = true;
+        syncPause();
+      }}
+      onPointerLeave={() => {
+        hoveredRef.current = false;
+        syncPause();
+      }}
+      onPointerCancel={() => {
+        hoveredRef.current = false;
+        syncPause();
+      }}
+      onFocus={() => {
+        focusedRef.current = true;
+        syncPause();
+      }}
+      onBlur={() => {
+        focusedRef.current = false;
+        syncPause();
+      }}
       className="pointer-events-auto tazia-toast-card"
       data-tone={item.tone}
+      data-paused={paused || undefined}
       style={{ ['--toast-ttl' as string]: `${item.durationMs}ms` }}
     >
-      <AlertBanner tone={item.tone} role="status" className="w-full">
+      <AlertBanner
+        tone={item.tone}
+        role={item.tone === 'error' ? 'alert' : 'status'}
+        className={`w-full ${
+          item.tone === 'info' || item.tone === 'success'
+            ? 'border-transparent px-3 py-2 text-[0.8125rem] font-normal sm:text-[0.8125rem]'
+            : ''
+        }`}
+      >
         <button
           type="button"
-          className="w-full text-left"
+          className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={() => onDismiss(item.id)}
         >
           {item.message}
@@ -121,7 +172,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const clearTimer = useCallback((id: string) => {
     const state = timers.current.get(id);
     if (!state) return;
-    window.clearTimeout(state.handle);
+    if (state.handle) window.clearTimeout(state.handle);
     timers.current.delete(id);
   }, []);
 
@@ -130,17 +181,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       clearTimer(id);
       setItems((prev) => prev.filter((i) => i.id !== id));
     },
-    [clearTimer]
+    [clearTimer],
   );
 
   const armTimer = useCallback(
     (id: string, ms: number) => {
       const prev = timers.current.get(id);
-      if (prev) window.clearTimeout(prev.handle);
+      if (prev?.handle) window.clearTimeout(prev.handle);
       const handle = window.setTimeout(() => dismiss(id), ms);
       timers.current.set(id, { handle, deadline: Date.now() + ms, remaining: null });
     },
-    [dismiss]
+    [dismiss],
   );
 
   const pauseTimer = useCallback((id: string) => {
@@ -157,8 +208,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       if (!state || state.remaining === null) return;
       armTimer(id, state.remaining);
     },
-    [armTimer]
+    [armTimer],
   );
+
+  // Clean up timers for toasts evicted by dedupeKey or MAX_TOASTS.
+  useEffect(() => {
+    const activeIds = new Set(items.map((item) => item.id));
+    for (const [id, state] of timers.current) {
+      if (!activeIds.has(id)) {
+        if (state.handle) window.clearTimeout(state.handle);
+        timers.current.delete(id);
+      }
+    }
+  }, [items]);
+
+  // Clear all active timers on unmount.
+  useEffect(() => {
+    const map = timers.current;
+    return () => {
+      for (const state of map.values()) {
+        if (state.handle) window.clearTimeout(state.handle);
+      }
+      map.clear();
+    };
+  }, []);
 
   const push = useCallback(
     (messageOrOpts: ToastPush, toneArg?: ToastTone) => {
@@ -168,23 +241,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           : messageOrOpts;
       const tone = opts.tone ?? 'info';
       const dedupeKey = opts.dedupeKey;
-      const durationMs = opts.durationMs ?? DURATION[tone];
-      const id = crypto.randomUUID();
+      const durationMs =
+        typeof opts.durationMs === 'number' && Number.isFinite(opts.durationMs) && opts.durationMs > 0
+          ? opts.durationMs
+          : DURATION[tone];
+      const id = nextToastId();
 
       setItems((prev) => {
-        let next = prev;
-        if (dedupeKey) {
-          for (const old of prev) {
-            if (old.dedupeKey === dedupeKey) clearTimer(old.id);
-          }
-          next = prev.filter((i) => i.dedupeKey !== dedupeKey);
-        }
-        return [...next.slice(-1), { id, message: opts.message, tone, dedupeKey, durationMs }];
+        const next = dedupeKey ? prev.filter((i) => i.dedupeKey !== dedupeKey) : prev;
+        return [
+          ...next.slice(-(MAX_TOASTS - 1)),
+          { id, message: opts.message, tone, dedupeKey, durationMs },
+        ];
       });
 
       armTimer(id, durationMs);
     },
-    [armTimer, clearTimer]
+    [armTimer],
   );
 
   const api = useMemo(() => ({ push }), [push]);
@@ -192,11 +265,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-[420px] flex-col gap-2 px-4 md:bottom-6"
-        aria-live="polite"
-        aria-relevant="additions removals"
-      >
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-[420px] flex-col gap-2 px-4 md:bottom-6">
         <AnimatePresence initial={false}>
           {items.map((item) => (
             <ToastCard

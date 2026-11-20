@@ -7,6 +7,8 @@ export interface FallbackPeerSet {
   drop: (userId: string) => void;
   deleteQuiet: (userId: string) => void;
   pruneStale: (isLiveWebrtc: (userId: string) => boolean) => boolean;
+  /** Current fallback peer userIds (for dm-wrap candidate expansion). */
+  listIds: () => string[];
 }
 
 export function createFallbackPeerSet(
@@ -31,6 +33,9 @@ export function createFallbackPeerSet(
     },
     deleteQuiet(userId: string) {
       map.delete(userId);
+    },
+    listIds() {
+      return [...map.keys()];
     },
     pruneStale(isLiveWebrtc) {
       const now = Date.now();

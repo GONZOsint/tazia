@@ -27,6 +27,7 @@ Peers con `agora-forum-v1` / `agora-forum-v2` **no** se entienden con `tazep-v2`
 | `MAX_SIG_B64_CHARS` | 128 |
 | `MAX_DM_BODY_CHARS` | 4000 |
 | `MAX_DM_CIPHER_B64_CHARS` | 12_000 |
+| `MAX_FALLBACK_CIPHER_B64_CHARS` | 96_000 (`content` de EVENT Nostr antes de verify/decrypt) |
 | `MAX_DM_PER_MINUTE` | 30 |
 | `MAX_SYNC_MESSAGES` | 500 |
 | `MAX_SYNC_TOTAL_BYTES` | 2 MB |
@@ -44,7 +45,7 @@ Peers con `agora-forum-v1` / `agora-forum-v2` **no** se entienden con `tazep-v2`
 Versiones distintas de `2` se **rechazan**.  
 Límite de UI (no del protocolo): hasta **3** zonas concurrentes (`MAX_ROOMS`).
 
-`MAX_USERS=50` es tope blando de Trystero. El mesh completo degrada pasado ~4–6 peers; el sync live muestreá como máximo `MAX_SYNC_PEER_TARGETS`.
+`MAX_USERS=50` es tope blando de Trystero. El mesh completo degrada pasado ~4–6 peers; el sync live muestrea como máximo `MAX_SYNC_PEER_TARGETS`.
 
 Los rate limits son hedges **solo en el cliente** (en memoria). En fallback Nostr se clavean por pubkey del EVENT; rotar pubkeys puede multiplicar el throughput hasta los buckets globales `×3`.
 
@@ -89,18 +90,20 @@ Cada zona de la UI es un `joinP2pRoom` aislado. Entrar **exige** SubtleCrypto X2
 
 ```ts
 {
-  alias: string;              // 1–40 chars
+  alias: string;              // 1–40 chars, canónico
   signPubKeySpkiB64: string;  // SPKI Ed25519, base64
   encPubKeyRawB64: string;    // X25519 raw, base64 — obligatorio
   avatarSeed: string;         // seed compacto de llamita — obligatorio
 }
 ```
 
+`alias` debe ser **canónico**: trim, sin controles bidi Unicode (`U+200E`, `U+200F`, `U+202A`–`U+202E`, `U+2066`–`U+2069`). Quien publica usa `normalizePresenceAlias` ([`src/core/presenceAlias.ts`](../src/core/presenceAlias.ts)); los peers **rechazan** alias no canónicos con `isValidPresenceState` (sin reescritura silenciosa).
+
 Sin `signPubKeySpkiB64` válida no se aceptan mensajes de ese autor en **sync** (ni en vivo hasta conocer/pinnear la clave).  
 Sin `encPubKeyRawB64` la presencia se rechaza; no hay Susurros en claro.  
 `avatarSeed` debe ser `v1.<p>.<f>.<e>.<m>.<d>.<hex8>` ([`avatarSeed.ts`](../src/core/avatar/avatarSeed.ts)); sin seed válido se rechaza el estado.
 
-Presence Nostr lleva `attestSig` sobre:
+**WebRTC vs Nostr:** la presence WebRTC en vivo solo valida forma y el `userId` de transporte Trystero (sin attestation Ed25519 de presence). Presence Nostr lleva `attestSig` sobre:
 
 ```
 ["tazep.presence.v4", roomId, userId, signPubKeySpkiB64, encPubKeyRawB64, atMs, alias, avatarSeed]
@@ -212,22 +215,24 @@ Canónico firmado:
 
 Si falla ICE (`peer-connect-failed`), TAZIA puede llevar envelopes cifrados por los sockets Nostr abiertos de Trystero.
 
-Material de sala: PBKDF2 210k una vez (salt `tazep.fallback.v2:{roomId}`) + HKDF dual (`tazep/room-key`, `tazep/topic`); blob **`0x03`** + AAD `tazep.fallback.aad.v3:{roomId}`; envelope `v: 2`.
+Material de sala: PBKDF2 210k una vez (salt `tazep.fallback.v2:{roomId}`) + HKDF dual (`tazep/room-key`, `tazep/topic`); blob **`0x03`** + AAD `tazep.fallback.aad.v3:{roomId}`; la mayoría de envelopes `v: 2`.
 
-| `t` | Campos (además de `v: 2`) | Auth |
+| `t` | Campos | Auth |
 | --- | --- | --- |
-| `forum` | `event` | Ed25519 del evento; sin enlace al transporte WebRTC |
-| `presence` | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v4` |
-| `goodbye` | `userId`, claves, `atMs`, `attestSig` | `tazep.goodbye.v3` |
-| `dm` | `dm` | Igual que Susurro en el mensaje de red |
-| `sync-req` | `fromUserId`, `reqId` | — |
-| `sync-res` | `fromUserId`, `toUserId`, `reqId`, `events`, `eventsDigest`, `sig` | ver abajo |
+| `forum` (`v: 2`) | `event` | Ed25519 del evento; sin enlace al transporte WebRTC |
+| `presence` (`v: 2`) | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v4` |
+| `goodbye` (`v: 2`) | `userId`, claves, `atMs`, `attestSig` | `tazep.goodbye.v3` |
+| `dm` (`v: 2`, legacy) | `dm` | Igual que Susurro; los co-miembros ven metadatos tras decrypt de sala |
+| `dm-wrap` (`v: 3`) | solo `blobB64` | **Solo fallback Nostr** (en WebRTC los Susurros siguen en `seal: 2`). AES pairwise (HKDF `tazep/dm-wrap:{userIdsOrdenados}`) + AAD `tazep.dm-wrap.aad.v1:{roomId}`; el publish sube `dm` → `dm-wrap`; se acepta `dm` legacy |
+| `sync-req` (`v: 2`) | `fromUserId`, `reqId` | — |
+| `sync-res` (`v: 2`) | `fromUserId`, `toUserId`, `reqId`, `events`, `eventsDigest`, `sig` | ver abajo |
 
 - EVENT: schnorr verify del id canónico + skew de `created_at` **antes** de decrypt.
 - `sync-res`: `eventsDigest = hex(SHA-256(JSON.stringify(events)))`; firma sobre  
   `["tazep.sync-res.v1", roomId, reqId, fromUserId, toUserId, eventsDigest]`.
   Las respuestas válidas se **fusionan** hasta el timeout de la petición (no gana la primera).
 - Los relés ven metadatos y bytes cifrados, no el texto en claro. No es P2P puro.
+- Quien conoce la frase sigue descifrando la capa de **sala**; `dm-wrap` (solo ruta de fallback) oculta metadatos de Susurro a co-miembros (timing/tamaño aún filtran).
 
 ---
 
@@ -260,7 +265,7 @@ late joiner → forumSync.requestMany / Nostr sync-req → sync-res (firmado)
 | Sello DM | [`src/core/crypto/dmCrypto.ts`](../src/core/crypto/dmCrypto.ts) |
 | Frase | [`src/core/crypto/passphraseWords.ts`](../src/core/crypto/passphraseWords.ts) |
 | Mesh | [`src/core/p2p/p2pRoom.ts`](../src/core/p2p/p2pRoom.ts) |
-| Ingest foro / DM | [`forumIngest.ts`](../src/core/p2p/forumIngest.ts), [`dmIngest.ts`](../src/core/p2p/dmIngest.ts) |
+| Ingest foro / DM | [`src/core/p2p/forumIngest.ts`](../src/core/p2p/forumIngest.ts), [`src/core/p2p/dmIngest.ts`](../src/core/p2p/dmIngest.ts) |
 | Snapshot sync (tumbas) | [`syncCoordinator.ts`](../src/core/p2p/syncCoordinator.ts) |
 | Cache verify pinned | [`verifyKeyRegistry.ts`](../src/core/p2p/verifyKeyRegistry.ts) |
 | Fallback Nostr | [`nostrFallback.ts`](../src/core/p2p/nostrFallback.ts), [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts) |

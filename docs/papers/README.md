@@ -11,10 +11,14 @@ Papers and RFCs used while designing TAZIA. PDFs can be kept here for offline re
 | — | [ePrint 2025/554](https://eprint.iacr.org/2025/554) | AAD binding for Whispers `seal:2` + fallback blob | **Applied** (DM + fallback); forum canonical still omits `roomId` |
 | — | [ePrint 2025/1598](https://eprint.iacr.org/2025/1598) | SAS emoji TOFU | **Applied**; attested presence = Nostr path; WebRTC uses Trystero binding |
 | — | [PoPETs 2025 deniability](https://petsymposium.org/popets/2025/popets-2025-0018.pdf) | Practical deniability hard; burn ≠ secure delete | **Documented** as no-goal in [`SECURITY.md`](../SECURITY.md) |
-| — | [ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Anonymity Wrappers | **Not applied** (no-goal) |
+| — | [ePrint 2025/1619](https://eprint.iacr.org/2025/1619) | Anonymity Wrappers | **Not applied** (no-goal; needs durable messaging) |
+| — | [SoK MPCS](https://petsymposium.org/popets/2024/popets-2024-0030.pdf) | Metadata-protecting systems taxonomy | **Documented** — TAZIA is not an MPCS |
+| — | [Cloudflare TURN](https://blog.cloudflare.com/webrtc-turn-using-anycast) | Relay hides peer-facing IP; operator sees IP | **Applied** (product: TURN enable → relay-only default) |
 | — | [RFC 9420 MLS](https://www.rfc-editor.org/rfc/rfc9420) / KT | Group ratchet + key transparency | **Not applied** — needs durable identity / log operator |
+| — | WebRTC Swarms / Obscura / TEEMS / Myco / Stealthy Peers | Onion signaling, TEE mailbox, PIR | **Documented no-goal** (servers / incentives) |
+| — | Pairwise `dm-wrap` v3 (app design) | Hide Susurro metadata from co-members on Nostr fallback | **Applied** |
 | `arxiv-2206.12762-snow.pdf` | [SnoW](https://arxiv.org/abs/2206.12762) | Mesh degrades ~4–6 peers | Downloaded |
-| `arxiv-2510.16168-webrtc-ip.pdf` | [arXiv:2510.16168](https://arxiv.org/abs/2510.16168) | WebRTC IP leakage | Downloaded |
+| `arxiv-2510.16168-webrtc-ip.pdf` | [arXiv:2510.16168](https://arxiv.org/abs/2510.16168) | WebRTC IP / mDNS / CGNAT leakage | Downloaded; app mitigation = TURN relay-only |
 | `arxiv-2510.27500-dcutr.pdf` | [arXiv:2510.27500](https://arxiv.org/abs/2510.27500) | NAT hole-punch rates | Downloaded |
 | `arxiv-2311.04658-cgnat.pdf` | [arXiv:2311.04658](https://arxiv.org/abs/2311.04658) | CGNAT / ICE failures | Downloaded |
 | `arxiv-2503.17826-crdt.pdf` | [arXiv:2503.17826](https://arxiv.org/abs/2503.17826) | CRDT sync (future) | Downloaded |

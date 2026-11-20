@@ -14,3 +14,17 @@ createRoot(document.getElementById('root')!).render(
     </LocaleProvider>
   </ThemeProvider>
 );
+
+// Mono is caption/debug chrome — don't block first paint on two extra WOFF2s.
+const warmMono = () => {
+  void import('../styles/fonts-mono.css');
+};
+const w = window as Window &
+  typeof globalThis & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  };
+if (typeof w.requestIdleCallback === 'function') {
+  w.requestIdleCallback(warmMono, { timeout: 3000 });
+} else {
+  window.setTimeout(warmMono, 800);
+}

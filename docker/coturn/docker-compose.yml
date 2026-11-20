@@ -1,0 +1,44 @@
+# TAZIA helper TURN (coturn) — works on Docker Desktop (Windows/macOS) without --network host.
+#
+# Usage:
+#   cd docker/coturn
+#   copy .env.example .env   # set EXTERNAL_IP + TURN_PASS
+#   docker compose up -d
+#   docker compose logs -f coturn
+#
+# In TAZIA Zones → Fix:
+#   URL:        turn:<EXTERNAL_IP>:3478
+#   Username:   tazia   (or TURN_USER)
+#   Credential: <TURN_PASS>
+#   Relay-only: on by default when TURN is enabled
+
+services:
+  coturn:
+    image: coturn/coturn:4.6.3
+    container_name: tazia-coturn
+    restart: unless-stopped
+    network_mode: bridge
+    ports:
+      - "${TURN_PORT:-3478}:3478/udp"
+      - "${TURN_PORT:-3478}:3478/tcp"
+      # Relay UDP — must match min-port/max-port in turnserver.conf
+      - "49160-49200:49160-49200/udp"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TURN_USER: ${TURN_USER:-tazia}
+      TURN_PASS: ${TURN_PASS:?Set TURN_PASS in .env}
+      EXTERNAL_IP: ${EXTERNAL_IP:?Set EXTERNAL_IP to your LAN or public IP}
+      DETECT_EXTERNAL_IP: ${DETECT_EXTERNAL_IP:-0}
+      TURN_VERBOSE: ${TURN_VERBOSE:-0}
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "turnutils_stunclient 127.0.0.1 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

@@ -1,5 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { motion } from 'motion/react';
+import type { ReactNode } from 'react';
+import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react';
 import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 /**
@@ -8,16 +8,15 @@ import { TAP, TAP_TRANSITION } from '../../motion/tokens';
  *   md  48 — primary CTA in panels / empty states
  *   lg  52 — hero / full-bleed entry only
  */
-type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
-type AccentButtonProps = {
+type BaseButtonProps = Omit<HTMLMotionProps<'button'>, 'size' | 'children'> & {
   children: ReactNode;
-  className?: string;
   size?: ButtonSize;
-  disabled?: boolean;
-  type?: 'button' | 'submit' | 'reset';
-  onClick?: ButtonHTMLAttributes<HTMLButtonElement>['onClick'];
 };
+
+export type AccentButtonProps = BaseButtonProps;
+export type SecondaryButtonProps = BaseButtonProps;
 
 const SIZE: Record<ButtonSize, string> = {
   sm: 'min-h-[44px] px-4 py-2',
@@ -26,7 +25,7 @@ const SIZE: Record<ButtonSize, string> = {
 };
 
 const BTN_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-[var(--radius-ctrl)] type-ui font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex cursor-pointer select-none items-center justify-center gap-2 rounded-[var(--radius-ctrl)] type-ui font-semibold transition-colors duration-[var(--dur-micro)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
 
 export function AccentButton({
   children,
@@ -34,30 +33,23 @@ export function AccentButton({
   size = 'md',
   disabled,
   type = 'button',
-  onClick,
+  ...rest
 }: AccentButtonProps) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <motion.button
       type={type}
-      whileTap={!disabled ? TAP : undefined}
+      whileTap={!disabled && !reduceMotion ? TAP : undefined}
       transition={TAP_TRANSITION}
       disabled={disabled}
-      onClick={onClick}
       className={`btn-accent-sheen ${BTN_BASE} bg-accent text-on-accent hover:bg-accent-hover ${SIZE[size]} ${className}`}
+      {...rest}
     >
       {children}
     </motion.button>
   );
 }
-
-type SecondaryButtonProps = {
-  children: ReactNode;
-  className?: string;
-  size?: ButtonSize;
-  disabled?: boolean;
-  type?: 'button' | 'submit' | 'reset';
-  onClick?: ButtonHTMLAttributes<HTMLButtonElement>['onClick'];
-};
 
 export function SecondaryButton({
   children,
@@ -65,36 +57,48 @@ export function SecondaryButton({
   size = 'sm',
   type = 'button',
   disabled,
-  onClick,
+  ...rest
 }: SecondaryButtonProps) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <motion.button
       type={type}
-      whileTap={!disabled ? TAP : undefined}
+      whileTap={!disabled && !reduceMotion ? TAP : undefined}
       transition={TAP_TRANSITION}
       disabled={disabled}
-      onClick={onClick}
       className={`${BTN_BASE} border border-border bg-bg text-ink hover:bg-surface ${SIZE[size]} ${className}`}
+      {...rest}
     >
       {children}
     </motion.button>
   );
 }
 
-type EmptyZoneCtaProps = {
+export type EmptyZoneCtaProps = {
   icon: ReactNode;
-  title: string;
-  body: string;
+  title: ReactNode;
+  body: ReactNode;
   actionLabel: string;
   onAction: () => void;
+  className?: string;
 };
 
-export function EmptyZoneCta({ icon, title, body, actionLabel, onAction }: EmptyZoneCtaProps) {
+export function EmptyZoneCta({
+  icon,
+  title,
+  body,
+  actionLabel,
+  onAction,
+  className = '',
+}: EmptyZoneCtaProps) {
   return (
-    <div className="flex flex-col items-center px-4 py-16 text-center">
-      <div className="mb-4 text-muted">{icon}</div>
-      <h2 className="type-title text-ink">{title}</h2>
-      <p className="type-lede mt-2 max-w-sm">{body}</p>
+    <div className={`flex flex-col items-center px-4 py-16 text-center ${className}`}>
+      <div className="mb-4 text-muted" aria-hidden="true">
+        {icon}
+      </div>
+      <h2 className="type-title text-ink text-balance break-words">{title}</h2>
+      <p className="type-lede mt-2 max-w-sm text-balance break-words">{body}</p>
       <AccentButton className="mt-6" onClick={onAction}>
         {actionLabel}
       </AccentButton>

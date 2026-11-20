@@ -21,11 +21,18 @@ export const en = {
   igniteTab: 'Light flame',
   igniteBody: 'No account. Live talk while the flame lasts.',
   igniteHelp: 'Help',
+  igniteHelpBack: 'Back to the flame',
   liveHint: 'Live',
   burnConfirmTitle: 'Extinguish the flame?',
   burnConfirmBody:
     'Turns off every zone in this tab. Messages are gone here. Rejoin only with the phrase.',
   burnConfirmAction: 'Extinguish flame',
+  burnConfirmForgetTurn:
+    'Also forget saved TURN/Nostr settings and IP consent on this device',
+  consentHideIpNote:
+    'To hide your address from peers (not strong anonymity), use a helper server with “Hide my internet address” in Zones → Fix. The helper operator still sees your IP. You can also set your own Nostr relays there.',
+  turnHideIpPrompt:
+    'Helper server is on, but peers can still see your IP until you enable “Hide my internet address” (relay only). Both sides need the same server.',
   leaveRoomConfirmTitle: 'Burn this zone?',
   leaveRoomConfirmBody: 'This zone burns on this device. The rest of the tribe stays.',
   leaveRoomConfirmAction: 'Burn zone',
@@ -33,11 +40,11 @@ export const en = {
   toastPublishFailed: 'Could not send',
   toastDmSent: 'Whisper sent',
   toastDmFailed: 'Could not send',
+  toastDmFailedKeyChanged:
+    'Could not send — identity changed. Open Tribe, verify, then try again.',
   toastSynced: 'Messages updated',
   dismissAlert: 'Dismiss',
   navUnreadAria: '{n} unread',
-
-  burnNotice: 'The flame went out. Light it again to enter.',
 
   forumEmptyTitle: 'No zone open.',
   forumEmptyBody: 'Open or join a zone to use the plaza.',
@@ -98,9 +105,10 @@ export const en = {
 
   consentTitle: 'Others may see your address',
   consentBody:
-    'When you enter, others can see your internet address (and sometimes your local network). Continue only if you trust people in the zone.',
+    'When you enter, people in the zone can see your internet address (and sometimes your local network). Default STUN helpers and Nostr relays also see your IP while you connect. Continue only if you trust this group and those third parties.',
   consentCancel: 'Cancel',
   consentAccept: 'Continue',
+  consentOpenFix: 'Open Fix (then re-enter the zone)',
 
   meshConnecting: 'Connecting…',
   meshAlone: 'Just you in the zone — waiting',
@@ -178,7 +186,7 @@ export const en = {
   avatarPreviewTitle: 'Avatar of {alias}',
   avatarPreviewEyebrow: 'Flame',
   avatarPreviewClose: 'Close',
-  avatarPreviewHint: 'Living avatar for this person in the zone',
+  avatarPreviewHint: 'Your personal little flame',
   avatarPreviewOpen: 'View avatar of {alias}',
 
   helpTitle: 'How it works',
@@ -207,9 +215,15 @@ export const en = {
   helpRelayBody:
     'Sometimes the network will not let browsers talk directly. Then chat can continue over an encrypted path through helper servers. Prefer the same Wi‑Fi; if needed, open Fix under Zones.',
   helpSafetyTitle: 'What it protects — and what it does not',
-  helpSafety1Lead: 'Your IP is visible in the zone',
+  helpSafety1Lead: 'Your IP is visible by default',
   helpSafety1Body:
-    'People inside can see your network address. TAZIA does not hide who you are on the internet.',
+    'Peers can see your address over WebRTC unless you use TURN with “Hide my internet address”. STUN and Nostr relay operators also see your IP. This is not Tor.',
+  helpPrivacyTitle: 'Who can see your address',
+  helpPrivacyBody:
+    'Peers (WebRTC), default STUN servers, Nostr relays used for signaling/fallback, and any TURN you configure. Zones → Fix lets you force TURN relay-only and optionally use your own Nostr relays.',
+  helpOfflineTitle: 'Offline copy',
+  helpOfflineBody:
+    'Prefer not to load the app from github.io? Build or download the single-file HTML (build:single / CI artifact) and open it locally — GitHub will not see those visits. CSP is slightly weaker (inline scripts).',
   helpSafety2Lead: 'Verifiable authorship',
   helpSafety2Body:
     'Each message carries a unique author mark so nobody can impersonate you in the history.',
@@ -235,16 +249,19 @@ export const en = {
   helpForgetDevice: 'Forget this device',
   helpForgetConfirm: 'Tap again to confirm',
   helpForgetDoneLabel: 'Device forgotten',
-  helpForgetDone: 'Preference cleared',
-  helpForgetHint: 'Resets the network-address notice for the next time you enter a zone.',
+  helpForgetDone: 'Network prefs cleared',
+  helpForgetHint:
+    'Clears IP consent, saved TURN credentials, and custom Nostr relays on this device.',
   helpNoServerTitle: 'No accounts, no traces',
   helpNoServerBody: 'No sign-up, no downloads, and no database.',
+  helpFlowIgnite: 'Light flame',
   helpFlowOpen: 'Open zone',
   helpFlowPhrase: 'Phrase in person',
   helpFlowQr: 'QR or link',
   helpFlowBurn: 'Extinguish flame',
   helpStepsTitle: 'Quick start',
   helpStepOf: 'Step {n} of {total}',
+  helpStepsIgnite: 'Light the flame to enter TAZIA.',
   helpSteps1: 'Open a zone and generate a passphrase.',
   helpSteps2: 'Share it in person or via a trusted channel.',
   helpSteps3: 'Send the QR code or access link.',
@@ -303,7 +320,7 @@ export const en = {
   confirmPhraseBody:
     'The link will include the phrase. Anyone with that link can enter the zone.',
   confirmPhraseAction: 'Include phrase',
-  phraseInLinkToast: 'Phrase is in the link. Treat it like a secret.',
+  phraseInLinkToast: 'Phrase is in the link — treat it as a secret.',
 
   trustNew: 'New',
   trustTrusted: 'Not verified',
@@ -315,8 +332,8 @@ export const en = {
   trustNoMatch: "They don't match",
   trustKeyChanged:
     '{alias} identity changed. They may have rejoined… or someone is trying to impersonate them.',
-  trustRepin: 'I trust this',
-  trustDisconnect: 'Disconnect',
+  trustRepin: 'Verify',
+  trustDisconnect: 'Ignore',
   trustEmojiLabel: 'Safety code',
 
   roomsJoinedTitle: 'Your zones',
@@ -357,7 +374,13 @@ export const en = {
   turnRelayEnabled: 'Use a helper server',
   turnForceRelay: 'Hide my internet address',
   turnForceRelayHint:
-    'Everything goes through the helper server. Without a working server, you will not connect.',
+    'On by default when you enable a helper server. Everything goes through it. Uncheck for same-LAN P2P. Without a working server, you will not connect.',
+  turnIpStatusRelay:
+    'Relay only — peers should not see your IP (only the helper server’s).',
+  turnIpStatusP2p:
+    'P2P allowed — peers may see your IP via WebRTC (host / STUN).',
+  turnOperatorSeesIp:
+    'The helper-server operator still sees your IP. This is not strong anonymity (not Tor).',
   turnRememberDevice: 'Remember on this device',
   turnRememberDeviceHint:
     'Off by default: TURN settings stay in this tab only. On stores them in the browser until you clear site data.',
@@ -366,5 +389,19 @@ export const en = {
   turnCredential: 'Password',
   turnFixCta: 'Fix',
   turnTechNote:
-    'TURN/ICE fields (coturn or similar). Typical URL: turn:host:3478 or turns:…. Enabling relay-only forces iceTransportPolicy=relay. Both sides need the same server. Guide: docs/TURN.md.',
+    'TURN/ICE fields (coturn or similar). Typical URL: turn:host:3478 or turns:…. Enabling TURN defaults to relay-only (iceTransportPolicy=relay). Both sides need the same server. Native helper: tools/tazia-turn/ (exe / APK). Guide: docs/TURN.md.',
+
+  nostrRelayTitle: 'Nostr relays (signaling)',
+  nostrRelayHint:
+    'By default Trystero picks public relays. Set your own wss:// list so only operators you trust see your IP for signaling and encrypted fallback.',
+  nostrRelayEnabled: 'Use custom Nostr relays',
+  nostrRelayUrls: 'Relay URLs',
+  nostrRelayUrlsHint: 'One wss:// URL per line. Both sides should share a working overlap.',
+  nostrRelayActive: 'Using {n} custom relay(s). Re-enter the zone after changing the list.',
+  nostrRelayNeedUrls: 'Add at least one wss:// URL, or turn this off to use defaults.',
+  nostrRelayOperatorSeesIp:
+    'Relay operators still see your IP and encrypted traffic metadata. Custom relays are not Tor.',
+  nostrRelayRememberDevice: 'Remember on this device',
+  nostrRelayRememberDeviceHint:
+    'Off by default: the list stays in this tab only. On stores it until you clear site data or Forget this device.',
 } as const;

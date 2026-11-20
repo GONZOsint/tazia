@@ -1,0 +1,61 @@
+/* --- Verify emoji tiles: per-cell 3D (no shared grid tilt) --- */
+.verify-emoji-stage {
+  perspective: 1100px;
+  perspective-origin: 50% 45%;
+}
+.verify-emoji-grid {
+  transform-style: preserve-3d;
+}
+.verify-emoji-cell {
+  position: relative;
+  display: flex;
+  height: 2.85rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-ctrl);
+  border: 1px solid color-mix(in oklab, var(--verify-tint, var(--color-accent)) 32%, var(--color-border));
+  background:
+    linear-gradient(
+      150deg,
+      color-mix(in oklab, var(--verify-tint, var(--color-accent)) 16%, var(--color-surface-raised)),
+      var(--color-surface-raised) 48%,
+      color-mix(in oklab, var(--color-ink) 5%, var(--color-surface-raised))
+    );
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 10%, transparent),
+    0 8px 16px color-mix(in oklab, #000 16%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent);
+  transform-style: preserve-3d;
+  transform: translateZ(0);
+  overflow: hidden;
+  will-change: transform;
+  cursor: default;
+}
+.verify-emoji-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    color-mix(in oklab, #fff 14%, transparent),
+    transparent 40%,
+    transparent 62%,
+    color-mix(in oklab, #000 10%, transparent)
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+.verify-emoji-cell[data-tint='accent'] { --verify-tint: var(--color-accent); }
+.verify-emoji-cell[data-tint='ok'] { --verify-tint: var(--color-ok); }
+.verify-emoji-cell[data-tint='warn'] { --verify-tint: var(--color-warn); }
+.verify-emoji-cell[data-tint='info'] { --verify-tint: var(--color-info); }
+.verify-emoji-glyph {
+  position: relative;
+  z-index: 2;
+  font-size: 1.45rem;
+  line-height: 1;
+  transform: translateZ(12px);
+  filter: drop-shadow(0 3px 5px color-mix(in oklab, #000 22%, transparent));
+}
+/* Idle verify glyphs stay static — motion only on match handshake. */

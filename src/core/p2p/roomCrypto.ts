@@ -1,6 +1,7 @@
 /** Room-phrase AES-GCM helpers for the Nostr data-plane fallback (v2 KDF + AAD). */
 
 import { b64ToBytes, bytesToB64, bytesToHex, toArrayBuffer } from '../crypto/bytes';
+import type { DirectMessage } from '../protocol';
 
 const te = new TextEncoder();
 const td = new TextDecoder();
@@ -9,6 +10,8 @@ const PBKDF2_ITERATIONS = 210_000;
 const PAD_BLOCK = 256;
 /** Wire blob: version byte + IV(12) + ciphertext(+pad). v3 = AAD bound to roomId. */
 const BLOB_VERSION = 0x03;
+/** Inner DM-wrap blob (pairwise) — distinct from room-layer version. */
+const DM_WRAP_BLOB_VERSION = 0x01;
 
 async function deriveMasterBits(roomId: string, password: string): Promise<ArrayBuffer> {
   const material = await crypto.subtle.importKey('raw', te.encode(password), 'PBKDF2', false, [
@@ -63,6 +66,90 @@ export async function deriveSessionMaterial(
   );
   const topicId = bytesToHex(new Uint8Array(topicBits)).slice(0, 32);
   return { roomKey, topicId };
+}
+
+/** Pairwise AES key so co-members cannot read Susurro metadata after room decrypt. */
+export async function deriveDmWrapKey(
+  roomId: string,
+  phrase: string,
+  userA: string,
+  userB: string
+): Promise<CryptoKey> {
+  const [left, right] = [userA, userB].sort((a, b) => a.localeCompare(b, 'en'));
+  const master = await deriveMasterBits(roomId, phrase);
+  const keyBits = await hkdfExpand(master, `tazep/dm-wrap:${left}:${right}`, 256);
+  return crypto.subtle.importKey(
+    'raw',
+    keyBits,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function dmWrapAad(roomId: string): Uint8Array {
+  return te.encode(`tazep.dm-wrap.aad.v1:${roomId}`);
+}
+
+export async function encryptDmWrap(key: CryptoKey, dm: DirectMessage, roomId: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plain = padPlaintext(te.encode(JSON.stringify(dm)));
+  const aad = dmWrapAad(roomId);
+  const cipher = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: toArrayBuffer(aad) },
+      key,
+      toArrayBuffer(plain)
+    )
+  );
+  const packed = new Uint8Array(1 + iv.length + cipher.length);
+  packed[0] = DM_WRAP_BLOB_VERSION;
+  packed.set(iv, 1);
+  packed.set(cipher, 1 + iv.length);
+  return bytesToB64(packed);
+}
+
+export async function decryptDmWrap(
+  key: CryptoKey,
+  blobB64: string,
+  roomId: string
+): Promise<DirectMessage | null> {
+  try {
+    const packed = b64ToBytes(blobB64);
+    if (packed.length < 14 || packed[0] !== DM_WRAP_BLOB_VERSION) return null;
+    const iv = packed.slice(1, 13);
+    const cipher = packed.slice(13);
+    const aad = dmWrapAad(roomId);
+    const plain = new Uint8Array(
+      await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv, additionalData: toArrayBuffer(aad) },
+        key,
+        toArrayBuffer(cipher)
+      )
+    );
+    const dm = JSON.parse(td.decode(unpadPlaintext(plain))) as DirectMessage;
+    if (!dm || typeof dm !== 'object') return null;
+    return dm;
+  } catch {
+    return null;
+  }
+}
+
+/** Try pairwise unwrap against candidate peers (no from/to on the wire after room decrypt). */
+export async function tryDecryptDmWrapForSelf(
+  roomId: string,
+  phrase: string,
+  selfUserId: string,
+  peerIds: string[],
+  blobB64: string
+): Promise<DirectMessage | null> {
+  for (const peerId of peerIds) {
+    if (!peerId || peerId === selfUserId) continue;
+    const key = await deriveDmWrapKey(roomId, phrase, selfUserId, peerId);
+    const dm = await decryptDmWrap(key, blobB64, roomId);
+    if (dm && dm.toUserId === selfUserId) return dm;
+  }
+  return null;
 }
 
 function padPlaintext(plain: Uint8Array): Uint8Array {

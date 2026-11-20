@@ -1,3 +1,9 @@
+import {
+  exactSpring,
+  FIRE_EXTINGUISH_SPRING,
+  FIRE_IGNITE_SPRING,
+  type SpringParams,
+} from './exactSpring';
 import { FIRE_BTN_FS, FIRE_BTN_VS } from './shaders';
 
 export interface FireButtonConfig {
@@ -6,12 +12,62 @@ export interface FireButtonConfig {
   freqX: number;
   swayScale: number;
   maxWisps: number;
+  /**
+   * Horizontal fade inset (UV). Smaller → flames hug the left/right rim.
+   * Circle defaults wider; title rim wants a tight inset.
+   */
+  edgeInset: number;
+}
+
+export type FireLitSpeed = 'normal' | 'instant';
+
+export interface FireButtonMountOptions {
+  igniteParams?: SpringParams;
+  extinguishParams?: SpringParams;
+  /** When false, pointer proximity/wind are ignored. */
+  isActiveZone?: () => boolean;
+  /**
+   * When false, freezes the lit crown (one draw) instead of spinning rAF.
+   * Use for off-screen / inert tab panels (e.g. plaza title rim).
+   */
+  shouldRun?: () => boolean;
+  /**
+   * Multiplies uploaded intensity / wisp (plaza title wants a denser crown).
+   * Shader still clamps; keep ≤ ~1.35 for a readable boost.
+   */
+  intensityGain?: number;
 }
 
 export interface FireButtonHandle {
-  setLit: (lit: boolean, originX?: number) => void;
+  setLit: (lit: boolean, originX?: number, speedMode?: FireLitSpeed) => void;
   setConfig: (next: Partial<FireButtonConfig>) => void;
+  /** Re-check shouldRun / visibility and start or freeze the loop. */
+  syncLoop: () => void;
   destroy: () => void;
+}
+
+type PointerSink = (e: PointerEvent) => void;
+const pointerSinks = new Set<PointerSink>();
+let pointerFanInAttached = false;
+
+function dispatchSharedPointer(e: PointerEvent): void {
+  for (const sink of pointerSinks) sink(e);
+}
+
+function addPointerSink(sink: PointerSink): void {
+  pointerSinks.add(sink);
+  if (!pointerFanInAttached) {
+    window.addEventListener('pointermove', dispatchSharedPointer, { passive: true });
+    pointerFanInAttached = true;
+  }
+}
+
+function removePointerSink(sink: PointerSink): void {
+  pointerSinks.delete(sink);
+  if (pointerSinks.size === 0 && pointerFanInAttached) {
+    window.removeEventListener('pointermove', dispatchSharedPointer);
+    pointerFanInAttached = false;
+  }
 }
 
 type Uniforms = {
@@ -31,6 +87,7 @@ type Uniforms = {
   freqX: WebGLUniformLocation;
   swayScale: WebGLUniformLocation;
   maxWisps: WebGLUniformLocation;
+  edgeInset: WebGLUniformLocation;
   color: WebGLUniformLocation;
 };
 
@@ -46,24 +103,50 @@ function compile(gl: WebGLRenderingContext, type: number, src: string): WebGLSha
   return s;
 }
 
-function stepSpring(
-  pos: number,
-  vel: number,
-  target: number,
-  stiffness: number,
-  damping: number,
-  dt: number
-): [number, number] {
-  const acc = stiffness * (target - pos) - damping * vel;
-  vel += acc * dt;
-  pos += vel * dt;
-  return [pos, vel];
+const FALLBACK_ACCENT: [number, number, number] = [0.863, 0.992, 0.475];
+
+function parseCssRgb(raw: string): [number, number, number] | null {
+  const m = raw.match(/\d+(\.\d+)?/g);
+  if (!m || m.length < 3) return null;
+  const r = Number(m[0]);
+  const g = Number(m[1]);
+  const b = Number(m[2]);
+  const a = m.length >= 4 ? Number(m[3]) : 1;
+  // Transparent btn (circle) — ignore; color comes from .fire-btn__plate / --color-accent.
+  if (!(a > 0.05)) return null;
+  return [r / 255, g / 255, b / 255];
 }
 
 function parseBtnRgb(btn: HTMLElement): [number, number, number] {
-  const rgb = getComputedStyle(btn).backgroundColor.match(/\d+(\.\d+)?/g);
-  if (!rgb) return [0.8, 1, 0.4];
-  return [Number(rgb[0]) / 255, Number(rgb[1]) / 255, Number(rgb[2]) / 255];
+  const plate = btn.querySelector('.fire-btn__plate') as HTMLElement | null;
+  if (plate) {
+    const fromPlate = parseCssRgb(getComputedStyle(plate).backgroundColor);
+    if (fromPlate) return fromPlate;
+  }
+  const fromBtn = parseCssRgb(getComputedStyle(btn).backgroundColor);
+  if (fromBtn) return fromBtn;
+  try {
+    const accent = getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-accent')
+      .trim();
+    if (accent) {
+      const probe = document.createElement('span');
+      probe.style.color = accent;
+      probe.style.display = 'none';
+      document.body.appendChild(probe);
+      const parsed = parseCssRgb(getComputedStyle(probe).color);
+      probe.remove();
+      if (parsed) return parsed;
+    }
+  } catch {
+    /* ignore */
+  }
+  return FALLBACK_ACCENT;
+}
+
+/** Cap canvas backing-store DPR — 3× phones burn fillrate for little gain. */
+function cappedDpr(): number {
+  return Math.min(window.devicePixelRatio || 1, 2);
 }
 
 /**
@@ -73,9 +156,20 @@ function parseBtnRgb(btn: HTMLElement): [number, number, number] {
 export function mountFireButton(
   btn: HTMLElement,
   canvas: HTMLCanvasElement,
-  initial: FireButtonConfig
+  initial: FireButtonConfig,
+  options: FireButtonMountOptions = {}
 ): FireButtonHandle | null {
-  const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true });
+  const igniteParams = options.igniteParams ?? FIRE_IGNITE_SPRING;
+  const extinguishParams = options.extinguishParams ?? FIRE_EXTINGUISH_SPRING;
+  const isActiveZone = options.isActiveZone ?? (() => true);
+  const shouldRun = options.shouldRun ?? (() => true);
+  const intensityGain = Math.max(0.5, Math.min(1.6, options.intensityGain ?? 1));
+
+  const gl = canvas.getContext('webgl', {
+    alpha: true,
+    premultipliedAlpha: true,
+    antialias: false,
+  });
   if (!gl) return null;
 
   const vs = compile(gl, gl.VERTEX_SHADER, FIRE_BTN_VS);
@@ -114,6 +208,7 @@ export function mountFireButton(
     freqX: gl.getUniformLocation(program, 'uFreqX')!,
     swayScale: gl.getUniformLocation(program, 'uSwayScale')!,
     maxWisps: gl.getUniformLocation(program, 'uMaxWisps')!,
+    edgeInset: gl.getUniformLocation(program, 'uEdgeInset')!,
     color: gl.getUniformLocation(program, 'uColor')!,
   };
 
@@ -131,10 +226,8 @@ export function mountFireButton(
   let proximityTarget = 0;
   let wind = 0;
   let windVel = 0;
-  let windImpulse = 0;
   let upDraft = 0;
   let upDraftVel = 0;
-  let upImpulse = 0;
   let press = 0;
   let pressVel = 0;
   let pressTarget = 0;
@@ -147,21 +240,24 @@ export function mountFireButton(
   let lastNow = performance.now();
   let rafId: number | null = null;
   let destroyed = false;
+  let cachedRgb: [number, number, number] | null = null;
+  let rgbDirty = true;
+  let lastDrawMs = 0;
+  let idleSkipParity = 0;
 
-  const resize = () => {
-    if (destroyed) return;
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (w <= 0 || h <= 0) return;
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    gl.viewport(0, 0, canvas.width, canvas.height);
+  const invalidateRgb = () => {
+    rgbDirty = true;
   };
 
-  resize();
-  const ro = new ResizeObserver(resize);
-  ro.observe(canvas);
+  const animationAllowed = () =>
+    !destroyed && !document.hidden && !reducedMotion.matches && shouldRun();
+
+  const resolveRgb = (): [number, number, number] => {
+    if (!rgbDirty && cachedRgb) return cachedRgb;
+    cachedRgb = parseBtnRgb(btn);
+    rgbDirty = false;
+    return cachedRgb;
+  };
 
   const drawFrame = () => {
     gl.clearColor(0, 0, 0, 0);
@@ -170,12 +266,12 @@ export function mountFireButton(
     if (intensity <= 0.002 && wispIntensity <= 0.002) return;
 
     const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
-    const [r, g, b] = parseBtnRgb(btn);
+    const [r, g, b] = resolveRgb();
 
     gl.uniform1f(uniforms.time, reducedMotion.matches ? 1.5 : flameTime);
     gl.uniform1f(uniforms.aspect, aspect);
-    gl.uniform1f(uniforms.intensity, Math.max(0, intensity));
-    gl.uniform1f(uniforms.wispIntensity, Math.max(0, wispIntensity));
+    gl.uniform1f(uniforms.intensity, Math.max(0, intensity) * intensityGain);
+    gl.uniform1f(uniforms.wispIntensity, Math.max(0, wispIntensity) * intensityGain);
     gl.uniform1f(uniforms.igniteTime, igniteTime);
     gl.uniform1f(uniforms.extinguishTime, extinguishTime);
     gl.uniform1f(uniforms.mouseX, mouseX);
@@ -188,29 +284,84 @@ export function mountFireButton(
     gl.uniform1f(uniforms.freqX, config.freqX);
     gl.uniform1f(uniforms.swayScale, config.swayScale);
     gl.uniform1f(uniforms.maxWisps, config.maxWisps);
+    gl.uniform1f(uniforms.edgeInset, Math.max(0.01, Math.min(0.22, config.edgeInset)));
     gl.uniform3f(uniforms.color, r, g, b);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
 
+  const resize = () => {
+    if (destroyed) return;
+    const dpr = cappedDpr();
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w <= 0 || h <= 0) return;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    invalidateRgb();
+    drawFrame();
+  };
+
+  resize();
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas);
+
+  const freezeLoop = () => {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    drawFrame();
+  };
+
   const ensureLoop = () => {
-    if (destroyed || rafId !== null || reducedMotion.matches) return;
+    if (!animationAllowed() || rafId !== null) return;
     lastNow = performance.now();
     rafId = requestAnimationFrame(render);
   };
 
-  const setLit = (nextLit: boolean, originX = 0.5) => {
+  const syncLoop = () => {
     if (destroyed) return;
-    if (isLit === nextLit) return;
+    if (!animationAllowed()) {
+      freezeLoop();
+      return;
+    }
+    if (isLit || intensity > 0.01) ensureLoop();
+  };
+
+  const triggerShine = () => {
+    btn.classList.remove('is-igniting');
+    void btn.offsetWidth;
+    btn.classList.add('is-igniting');
+  };
+
+  const setLit = (nextLit: boolean, originX = 0.5, speedMode: FireLitSpeed = 'normal') => {
+    if (destroyed) return;
+    if (isLit === nextLit && speedMode !== 'instant') return;
     isLit = nextLit;
     clickX = Math.max(0, Math.min(1, originX));
     btn.classList.toggle('is-lit', isLit);
     btn.setAttribute('aria-pressed', String(isLit));
 
-    if (reducedMotion.matches) {
+    if (isLit && speedMode !== 'instant' && !reducedMotion.matches) {
+      triggerShine();
+    } else if (!isLit) {
+      btn.classList.remove('is-igniting');
+    }
+
+    if (reducedMotion.matches || speedMode === 'instant') {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       intensity = isLit ? 1 : 0;
       wispIntensity = isLit ? 1 : 0;
       intensityVel = 0;
       wispVel = 0;
+      wind = 0;
+      windVel = 0;
+      upDraft = 0;
+      upDraftVel = 0;
       igniteTime = isLit ? -10 : 1e6;
       extinguishTime = isLit ? 1e6 : -10;
       drawFrame();
@@ -218,7 +369,11 @@ export function mountFireButton(
     }
 
     if (isLit) {
-      if (intensity < 0.35) igniteTime = flameTime;
+      if (intensity < 0.35) {
+        igniteTime = flameTime;
+      } else if (extinguishTime < 1e5) {
+        igniteTime = Math.max(igniteTime, extinguishTime);
+      }
       extinguishTime = 1e6;
     } else {
       extinguishTime = flameTime;
@@ -228,32 +383,31 @@ export function mountFireButton(
 
   const render = (now: number) => {
     if (destroyed) return;
-    const frameDt = Math.min(0.033, Math.max(0.001, (now - lastNow) / 1000));
-    lastNow = now;
-    const subSteps = 2;
-    const dt = frameDt / subSteps;
-    const target = isLit ? 1 : 0;
-
-    for (let i = 0; i < subSteps; i++) {
-      const kMain = isLit ? 32 : 38;
-      const dMain = isLit ? 11.3 : 12.3;
-      [intensity, intensityVel] = stepSpring(intensity, intensityVel, target, kMain, dMain, dt);
-
-      const kWisp = isLit ? 26 : 24;
-      const dWisp = isLit ? 10.2 : 9.8;
-      [wispIntensity, wispVel] = stepSpring(wispIntensity, wispVel, target, kWisp, dWisp, dt);
-
-      [wind, windVel] = stepSpring(wind, windVel, windImpulse, 55, 11.5, dt);
-      windImpulse *= Math.exp(-8.5 * dt);
-
-      [upDraft, upDraftVel] = stepSpring(upDraft, upDraftVel, upImpulse, 48, 11.0, dt);
-      upImpulse *= Math.exp(-7.5 * dt);
-
-      [press, pressVel] = stepSpring(press, pressVel, pressTarget, 320, 24, dt);
+    if (!animationAllowed()) {
+      rafId = null;
+      freezeLoop();
+      return;
     }
+    const dt = Math.min(0.05, Math.max(0.001, (now - lastNow) / 1000));
+    lastNow = now;
+    const target = isLit ? 1 : 0;
+    const sp = isLit ? igniteParams : extinguishParams;
 
-    proximity += (proximityTarget - proximity) * Math.min(1, frameDt * 7.5);
-    mouseX += (targetMouseX - mouseX) * Math.min(1, frameDt * 9);
+    [intensity, intensityVel] = exactSpring(intensity, intensityVel, target, sp.omega0, sp.zeta, dt);
+    [wispIntensity, wispVel] = exactSpring(
+      wispIntensity,
+      wispVel,
+      target,
+      isLit ? sp.omega0 * 0.9 : 4.8,
+      isLit ? 1.04 : 1.06,
+      dt
+    );
+    [wind, windVel] = exactSpring(wind, windVel, 0, 7.2, 0.72, dt);
+    [upDraft, upDraftVel] = exactSpring(upDraft, upDraftVel, 0, 6.8, 0.76, dt);
+    [press, pressVel] = exactSpring(press, pressVel, pressTarget, 18.0, 0.68, dt);
+
+    proximity += (proximityTarget - proximity) * (1 - Math.exp(-7.5 * dt));
+    mouseX += (targetMouseX - mouseX) * (1 - Math.exp(-9.0 * dt));
 
     if (intensity < 0) {
       intensity = 0;
@@ -264,8 +418,25 @@ export function mountFireButton(
       wispVel = 0;
     }
 
-    const hoverPace = 1 + proximity * 0.14;
-    flameTime += frameDt * (0.42 + 0.58 * Math.min(1, intensity)) * hoverPace;
+    flameTime += dt * (0.42 + 0.58 * Math.min(1, intensity)) * (1 + proximity * 0.14);
+
+    // Idle lit crowns (~TopBar): ~30fps draw when nothing is interacting.
+    const idle =
+      isLit &&
+      proximity < 0.05 &&
+      press < 0.05 &&
+      Math.abs(wind) < 0.04 &&
+      Math.abs(upDraft) < 0.04;
+    if (idle) {
+      idleSkipParity ^= 1;
+      if (idleSkipParity && now - lastDrawMs < 28) {
+        rafId = requestAnimationFrame(render);
+        return;
+      }
+    } else {
+      idleSkipParity = 0;
+    }
+    lastDrawMs = now;
     drawFrame();
 
     if (!isLit && intensity <= 0.003 && wispIntensity <= 0.003) {
@@ -273,6 +444,10 @@ export function mountFireButton(
       wispIntensity = 0;
       intensityVel = 0;
       wispVel = 0;
+      wind = 0;
+      windVel = 0;
+      upDraft = 0;
+      upDraftVel = 0;
       drawFrame();
       rafId = null;
       return;
@@ -283,26 +458,30 @@ export function mountFireButton(
 
   const onPointerMove = (e: PointerEvent) => {
     if (destroyed) return;
+    if (!isActiveZone()) {
+      proximityTarget = 0;
+      lastPointerX = null;
+      lastPointerY = null;
+      return;
+    }
     const rect = btn.getBoundingClientRect();
     if (rect.width <= 0) return;
 
     const dxOut = Math.max(0, rect.left - e.clientX, e.clientX - rect.right);
     const dyOut = Math.max(0, rect.top - 58 - e.clientY, e.clientY - rect.bottom);
     const dist = Math.hypot(dxOut, dyOut);
-    const radius = 80;
-    const prox = Math.exp(-(dist * dist) / (radius * radius));
+    const prox = Math.exp(-(dist * dist) / (80 * 80));
     proximityTarget = prox;
 
     const nx = (e.clientX - rect.left) / rect.width;
     targetMouseX = Math.max(-0.25, Math.min(1.25, nx));
-    const clampedCss = Math.max(0, Math.min(1, nx));
-    btn.style.setProperty('--mx', `${(clampedCss * 100).toFixed(1)}%`);
+    btn.style.setProperty('--mx', `${(Math.max(0, Math.min(1, nx)) * 100).toFixed(1)}%`);
 
     if (lastPointerX !== null && !reducedMotion.matches && prox > 0.03) {
       const dx = e.clientX - lastPointerX;
       const dy = e.clientY - lastPointerY!;
-      windImpulse = Math.max(-1.25, Math.min(1.25, windImpulse + dx * 0.036 * prox));
-      upImpulse = Math.max(-0.6, Math.min(1.1, upImpulse - dy * 0.024 * prox));
+      windVel = Math.max(-8.0, Math.min(8.0, windVel + dx * 0.16 * prox));
+      upDraftVel = Math.max(-5.0, Math.min(6.5, upDraftVel - dy * 0.11 * prox));
     }
 
     lastPointerX = e.clientX;
@@ -325,35 +504,55 @@ export function mountFireButton(
     pressTarget = 0;
   };
   const onVisibility = () => {
-    if (!document.hidden) lastNow = performance.now();
+    if (document.hidden) {
+      freezeLoop();
+      return;
+    }
+    lastNow = performance.now();
+    syncLoop();
+  };
+  const onReducedChange = () => {
+    if (reducedMotion.matches && isLit) setLit(true, clickX, 'instant');
   };
 
-  window.addEventListener('pointermove', onPointerMove, { passive: true });
+  // Theme / accent swaps rarely — observe once instead of probing CSS every frame.
+  const themeMo = new MutationObserver(invalidateRgb);
+  themeMo.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'data-theme', 'style'],
+  });
+
+  addPointerSink(onPointerMove);
   document.addEventListener('pointerleave', resetPointer);
   window.addEventListener('blur', resetPointer);
   btn.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerUp);
   document.addEventListener('visibilitychange', onVisibility);
+  reducedMotion.addEventListener('change', onReducedChange);
 
   return {
     setLit,
     setConfig(next) {
       config = { ...config, ...next };
+      invalidateRgb();
       if (isLit) ensureLoop();
     },
+    syncLoop,
     destroy() {
       destroyed = true;
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = null;
       ro.disconnect();
-      window.removeEventListener('pointermove', onPointerMove);
+      themeMo.disconnect();
+      removePointerSink(onPointerMove);
       document.removeEventListener('pointerleave', resetPointer);
       window.removeEventListener('blur', resetPointer);
       btn.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
       document.removeEventListener('visibilitychange', onVisibility);
+      reducedMotion.removeEventListener('change', onReducedChange);
       gl.deleteProgram(program);
       gl.deleteShader(vs);
       gl.deleteShader(fs);
@@ -367,6 +566,7 @@ export const FIRE_BTN_CIRCLE: FireButtonConfig = {
   freqX: 1.48,
   swayScale: 1.6,
   maxWisps: 3,
+  edgeInset: 0.14,
 };
 
 export const FIRE_BTN_PILL: FireButtonConfig = {
@@ -374,4 +574,14 @@ export const FIRE_BTN_PILL: FireButtonConfig = {
   freqX: 1,
   swayScale: 1,
   maxWisps: 5,
+  edgeInset: 0.072,
+};
+
+/** Wide plaza title rim — soft, sparse tongues that hug the side edges. */
+export const FIRE_BTN_TITLE_RIM: FireButtonConfig = {
+  arch: 0,
+  freqX: 0.88,
+  swayScale: 0.9,
+  maxWisps: 1,
+  edgeInset: 0.022,
 };

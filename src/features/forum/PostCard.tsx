@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { CornerDownRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { PeerVisual } from '../../core/crypto/identity';
@@ -7,7 +8,7 @@ import { PeerAvatar } from '../../components/content/PeerAvatar';
 import { SafeMessageBody } from '../../components/content/SafeMessageBody';
 import { TAP, TAP_TRANSITION, postOrigin, resolveBubbleEnter } from '../../motion/tokens';
 
-export function PostCard({
+export const PostCard = memo(function PostCard({
   message,
   alias,
   visual,
@@ -105,4 +106,4 @@ export function PostCard({
       </div>
     </motion.article>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
 import { useT } from '../../i18n';
 import type { MeshStatus } from '../../core/protocol';
@@ -21,52 +21,45 @@ export const MeshStatusBadge = memo(function MeshStatusBadge({
   relayActive = false,
 }: MeshStatusBadgeProps) {
   const t = useT();
-  /** Seed to current status so remount / first paint never fakes a mesh birth. */
-  const prevStatus = useRef<MeshStatus>(status);
-  const prevRelay = useRef(relayActive);
-  const statusSeeded = useRef(false);
-  const relaySeeded = useRef(false);
+  const [prevStatus, setPrevStatus] = useState<MeshStatus>(status);
+  const [prevRelay, setPrevRelay] = useState(relayActive);
   const [birthing, setBirthing] = useState(false);
   /** When true, dots animate 0 → 0.8 (must start false on birth frame). */
   const [dotsLit, setDotsLit] = useState(true);
   const [relayFlash, setRelayFlash] = useState(false);
 
-  useEffect(() => {
-    if (!statusSeeded.current) {
-      statusSeeded.current = true;
-      prevStatus.current = status;
-      return;
-    }
-    const prev = prevStatus.current;
-    prevStatus.current = status;
-    if (prev !== 'mesh' && status === 'mesh') {
+  if (prevStatus !== status) {
+    setPrevStatus(status);
+    if (status === 'mesh') {
       setBirthing(true);
       setDotsLit(false);
-      haptic(HAPTIC_TAP);
-      const raf = window.requestAnimationFrame(() => setDotsLit(true));
-      const id = window.setTimeout(() => setBirthing(false), MESH_BIRTH.waveMs);
-      return () => {
-        window.cancelAnimationFrame(raf);
-        window.clearTimeout(id);
-      };
+    } else {
+      setBirthing(false);
+      setDotsLit(true);
     }
-  }, [status]);
+  }
+
+  if (prevRelay !== relayActive) {
+    setPrevRelay(relayActive);
+    setRelayFlash(relayActive);
+  }
 
   useEffect(() => {
-    if (!relaySeeded.current) {
-      relaySeeded.current = true;
-      prevRelay.current = relayActive;
-      return;
-    }
-    if (prevRelay.current === relayActive) return;
-    prevRelay.current = relayActive;
-    if (relayActive) {
-      setRelayFlash(true);
-      // Must match mesh-connected-flash (--dur-flash); reducedMs*2 was cutting mid-flash.
-      const id = window.setTimeout(() => setRelayFlash(false), Math.round(DUR.flash * 1000));
-      return () => window.clearTimeout(id);
-    }
-  }, [relayActive]);
+    if (!birthing) return;
+    haptic(HAPTIC_TAP);
+    const raf = window.requestAnimationFrame(() => setDotsLit(true));
+    const id = window.setTimeout(() => setBirthing(false), MESH_BIRTH.waveMs);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(id);
+    };
+  }, [birthing]);
+
+  useEffect(() => {
+    if (!relayFlash) return;
+    const id = window.setTimeout(() => setRelayFlash(false), Math.round(DUR.flash * 1000));
+    return () => window.clearTimeout(id);
+  }, [relayFlash]);
 
   const label =
     status === 'connecting'
@@ -87,16 +80,12 @@ export const MeshStatusBadge = memo(function MeshStatusBadge({
           ? 'border-warn-border bg-warn-bg text-warn-ink'
           : 'border-border bg-surface text-muted';
 
-  const StatusIcon =
-    status === 'mesh'
-      ? Wifi
-      : status === 'syncing'
-        ? Loader2
-        : status === 'alone'
-          ? WifiOff
-          : Loader2;
+  const isSpinning = status === 'syncing' || status === 'connecting';
+  const StatusIcon = status === 'mesh' ? Wifi : status === 'alone' ? WifiOff : Loader2;
 
-  const peerDots = Math.min(Math.max(onlineCount, 0), 5);
+  const peerDots = Number.isFinite(onlineCount)
+    ? Math.min(Math.max(Math.trunc(onlineCount), 0), 5)
+    : 0;
   const birthClass = birthing ? 'is-birthing' : '';
   const flashClass = birthing || relayFlash ? 'mesh-connected-flash' : '';
 
@@ -121,7 +110,7 @@ export const MeshStatusBadge = memo(function MeshStatusBadge({
             </span>
           ) : (
             <StatusIcon
-              className={`h-3.5 w-3.5 ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
+              className={`h-3.5 w-3.5 ${isSpinning ? 'motion-safe:animate-spin' : ''}`}
               strokeWidth={1.75}
             />
           )}
@@ -147,7 +136,6 @@ export const MeshStatusBadge = memo(function MeshStatusBadge({
     <p
       className={`inline-flex items-center gap-1.5 rounded-[var(--radius-ctrl)] border px-2 py-1 text-xs font-medium transition-colors duration-[var(--dur-medium)] ${tone} ${flashClass}`}
       role="status"
-      aria-label={label}
       title={label}
     >
       {status === 'mesh' && !relayActive ? (
@@ -155,12 +143,9 @@ export const MeshStatusBadge = memo(function MeshStatusBadge({
           <span />
         </span>
       ) : (
-        <span className="relative flex h-2 w-2 shrink-0">
+        <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
           {status === 'syncing' && (
-            <span
-              className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 motion-safe:animate-ping"
-              aria-hidden="true"
-            />
+            <span className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 motion-safe:animate-ping" />
           )}
           <span
             className={`relative inline-flex h-2 w-2 rounded-full transition-colors duration-[var(--dur-medium)] ${
@@ -178,7 +163,7 @@ export const MeshStatusBadge = memo(function MeshStatusBadge({
       <StatusIcon
         className={`h-3.5 w-3.5 shrink-0 ${
           status === 'mesh' && !relayActive && birthing ? 'wifi-arc-1 is-birthing' : ''
-        } ${status === 'syncing' || status === 'connecting' ? 'animate-spin' : ''}`}
+        } ${isSpinning ? 'motion-safe:animate-spin' : ''}`}
         aria-hidden="true"
         strokeWidth={1.75}
       />

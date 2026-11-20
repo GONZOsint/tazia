@@ -157,6 +157,12 @@ export function useRoomEntryChrome({
   }, [showIceHint, hasZones]);
 
   useEffect(() => {
+    const onOpenFix = () => setEntryTab('join');
+    window.addEventListener('tazia:open-fix', onOpenFix);
+    return () => window.removeEventListener('tazia:open-fix', onOpenFix);
+  }, []);
+
+  useEffect(() => {
     if (errorMsg && errorMsg !== prevErrorRef.current) {
       setDouseKey((k) => k + 1);
     }
@@ -178,13 +184,17 @@ export function useRoomEntryChrome({
     setEntryTab(null);
     setCreateFormKey((k) => k + 1);
     setPulseRoomId(newlyJoined);
-    setForgeConfetti(true);
     haptic(HAPTIC_TAP);
+    // Let form/hero exit settle before forge confetti so the handoff isn’t abrupt.
+    const confettiTimer = window.setTimeout(() => setForgeConfetti(true), 280);
     const timer = window.setTimeout(
       () => setPulseRoomId((cur) => (cur === newlyJoined ? null : cur)),
       IGNITE.finishMs
     );
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(confettiTimer);
+      window.clearTimeout(timer);
+    };
   }, [joinedRooms]);
 
   const openEntry = (tab: 'create' | 'join') => {

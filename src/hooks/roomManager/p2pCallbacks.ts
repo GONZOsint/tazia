@@ -9,6 +9,9 @@ import { runSync } from './syncEngine';
 
 export type P2pCallbackContext = {
   roomId: string;
+  /** Join token captured at session open — stale sessions must not write after rejoin. */
+  joinToken: number;
+  joinTokensRef: MutableRefObject<Map<string, number>>;
   roomsRef: MutableRefObject<Map<string, RoomState>>;
   activeRoomIdRef: MutableRefObject<string | null>;
   forumFocusedRef?: MutableRefObject<boolean>;
@@ -17,6 +20,16 @@ export type P2pCallbackContext = {
   updateRoom: (roomId: string, updater: (prev: RoomState) => RoomState) => void;
   syncRefs: SyncEngineRefs;
 };
+
+/** True when this callback bag still owns the live zone session. */
+export function isP2pCallbackLive(
+  roomsRef: MutableRefObject<Map<string, RoomState>>,
+  joinTokensRef: MutableRefObject<Map<string, number>>,
+  roomId: string,
+  joinToken: number
+): boolean {
+  return roomsRef.current.has(roomId) && joinTokensRef.current.get(roomId) === joinToken;
+}
 
 /** Build joinP2pRoom callback bag for one room id. */
 export function buildP2pCallbacks(ctx: P2pCallbackContext): Pick<
@@ -30,9 +43,12 @@ export function buildP2pCallbacks(ctx: P2pCallbackContext): Pick<
   | 'onDirectMessage'
   | 'onError'
   | 'onRelayFallback'
+  | 'onRejectedSync'
 > {
   const {
     roomId,
+    joinToken,
+    joinTokensRef,
     roomsRef,
     activeRoomIdRef,
     forumFocusedRef,
@@ -42,19 +58,39 @@ export function buildP2pCallbacks(ctx: P2pCallbackContext): Pick<
     syncRefs,
   } = ctx;
 
+  const live = () => isP2pCallbackLive(roomsRef, joinTokensRef, roomId, joinToken);
+
   return {
     onForumMessage: (message) => {
-      if (!roomsRef.current.has(roomId)) return;
+      if (!live()) return;
       updateRoom(roomId, (r) => {
         if (r.messages.some((m) => m.msgId === message.msgId)) return r;
-        const msgs = [...r.messages, message].sort((a, b) => a.createdAtMs - b.createdAtMs);
+        // Live posts are usually newest — avoid O(n log n) sort on every ingest.
+        const prev = r.messages;
+        const msgs = prev.slice();
+        const last = msgs[msgs.length - 1];
+        if (!last || last.createdAtMs <= message.createdAtMs) {
+          msgs.push(message);
+        } else {
+          let lo = 0;
+          let hi = msgs.length;
+          while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (msgs[mid].createdAtMs <= message.createdAtMs) lo = mid + 1;
+            else hi = mid;
+          }
+          msgs.splice(lo, 0, message);
+        }
         const roomIsActive = roomId === activeRoomIdRef.current;
         const forumFocused = forumFocusedRef?.current === true;
         const isSelf = message.authorUserId === r.selfUserId;
+        // During post-join sync, still bump for recent live posts (not historical dump).
+        const recentLive =
+          !r.isSyncing || Date.now() - message.createdAtMs < 90_000;
         const bumpUnread =
           !isSelf &&
           message.type !== 'DELETE_VOTE' &&
-          !r.isSyncing &&
+          recentLive &&
           !(roomIsActive && forumFocused);
         return {
           ...r,
@@ -64,7 +100,7 @@ export function buildP2pCallbacks(ctx: P2pCallbackContext): Pick<
       });
     },
     onThreadDeleted: (threadId) => {
-      if (!roomsRef.current.has(roomId)) return;
+      if (!live()) return;
       updateRoom(roomId, (r) => ({
         ...r,
         messages: r.messages.filter(
@@ -76,33 +112,51 @@ export function buildP2pCallbacks(ctx: P2pCallbackContext): Pick<
       }));
     },
     onPresenceChange: (userId, state, removed) => {
-      if (!roomsRef.current.has(roomId)) return;
+      if (!live()) return;
       updateRoom(roomId, (r) => {
-        const next = { ...r.presence };
-        if (removed || !state) delete next[userId];
-        else next[userId] = state;
-        return { ...r, presence: next };
+        if (removed || !state) {
+          if (!(userId in r.presence)) return r;
+          const next = { ...r.presence };
+          delete next[userId];
+          return { ...r, presence: next };
+        }
+        const prev = r.presence[userId];
+        // Heartbeats often re-broadcast identical presence — skip Map churn.
+        if (
+          prev &&
+          prev.alias === state.alias &&
+          prev.avatarSeed === state.avatarSeed &&
+          prev.signPubKeySpkiB64 === state.signPubKeySpkiB64 &&
+          prev.encPubKeyRawB64 === state.encPubKeyRawB64
+        ) {
+          return r;
+        }
+        return { ...r, presence: { ...r.presence, [userId]: state } };
       });
     },
     onPeerPresence: (ids) => {
-      if (!roomsRef.current.has(roomId)) return;
+      if (!live()) return;
       updateRoom(roomId, (r) => {
         if (sameOnlineIdSet(r.onlineUserIds, ids)) return r;
         return { ...r, onlineUserIds: ids };
       });
     },
     onUserJoined: () => {
+      if (!live()) return;
       void runSync(syncRefs, roomId);
     },
     onKeyChange: (userId, level) => {
-      if (!roomsRef.current.has(roomId)) return;
-      updateRoom(roomId, (r) => ({
-        ...r,
-        keyChangeAlerts: [...r.keyChangeAlerts, { userId, level }],
-      }));
+      if (!live()) return;
+      updateRoom(roomId, (r) => {
+        if (r.keyChangeAlerts.some((a) => a.userId === userId)) return r;
+        return {
+          ...r,
+          keyChangeAlerts: [...r.keyChangeAlerts, { userId, level }],
+        };
+      });
     },
     onDirectMessage: (dm) => {
-      if (!roomsRef.current.has(roomId)) return;
+      if (!live()) return;
       const peerId = dm.fromUserId;
       updateRoom(roomId, (r) => {
         const prev = r.dmMessages[peerId] ?? [];
@@ -121,8 +175,9 @@ export function buildP2pCallbacks(ctx: P2pCallbackContext): Pick<
     },
     onError: (code) => {
       if (code === 'publish-rate') return;
-      if (!roomsRef.current.has(roomId)) return;
+      if (!live()) return;
       void mapRoomErrorAsync(code).then((key) => {
+        if (!live()) return;
         updateRoom(roomId, (r) => ({
           ...r,
           roomError: { key, vars: key === 'errGeneric' ? { code } : undefined },
@@ -130,11 +185,18 @@ export function buildP2pCallbacks(ctx: P2pCallbackContext): Pick<
       });
     },
     onRelayFallback: () => {
-      if (!roomsRef.current.has(roomId)) return;
+      if (!live()) return;
       updateRoom(roomId, (r) => ({
         ...r,
         transportNotice: { key: 'infoRelayPath' },
         relayFallbackActive: true,
+      }));
+    },
+    onRejectedSync: () => {
+      if (!live()) return;
+      updateRoom(roomId, (r) => ({
+        ...r,
+        rejectedSyncCount: r.session.getRejectedSyncCount(),
       }));
     },
   };

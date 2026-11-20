@@ -35,6 +35,8 @@ export interface SyncVerifyDeps {
   forumIngest: ForumIngest;
   syncAnswerLimiter: PeerRateLimiter;
   getEventsForSync: () => ForumEvent[];
+  /** Fired after envelope-level sync rejects (sig/digest/transport) so UI can refresh. */
+  onRejectedSync?: () => void;
 }
 
 export class SyncVerify {
@@ -55,6 +57,12 @@ export class SyncVerify {
 
   noteRejected(): void {
     this.rejectedSyncCount += 1;
+  }
+
+  /** Increment counter and notify UI once (envelope rejects). */
+  private rejectOnce(): void {
+    this.rejectedSyncCount += 1;
+    this.deps.onRejectedSync?.();
   }
 
   /** Per-peer + global amp budget (WebRTC peer id or `nostr:<pubkey>`). */
@@ -109,26 +117,26 @@ export class SyncVerify {
     transportUserId?: string | null;
   }): Promise<number> {
     if (opts.transportUserId != null && opts.transportUserId !== opts.fromUserId) {
-      this.rejectedSyncCount += 1;
+      this.rejectOnce();
       return 0;
     }
     if (!Array.isArray(opts.events) || !opts.fromUserId || !opts.sig) {
-      this.rejectedSyncCount += 1;
+      this.rejectOnce();
       return 0;
     }
     if (syncPayloadTooLarge(opts.events)) {
-      this.rejectedSyncCount += 1;
+      this.rejectOnce();
       return 0;
     }
     const clamped = clampSyncEvents(opts.events);
     const digest = await digestSyncEvents(clamped);
     if (digest !== opts.eventsDigest) {
-      this.rejectedSyncCount += 1;
+      this.rejectOnce();
       return 0;
     }
     const verifyKey = await this.deps.registry.get(opts.fromUserId);
     if (!verifyKey) {
-      this.rejectedSyncCount += 1;
+      this.rejectOnce();
       return 0;
     }
     const okSig = await verifySyncRes(
@@ -141,7 +149,7 @@ export class SyncVerify {
       opts.sig
     );
     if (!okSig) {
-      this.rejectedSyncCount += 1;
+      this.rejectOnce();
       return 0;
     }
     let added = 0;
@@ -185,7 +193,7 @@ export class SyncVerify {
       t: 'sync-req';
       fromUserId: string;
       reqId: string;
-    }) => Promise<void>
+    }) => Promise<boolean | void>
   ): Promise<number> {
     const reqId = crypto.randomUUID();
     return new Promise<number>((resolve) => {

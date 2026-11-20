@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TaziaTurn" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#E8C547</item>
+        <item name="colorPrimaryVariant">#C4A63A</item>
+        <item name="colorOnPrimary">#0F1410</item>
+        <item name="android:statusBarColor">#0F1410</item>
+        <item name="android:navigationBarColor">#0F1410</item>
+        <item name="android:windowBackground">#0F1410</item>
+    </style>
+</resources>

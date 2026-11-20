@@ -23,11 +23,18 @@ export const es: Messages = {
   igniteTab: 'Encender llama',
   igniteBody: 'Sin cuenta. Conversación en vivo mientras dure la llama.',
   igniteHelp: 'Ayuda',
+  igniteHelpBack: 'Volver a la llama',
   liveHint: 'En directo',
   burnConfirmTitle: '¿Apagar la llama?',
   burnConfirmBody:
     'Apaga todas las zonas de esta pestaña. Aquí desaparecen los mensajes. Solo vuelves con la frase.',
   burnConfirmAction: 'Apagar llama',
+  burnConfirmForgetTurn:
+    'También olvidar ajustes TURN/Nostr guardados y el consentimiento de IP en este dispositivo',
+  consentHideIpNote:
+    'Para ocultar tu dirección a los peers (no es anonimato fuerte), usa un servidor de apoyo con «Ocultar mi dirección de internet» en Zonas → Arreglar. El operador del servidor sigue viendo tu IP. Ahí también puedes poner relés Nostr propios.',
+  turnHideIpPrompt:
+    'El servidor de apoyo está activo, pero los peers aún pueden ver tu IP hasta que actives «Ocultar mi dirección de internet» (solo relay). Ambos lados necesitan el mismo servidor.',
   leaveRoomConfirmTitle: '¿Quemar esta zona?',
   leaveRoomConfirmBody: 'Esta zona se quema en este dispositivo. El resto de la tribu sigue.',
   leaveRoomConfirmAction: 'Quemar zona',
@@ -35,11 +42,11 @@ export const es: Messages = {
   toastPublishFailed: 'No se pudo enviar',
   toastDmSent: 'Susurro enviado',
   toastDmFailed: 'No se pudo enviar',
+  toastDmFailedKeyChanged:
+    'No se pudo enviar — la identidad cambió. Abre Tribu, verifica y reinténtalo.',
   toastSynced: 'Mensajes actualizados',
   dismissAlert: 'Cerrar',
   navUnreadAria: '{n} sin leer',
-
-  burnNotice: 'La llama se apagó. Enciéndela de nuevo para entrar.',
 
   forumEmptyTitle: 'Ninguna zona abierta.',
   forumEmptyBody: 'Abre o entra a una zona para usar la plaza.',
@@ -100,9 +107,10 @@ export const es: Messages = {
 
   consentTitle: 'Tu dirección puede verse',
   consentBody:
-    'Al entrar, los demás pueden ver tu dirección de internet (y a veces la de tu red local). Continúa solo si confías en la gente de la zona.',
+    'Al entrar, quienes estén en la zona pueden ver tu dirección de internet (y a veces la de tu red local). Los STUN por defecto y los relés Nostr también ven tu IP mientras conectas. Continúa solo si confías en el grupo y en esos terceros.',
   consentCancel: 'Cancelar',
   consentAccept: 'Continuar',
+  consentOpenFix: 'Abrir Arreglar (luego vuelve a entrar)',
 
   meshConnecting: 'Conectando…',
   meshAlone: 'Solo tú en la zona — esperando',
@@ -180,7 +188,7 @@ export const es: Messages = {
   avatarPreviewTitle: 'Avatar de {alias}',
   avatarPreviewEyebrow: 'Llamita',
   avatarPreviewClose: 'Cerrar',
-  avatarPreviewHint: 'Avatar vivo de esta persona en la zona',
+  avatarPreviewHint: 'Tu llamita personal',
   avatarPreviewOpen: 'Ver avatar de {alias}',
 
   helpTitle: 'Cómo funciona',
@@ -209,9 +217,15 @@ export const es: Messages = {
   helpRelayBody:
     'A veces la red no deja hablar de navegador a navegador. En ese caso el chat puede seguir por un camino cifrado a través de servidores de ayuda. Preferid la misma Wi‑Fi; si hace falta, abrid Arreglar en Zonas.',
   helpSafetyTitle: 'Qué protege y qué no',
-  helpSafety1Lead: 'Tu IP es visible en la zona',
+  helpSafety1Lead: 'Tu IP es visible por defecto',
   helpSafety1Body:
-    'Quienes estén dentro pueden ver tu dirección de red. TAZIA no oculta quién eres en internet.',
+    'Los peers pueden ver tu dirección por WebRTC salvo que uses TURN con «Ocultar mi dirección de internet». Los operadores STUN y de relés Nostr también ven tu IP. Esto no es Tor.',
+  helpPrivacyTitle: 'Quién puede ver tu dirección',
+  helpPrivacyBody:
+    'Peers (WebRTC), STUN por defecto, relés Nostr de señalización/fallback y el TURN que configures. En Zonas → Arreglar puedes forzar solo-relay y, si quieres, usar relés Nostr propios.',
+  helpOfflineTitle: 'Copia sin red',
+  helpOfflineBody:
+    '¿Prefieres no cargar la app desde github.io? Genera o descarga el HTML de un solo archivo (build:single / artefacto de CI) y ábrelo en local — GitHub no verá esas visitas. El CSP es un poco más débil (scripts inline).',
   helpSafety2Lead: 'Autoría verificable',
   helpSafety2Body:
     'Cada mensaje lleva una marca única de su autor para que nadie pueda suplantarte en el historial.',
@@ -238,16 +252,19 @@ export const es: Messages = {
   helpForgetDevice: 'Olvidar este dispositivo',
   helpForgetConfirm: 'Pulsa de nuevo para confirmar',
   helpForgetDoneLabel: 'Dispositivo olvidado',
-  helpForgetDone: 'Preferencia borrada',
-  helpForgetHint: 'Restablece el aviso de dirección de red para la próxima vez que entres en una zona.',
+  helpForgetDone: 'Prefs de red borradas',
+  helpForgetHint:
+    'Borra el consentimiento de IP, las credenciales TURN guardadas y los relés Nostr personalizados en este dispositivo.',
   helpNoServerTitle: 'Sin cuentas ni rastros',
   helpNoServerBody: 'Sin registros, sin descargas y sin base de datos.',
+  helpFlowIgnite: 'Encender llama',
   helpFlowOpen: 'Abrir zona',
   helpFlowPhrase: 'Frase en persona',
   helpFlowQr: 'QR o enlace',
   helpFlowBurn: 'Apagar llama',
   helpStepsTitle: 'Inicio rápido',
   helpStepOf: 'Paso {n} de {total}',
+  helpStepsIgnite: 'Enciende la llama para entrar en TAZIA.',
   helpSteps1: 'Abre una zona y genera una frase clave.',
   helpSteps2: 'Compártela en persona o por un canal de confianza.',
   helpSteps3: 'Envía el código QR o el enlace de acceso.',
@@ -306,7 +323,7 @@ export const es: Messages = {
   confirmPhraseBody:
     'El enlace incluirá la frase. Cualquiera con ese enlace podrá entrar a la zona.',
   confirmPhraseAction: 'Incluir frase',
-  phraseInLinkToast: 'Frase metida en el enlace. Trátalo como un secreto.',
+  phraseInLinkToast: 'Frase en el enlace — trátalo como secreto.',
 
   trustNew: 'Nuevo',
   trustTrusted: 'Sin verificar',
@@ -318,8 +335,8 @@ export const es: Messages = {
   trustNoMatch: 'No coinciden',
   trustKeyChanged:
     'La identidad de {alias} cambió. Puede haberse reconectado… o alguien intenta hacerse pasar por esa persona.',
-  trustRepin: 'Confío',
-  trustDisconnect: 'Desconectar',
+  trustRepin: 'Verificar',
+  trustDisconnect: 'Ignorar',
   trustEmojiLabel: 'Código de seguridad',
 
   roomsJoinedTitle: 'Tus zonas',
@@ -361,7 +378,13 @@ export const es: Messages = {
   turnRelayEnabled: 'Usar servidor de apoyo',
   turnForceRelay: 'Ocultar mi dirección de internet',
   turnForceRelayHint:
-    'Todo pasa por el servidor de apoyo. Sin un servidor que funcione, no podréis conectar.',
+    'Activado por defecto al usar servidor de apoyo. Todo pasa por él. Desmarca para P2P en la misma LAN. Sin un servidor que funcione, no podréis conectar.',
+  turnIpStatusRelay:
+    'Solo relay — los peers no deberían ver tu IP (solo la del servidor de apoyo).',
+  turnIpStatusP2p:
+    'P2P permitido — los peers pueden ver tu IP vía WebRTC (host / STUN).',
+  turnOperatorSeesIp:
+    'El operador del servidor de apoyo sigue viendo tu IP. No es anonimato fuerte (no es Tor).',
   turnRememberDevice: 'Recordar en este dispositivo',
   turnRememberDeviceHint:
     'Por defecto off: la config TURN vive solo en esta pestaña. On la guarda en el navegador hasta que borres datos del sitio.',
@@ -370,5 +393,19 @@ export const es: Messages = {
   turnCredential: 'Contraseña',
   turnFixCta: 'Arreglar',
   turnTechNote:
-    'Campos TURN/ICE (coturn u otro). URL típica: turn:host:3478 o turns:… . Activar «relay only» fuerza iceTransportPolicy=relay. Ambos lados deben usar el mismo servidor. Guía: docs/TURN.es.md.',
+    'Campos TURN/ICE (coturn u otro). URL típica: turn:host:3478 o turns:… . Activar TURN pone solo-relay por defecto (iceTransportPolicy=relay). Ambos lados deben usar el mismo servidor. Helper nativo: tools/tazia-turn/ (exe / APK). Guía: docs/TURN.es.md.',
+
+  nostrRelayTitle: 'Relés Nostr (señalización)',
+  nostrRelayHint:
+    'Por defecto Trystero elige relés públicos. Pon tu propia lista wss:// para que solo operadores de confianza vean tu IP en señalización y en el fallback cifrado.',
+  nostrRelayEnabled: 'Usar relés Nostr propios',
+  nostrRelayUrls: 'URLs de relés',
+  nostrRelayUrlsHint: 'Una URL wss:// por línea. Ambos lados deberían compartir un solape que funcione.',
+  nostrRelayActive: 'Usando {n} relé(s) propio(s). Vuelve a entrar en la zona tras cambiar la lista.',
+  nostrRelayNeedUrls: 'Añade al menos una URL wss://, o desactiva esto para usar los de por defecto.',
+  nostrRelayOperatorSeesIp:
+    'Los operadores de relé siguen viendo tu IP y metadatos del tráfico cifrado. Relés propios no son Tor.',
+  nostrRelayRememberDevice: 'Recordar en este dispositivo',
+  nostrRelayRememberDeviceHint:
+    'Por defecto off: la lista vive solo en esta pestaña. On la guarda hasta que borres datos del sitio o uses Olvidar este dispositivo.',
 };

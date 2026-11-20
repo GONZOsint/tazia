@@ -5,12 +5,7 @@ import type { ThreadGroup } from './types';
  * Selection + compose + search. When the selected id is missing from the
  * (filtered) thread list, clear selection so highlight and reader stay aligned.
  */
-export function useForumThreadSelection(
-  threads: ThreadGroup[],
-  roomId: string,
-  /** While ash plays, keep selection on the incinerating thread even if filtered out. */
-  ashThreadId: string | null = null
-) {
+export function useForumThreadSelection(threads: ThreadGroup[], roomId: string) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isComposingThread, setIsComposingThread] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,9 +22,8 @@ export function useForumThreadSelection(
   useEffect(() => {
     if (!selectedThreadId) return;
     if (threads.some((th) => th.threadId === selectedThreadId)) return;
-    if (ashThreadId && ashThreadId === selectedThreadId) return;
     setSelectedThreadId(null);
-  }, [threads, selectedThreadId, ashThreadId]);
+  }, [threads, selectedThreadId]);
 
   const selectThread = (threadId: string) => {
     setIsComposingThread(false);

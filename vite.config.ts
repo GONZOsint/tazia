@@ -55,8 +55,20 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,jpg,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Fonts + large lazy chunks: runtime cache instead of install-time precache.
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         navigateFallback: '/tazia/index.html',
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.destination === 'font',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tazia-fonts',
+              expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+        ],
       },
     }),
   ],
