@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { List, MessageSquare, MessageSquarePlus } from 'lucide-react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
-import { TalkAshOverlay } from '../../components/session/TalkAshOverlay';
 import { AnimatePresence, motion } from 'motion/react';
 import type { LocalProfile } from '../../core/crypto/identity';
 import {
@@ -146,7 +145,7 @@ export function ForumWorkspace({
     [setIsComposingThread, setSelectedThreadId]
   );
 
-  const { ashThread, clearAsh: clearAshOnly, reduceMotion } = useForumAshRitual(
+  const { ashThread, reduceMotion } = useForumAshRitual(
     allThreads,
     deletedIds,
     roomId,
@@ -157,12 +156,6 @@ export function ForumWorkspace({
     if (!ashThread) setHeldAshId(null);
     else setHeldAshId(ashThread.threadId);
   }, [ashThread]);
-
-  const clearAsh = useCallback(() => {
-    clearAshOnly();
-    setHeldAshId(null);
-    setSelectedThreadId(null);
-  }, [clearAshOnly, setSelectedThreadId]);
 
   const hasAnyThreads = hasAnyContentThreads(messages, deletedIds);
 
@@ -201,7 +194,6 @@ export function ForumWorkspace({
 
   return (
     <main className="card-container mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col overflow-hidden px-4 pt-2 sm:px-8 sm:pt-4 lg:py-5">
-      <TalkAshOverlay play={Boolean(ashThread)} onComplete={clearAsh} />
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3 lg:hidden">
         <motion.button
           whileTap={TAP}

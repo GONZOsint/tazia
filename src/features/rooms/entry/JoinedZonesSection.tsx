@@ -12,7 +12,6 @@ import { Identicon } from '../../../components/content/Identicon';
 import { AccentButton, SecondaryButton } from '../../../components/ui/AccentButton';
 import { ConfettiBurst } from '../../../components/ui/ConfettiBurst';
 import { MeshStatusBadge } from '../../../components/session/MeshStatusBadge';
-import { RegionAshOverlay } from '../../../components/session/RegionAshOverlay';
 import {
   DUR,
   EASE,
@@ -67,7 +66,7 @@ export function JoinedZonesSection({
   onLeaveRoom,
   onSwitchRoom,
   setLeaveTarget,
-  clearZoneAsh,
+  clearZoneAsh: _clearZoneAsh,
   onExitComplete,
   openEntry,
 }: JoinedZonesSectionProps) {
@@ -96,19 +95,6 @@ export function JoinedZonesSection({
 
       <ul className="relative mt-3 flex flex-col gap-2">
         <ConfettiBurst play={forgeConfetti} onDone={() => setForgeConfetti(false)} />
-        <RegionAshOverlay
-          play={Boolean(ashRoom) && !reduceMotion}
-          mode="burn"
-          collapseDom={false}
-          canvasId="zone-ash-fire-canvas"
-          selectors={
-            ashRoom
-              ? [`.zone-ash-target[data-zone-card="${CSS.escape(ashRoom.roomId)}"]`]
-              : []
-          }
-          maxEdgePx={[420]}
-          onComplete={clearZoneAsh}
-        />
         <AnimatePresence mode="popLayout" initial={false} onExitComplete={onExitComplete}>
           {listRooms.map((room) => {
             const isActive = room.roomId === activeRoomId;

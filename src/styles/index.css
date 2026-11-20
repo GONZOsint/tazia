@@ -2475,6 +2475,25 @@ html.dark {
     bottom: calc(100% - 7px);
     height: 62px;
   }
+  /*
+   * Header slot: shorter crown + more overlap so flames stay inside the
+   * shell (parent is overflow-hidden) once topbar clearance padding applies.
+   */
+  .fire-btn--header.fire-btn--circle .fire-canvas {
+    bottom: calc(100% - 22px);
+    height: 48px;
+  }
+  .fire-btn--header.fire-btn--pill .fire-canvas {
+    bottom: calc(100% - 16px);
+    height: 44px;
+  }
+  .topbar-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .topbar--fire-clearance {
+    /* Room for the WebGL crown above the burn control (shell clips at y=0). */
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1.65rem);
+  }
   @media (prefers-reduced-motion: reduce) {
     .fire-btn,
     .fire-btn.is-lit,

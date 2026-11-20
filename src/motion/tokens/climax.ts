@@ -5,10 +5,9 @@
  * `fire/burnFrame.ts`); remaining time is particle linger.
  * CSS `--dur-burn` (900ms) is card collapse only — not `BURN.finishMs` (2200).
  *
- * Semantics:
- *   - BURN → session “apagar llama” (BurnFireOverlay extinguish + veil)
- *   - ZONE_ASH → zone burn (RegionAshOverlay mode=burn)
- *   - EXTINGUISH / TALK_EXTINGUISH → hoguera douse (mode=extinguish)
+ * Semantics (pixel overlays currently off — FireBurnButton + QR fire only):
+ *   - BURN → session “apagar llama” timings (TopBar WebGL extinguish)
+ *   - ZONE_ASH / EXTINGUISH / TALK_EXTINGUISH → kept for future RegionAsh revive
  *   - IGNITE → zone join light-on
  */
 

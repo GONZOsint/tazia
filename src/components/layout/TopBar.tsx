@@ -63,15 +63,24 @@ export function TopBar({
 
   return (
     <header
-      className="z-30 shrink-0 overflow-visible border-b border-border bg-surface-raised/95 backdrop-blur-sm"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      className={`relative z-30 shrink-0 overflow-visible border-b border-border topbar-safe ${
+        hasActiveRoom ? 'topbar--fire-clearance' : ''
+      }`}
     >
+      {/*
+        Backdrop on a sibling underlay — backdrop-filter on the header itself
+        clips overflow (WebGL flame crown) in Chromium.
+      */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-surface-raised/95 backdrop-blur-sm"
+        aria-hidden="true"
+      />
       {/*
         3-column grid keeps the center nav fixed when left/right chrome
         grows (zone chip, burn button, unread badges) — avoids justify-between shift.
         overflow-visible so the burn goo plume can rise past the bar.
       */}
-      <div className="mx-auto grid h-12 max-w-[1280px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 overflow-visible px-4 sm:h-14 sm:gap-4 sm:px-8">
+      <div className="relative mx-auto grid h-12 max-w-[1280px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 overflow-visible px-4 sm:h-14 sm:gap-4 sm:px-8">
         <div className="col-start-1 flex min-w-0 items-center justify-start gap-2 sm:gap-3">
           <motion.button
             whileTap={TAP}

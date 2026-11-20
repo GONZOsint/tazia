@@ -4,7 +4,7 @@ export const en = {
   taglineEn: 'Zona Anónima Temporal en Acción',
   documentTitle: 'TAZIA — Temporary Anonymous Zone In Action',
 
-  navForum: 'Forum',
+  navForum: 'Plaza',
   navRooms: 'Zones',
   navPresence: 'Tribe',
   navHelp: 'Help',
@@ -42,7 +42,7 @@ export const en = {
 
   roomsActivePrefix: 'You are already in zone',
   roomsActiveHint: 'You can open several zones and switch here.',
-  roomsBackToChat: 'Back to forum',
+  roomsBackToChat: 'Back to plaza',
   roomsHeroTitle: 'No account. While it lasts.',
   roomsHeroBodyLead: 'A phrase opens the zone. Talk live. When you’re done, ',
   roomsHeroBodyBurn: 'extinguish the flame.',
@@ -114,7 +114,7 @@ export const en = {
   sidebarTopics: 'Bonfires',
   sidebarCloseTopics: 'Close',
 
-  forumEmptyThreads: 'The forum is quiet.',
+  forumEmptyThreads: 'The plaza is quiet.',
   forumEmptyHint: 'Light a bonfire — or wait for someone still in the tribe.',
   forumStartFirst: 'Light a bonfire',
   forumNoResults: 'No results',
@@ -195,11 +195,11 @@ export const en = {
   helpZonesTitle: 'Several zones at once',
   helpZonesPill: 'Max 3 active',
   helpZonesBody:
-    'You can join up to 3 zones at once. Switch or burn one in Zones; Forum, Tribe, and Whispers show the active zone. Extinguishing the flame clears all zones on this device.',
+    'You can join up to 3 zones at once. Switch or burn one in Zones; Plaza, Tribe, and Whispers show the active zone. Extinguishing the flame clears all zones on this device.',
   helpDeleteTitle: 'Extinguish a bonfire',
   helpDeletePill: 'Unanimous vote',
   helpDeleteBody:
-    'In Forum, extinguishing a bonfire proposes deleting it. Everyone in the tribe who was online when it was proposed must vote yes. Not the same as extinguishing the flame: the vote puts out the bonfire on peers that apply the quorum; extinguishing the flame only clears this browser.',
+    'In Plaza, extinguishing a bonfire proposes deleting it. Everyone in the tribe who was online when it was proposed must vote yes. Not the same as extinguishing the flame: the vote puts out the bonfire on peers that apply the quorum; extinguishing the flame only clears this browser.',
   helpRelayTitle: "When you can't connect directly",
   helpRelayBody:
     'Sometimes the network will not let browsers talk directly. Then chat can continue over an encrypted path through helper servers. Prefer the same Wi‑Fi; if needed, open Fix under Zones.',
@@ -274,7 +274,7 @@ export const en = {
     "Can't reach each other. On the same Wi‑Fi, allow Local network if the browser asks. Otherwise use Fix under Zones.",
   errLocalNetworkDenied:
     'Local network access was blocked. Allow it in site settings, then re-enter — needed on the same Wi‑Fi.',
-  infoRelayPath: 'No direct connection. The forum continues encrypted another way.',
+  infoRelayPath: 'No direct connection. The plaza continues encrypted another way.',
   errRelay: 'Could not reach the helpers that introduce you. Try again in a few seconds.',
   errPublishRate: 'Too many messages. Wait a moment.',
   errWireTooLarge: 'That message is too large to send.',
@@ -328,7 +328,7 @@ export const en = {
   roomsUnread: '{n} new',
   roomsDmUnread: '{n} whisper',
   roomsCustomize: 'More options',
-  roomsGoToChat: 'To forum',
+  roomsGoToChat: 'To plaza',
   roomsLeftToast: 'Zone burned',
   roomsCapacityAria: '{n} of {max} zones',
   roomsMeshLargeWarn:

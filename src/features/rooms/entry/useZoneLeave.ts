@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
 import type { RoomState } from '../../../hooks/useRoomManager';
-import { ZONE_ASH } from '../../../motion/tokens';
 import { haptic, HAPTIC_RITUAL } from '../../../motion/haptic';
 
 type LeaveOpts = {
@@ -105,13 +104,6 @@ export function useZoneLeave({ joinedRooms, onLeaveRoom }: LeaveOpts) {
     clearLeavingIfReady(id);
   }, []);
 
-  useEffect(() => {
-    if (!ashRoom) return;
-    const ms = ZONE_ASH.finishMs + 400;
-    const timer = window.setTimeout(clearZoneAsh, ms);
-    return () => window.clearTimeout(timer);
-  }, [ashRoom, clearZoneAsh]);
-
   useEffect(() => () => clearColdExitTimer(), []);
 
   const onExitComplete = () => {
@@ -127,15 +119,7 @@ export function useZoneLeave({ joinedRooms, onLeaveRoom }: LeaveOpts) {
     if (!id || !onLeaveRoom) return;
     haptic(HAPTIC_RITUAL);
     leaveCommitRef.current = null;
-    const room = joinedRooms.find((r) => r.roomId === id);
-    if (!reduceMotion && room) {
-      ashIndexRef.current = joinedRooms.findIndex((r) => r.roomId === id);
-      // Keep leavingId so the live card stays filtered after ash overlay clears.
-      setLeavingId(id);
-      setAshRoom(room);
-      commitLeaveNetwork(id);
-      return;
-    }
+    // Pixel RegionAshOverlay disabled — keep QR fire; zone leave uses Motion exit only.
     setLeavingId(id);
     commitLeaveCold(id);
   };

@@ -89,7 +89,6 @@ export default function App() {
     burnConfirmOpen,
     burnPlaying,
     modalOpen,
-    finishBurnChoreography,
     openBurnConfirm,
     cancelBurnConfirm,
     confirmBurn,
@@ -203,8 +202,6 @@ export default function App() {
       swipeDisabled={modalOpen || burnPlaying}
       overlays={
         <AppOverlays
-          burnPlaying={burnPlaying}
-          onBurnComplete={finishBurnChoreography}
           burnNotice={burnNotice}
           ipConsentNeeded={ipConsentNeeded}
           onAcceptIpConsent={() => void confirmIpConsent()}

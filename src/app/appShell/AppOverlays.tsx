@@ -2,7 +2,6 @@ import { Flame } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
-import { BurnFireOverlay } from '../../components/session/BurnFireOverlay';
 import { KeyChangeAlert } from '../../components/session/KeyChangeAlert';
 import { IpConsentModal } from '../../features/rooms/IpConsentModal';
 import type { RoomState } from '../../hooks/useRoomManager';
@@ -11,8 +10,6 @@ import { bannerEnter } from '../../motion/tokens';
 import { useT } from '../../i18n';
 
 type AppOverlaysProps = {
-  burnPlaying: boolean;
-  onBurnComplete: () => void;
   burnNotice: boolean;
   ipConsentNeeded: boolean;
   onAcceptIpConsent: () => void;
@@ -29,8 +26,6 @@ type AppOverlaysProps = {
 };
 
 export function AppOverlays({
-  burnPlaying,
-  onBurnComplete,
   burnNotice,
   ipConsentNeeded,
   onAcceptIpConsent,
@@ -50,8 +45,6 @@ export function AppOverlays({
 
   return (
     <>
-      <BurnFireOverlay play={burnPlaying} onComplete={onBurnComplete} />
-
       <AnimatePresence initial={false}>
         {burnNotice && (
           <motion.div

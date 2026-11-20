@@ -6,7 +6,7 @@ export const es: Messages = {
   taglineEn: 'Temporary Anonymous Zone In Action',
   documentTitle: 'TAZIA — Zona Anónima Temporal en Acción',
 
-  navForum: 'Foro',
+  navForum: 'Plaza',
   navRooms: 'Zonas',
   navPresence: 'Tribu',
   navHelp: 'Ayuda',
@@ -44,7 +44,7 @@ export const es: Messages = {
 
   roomsActivePrefix: 'Ya estás en la zona',
   roomsActiveHint: 'Puedes abrir varias zonas; cambia entre ellas aquí.',
-  roomsBackToChat: 'Volver al foro',
+  roomsBackToChat: 'Volver a la plaza',
   roomsHeroTitle: 'Sin cuenta. Mientras dure.',
   roomsHeroBodyLead: 'Una frase abre la zona. Habláis en vivo. Al acabar, ',
   roomsHeroBodyBurn: 'apagáis la llama.',
@@ -116,7 +116,7 @@ export const es: Messages = {
   sidebarTopics: 'Hogueras',
   sidebarCloseTopics: 'Cerrar',
 
-  forumEmptyThreads: 'El foro está en silencio.',
+  forumEmptyThreads: 'La plaza está en silencio.',
   forumEmptyHint: 'Enciende una hoguera — o espera a quien siga en la tribu.',
   forumStartFirst: 'Encender una hoguera',
   forumNoResults: 'Sin resultados',
@@ -197,11 +197,11 @@ export const es: Messages = {
   helpZonesTitle: 'Varias zonas a la vez',
   helpZonesPill: 'Máx. 3 activas',
   helpZonesBody:
-    'Puedes estar en hasta 3 zonas a la vez. Cambia o quema una en Zonas; Foro, Tribu y Susurros muestran la zona activa. Apagar la llama borra todas las zonas en este dispositivo.',
+    'Puedes estar en hasta 3 zonas a la vez. Cambia o quema una en Zonas; Plaza, Tribu y Susurros muestran la zona activa. Apagar la llama borra todas las zonas en este dispositivo.',
   helpDeleteTitle: 'Apagar una hoguera',
   helpDeletePill: 'Voto unánime',
   helpDeleteBody:
-    'En el Foro, apagar una hoguera propone borrarla. Tiene que votar a favor toda la tribu que estaba online al proponer. No es lo mismo que apagar la llama: el voto apaga la hoguera en quienes aplican el quórum; apagar la llama solo limpia este navegador.',
+    'En la Plaza, apagar una hoguera propone borrarla. Tiene que votar a favor toda la tribu que estaba online al proponer. No es lo mismo que apagar la llama: el voto apaga la hoguera en quienes aplican el quórum; apagar la llama solo limpia este navegador.',
   helpRelayTitle: 'Si no os conectáis directo',
   helpRelayBody:
     'A veces la red no deja hablar de navegador a navegador. En ese caso el chat puede seguir por un camino cifrado a través de servidores de ayuda. Preferid la misma Wi‑Fi; si hace falta, abrid Arreglar en Zonas.',
@@ -277,7 +277,7 @@ export const es: Messages = {
     'No llegáis a conectar. En la misma Wi‑Fi, permite «Red local» si te lo pide el navegador. Si no, usa Arreglar en Zonas.',
   errLocalNetworkDenied:
     'Se bloqueó el acceso a la red local. Permítelo en los ajustes del sitio y vuelve a entrar — hace falta en la misma Wi‑Fi.',
-  infoRelayPath: 'Sin conexión directa. El foro sigue cifrado por otro camino.',
+  infoRelayPath: 'Sin conexión directa. La plaza sigue cifrada por otro camino.',
   errRelay: 'No se pudo contactar con los servicios que os ayudan a encontraros. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes. Espera un momento.',
   errWireTooLarge: 'Ese mensaje es demasiado grande para enviar.',
@@ -331,7 +331,7 @@ export const es: Messages = {
   roomsUnread: '{n} nuevos',
   roomsDmUnread: '{n} susurro',
   roomsCustomize: 'Más opciones',
-  roomsGoToChat: 'Al foro',
+  roomsGoToChat: 'A la plaza',
   roomsLeftToast: 'Zona quemada',
   roomsCapacityAria: '{n} de {max} zonas',
   roomsMeshLargeWarn:

@@ -20,6 +20,6 @@ const PRESENCE: NavItem = { id: 'presence', labelKey: 'navPresence', Icon: Users
 const DMS: NavItem = { id: 'dms', labelKey: 'navDms', Icon: MessageCircle };
 const HOW: NavItem = { id: 'how', labelKey: 'navHelp', Icon: HelpCircle };
 
-/** Zones → Forum → Tribe → Whispers → Help. */
+/** Zones → Plaza → Tribe → Whispers → Help. */
 export const DESKTOP_NAV_ITEMS: NavItem[] = [ROOMS, FORUM, PRESENCE, DMS, HOW];
 export const MOBILE_NAV_ITEMS: NavItem[] = [ROOMS, FORUM, PRESENCE, DMS, HOW];

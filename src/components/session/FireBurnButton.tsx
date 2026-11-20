@@ -7,7 +7,7 @@ import {
   mountFireButton,
   type FireButtonHandle,
 } from '../../motion/fireButton';
-import { BURN, TAP, TAP_TRANSITION } from '../../motion/tokens';
+import { TAP, TAP_TRANSITION } from '../../motion/tokens';
 
 interface FireBurnButtonProps {
   label: string;
@@ -84,7 +84,7 @@ export function FireBurnButton({
       aria-label={label}
       title={label}
       aria-pressed={!dying}
-      className={`fire-btn burn-heat session-burn-target ${
+      className={`fire-btn fire-btn--header burn-heat session-burn-target ${
         isPill ? 'fire-btn--pill' : 'fire-btn--circle'
       } ${dying ? 'is-dying' : ''}`}
     >
@@ -92,13 +92,9 @@ export function FireBurnButton({
       {dying ? (
         <span className="fire-btn__icon relative z-10 inline-flex h-4 w-4 shrink-0" aria-hidden="true" />
       ) : (
-        <motion.span
-          layoutId={BURN.layoutId}
-          className="fire-btn__icon burn-flame-icon relative z-10 inline-flex h-4 w-4 shrink-0"
-          transition={BURN.layoutSpring}
-        >
+        <span className="fire-btn__icon burn-flame-icon relative z-10 inline-flex h-4 w-4 shrink-0">
           <Flame className="h-4 w-4" aria-hidden="true" strokeWidth={1.9} />
-        </motion.span>
+        </span>
       )}
       {isPill && <span className="fire-btn__label relative z-10 truncate">{label}</span>}
     </motion.button>
