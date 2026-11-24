@@ -73,7 +73,7 @@ Los **Susurros** van sellados (`seal: 2`) con AAD `tazep.dm.aad.v2:…`. Entrar 
 
 ### Cuando WebRTC no llega (fallback Nostr)
 
-Si falla ICE (el navegador no logra la ruta P2P), el chat puede seguir por relés Nostr **cifrados** (PBKDF2 210k + HKDF `tazep/*`; blob `0x03` + AAD `tazep.fallback.aad.v3:{roomId}`; envelope `v: 2`).
+Si falla ICE (el navegador no logra la ruta P2P), el chat puede seguir por relés Nostr **cifrados** (Argon2id OWASP + HKDF `tazep/v3/*`; blob `0x04` + Padmé + AAD `tazep.fallback.aad.v4:{roomId}`; envelope `v: 2`). El join/fallback puede costar cientos de ms en móvil (Argon2id en JS). Tras un deploy, recarga para que todos compartáis el mismo build — un banner PWA avisa cuando hay un service worker nuevo.
 
 Ahí la autenticación es de la aplicación, no del cable WebRTC: los mensajes de foro se aceptan con Ed25519 y la clave **fijada** en el registro (sin inventar un `liveUserId`). La presence exige una attestation firmada `["tazep.presence.v4", …, atMs, alias, avatarSeed]` (reloj ±5 min, `atMs` estricto) antes de fijar TOFU. El goodbye también va atestiguado; las respuestas `sync-res` van firmadas (también el sync WebRTC) y se fusionan hasta el timeout; se comprueba el reloj del EVENT; `schnorr.verify` corre **antes** de descifrar. Los rate limits del fallback (foro, DM, sync, presence/goodbye) usan la pubkey Nostr del EVENT, no solo el `userId` reclamado.
 
@@ -97,9 +97,10 @@ Código de seguridad (SAS): **6** emojis de un pool de **256** (~48 bits) + bind
 Consentimiento de IP la primera vez (peers **y** terceros: STUN por defecto, relés Nostr, TURN si lo configuras). Quemar **no** lo borra por defecto; Ayuda → «Olvidar este dispositivo» limpia consentimiento IP + TURN + relés Nostr (sesión y persistidos); al apagar la llama puedes marcar el mismo wipe.  
 La frase en la URL se limpia (`public/scrub-phrase.js` + React).  
 TURN es opcional: `sessionStorage` (`tazia:turn-config`) por defecto; TURN recordado solo en `tazia:turn-config-persist`. Relés Nostr propios: `tazia:nostr-relays` / `tazia:nostr-relays-persist` (solo `wss:`; si están vacíos se usan los defaults de Trystero). Consentimiento IP solo en `tazia-ip-consent`. Los shims de migración legacy (`agora-ip-consent`, clave TURN sin `-persist` en `localStorage`) están eliminados. Burn limpia sessionStorage; prefs recordadas / consentimiento IP permanecen salvo el checkbox de olvidar prefs al apagar. Detalle: [`TURN.es.md`](TURN.es.md).  
-CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_headers`](../public/_headers) es plantilla para hosts que sí aplican cabeceras (Netlify/CF); Pages **no** aplica `_headers`, así que `frame-ancestors` / `X-Frame-Options` no están en el despliegue github.io por defecto (la meta CSP no puede fijar `frame-ancestors` — el clickjacking se mitiga con cabeceras HTTP reales en hosts de producción).
+**Higiene del repo:** no subas `docker/coturn/.env`, APKs ni `tazia-turn/session.json` del SO — `TURN_PASS` real queda local (gitignored). CI solo usa `GITHUB_TOKEN`.  
+CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_headers`](../public/_headers) es plantilla para hosts que sí aplican cabeceras (Netlify/CF); Pages **no** aplica `_headers`, así que `frame-ancestors` / `X-Frame-Options` no están en el despliegue github.io por defecto (la meta CSP no puede fijar `frame-ancestors` — el clickjacking se mitiga con cabeceras HTTP reales en hosts de producción). El `<meta http-equiv="Permissions-Policy">` de `local-network` es best-effort; Chromium puede ignorar Permissions-Policy en meta — la LNA sigue dependiendo del prompt + priming ICE.
 
-**Apagar la llama** cierra las redes locales, limpia la confianza guardada, borra referencias sensibles, hace `sessionStorage.clear` y recarga. **No** es borrado forense ni denegabilidad práctica ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
+**Apagar la llama** cierra las redes locales (leave con tope compartido de **15s**), limpia la caché de crypto de sala, borra referencias sensibles, hace `sessionStorage.clear` y recarga. **No** es borrado forense ni denegabilidad práctica ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
 
 ---
 
@@ -114,7 +115,7 @@ CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_h
 - **Voto de apagado ≠ garantía global** — un peer que nunca recibió el ballot completo puede seguir mostrando la hoguera; no hay servidor que imponga el apagado a todos.
 - **Cover de electorado omitido en sync** — late joiners aplican tumbas `DELETE_*` firmadas sin re-comprobar el electorado frente a su set online local (diseño para historia ya acordada).
 - **Carrera TOFU Nostr** — la primera presence atestiguada de un `userId` gana el pin; un pin erróneo exige SAS + `repin`.
-- **Clave Nostr compartida de zona** — quien conoce la frase deriva el mismo AES de sala y descifra foro/presence/sync. Solo en **fallback Nostr**, Susurro usa **`dm-wrap` v3** (AES pairwise interior) para que los co-miembros no vean metadatos de DM tras el decrypt de sala; puede seguir llegando `dm` v2 legacy. En WebRTC los Susurros siguen en **`seal: 2`** (no dm-wrap). Timing/tamaño aún filtran. No es un MPCS ([SoK](https://petsymposium.org/popets/2024/popets-2024-0030.pdf)).
+- **Clave Nostr compartida de zona** — quien conoce la frase deriva el mismo AES de sala (Argon2id → HKDF) y descifra foro/presence/sync. Solo en **fallback Nostr**, Susurro usa **solo `dm-wrap` v3** (AES pairwise interior, blob `0x02`, AAD `tazep.dm-wrap.aad.v2:{roomId}`) para que los co-miembros no vean metadatos de DM tras el decrypt de sala; no hay cable `t: 'dm'` legacy. En WebRTC los Susurros siguen en **`seal: 2`** (no dm-wrap). Padmé oculta la longitud exacta del plaintext (quedan buckets gruesos); el timing aún filtra. No es un MPCS ([SoK](https://petsymposium.org/popets/2024/popets-2024-0030.pdf)).
 - **Firmas de foro sin `roomId`** — el payload canónico del foro no lleva id de zona; el replay entre zonas de un evento firmado es un límite honesto (sync-res y AAD de DM sí atan `roomId`).
 - **Rate limits solo en cliente** — hedges blandos; no los imponen relés ni un referee.
 - **MLS / Double Ratchet / Key Transparency** — necesitan identidad durable u operador de log; incompatibles con `identity: 'none'` + hosting estático puro ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
@@ -125,7 +126,9 @@ CSP / fuentes: meta CSP en `index.html` (activa en GitHub Pages). [`../public/_h
 
 ## Despliegue
 
-- Hosting estático: `npm run build` → `dist/`.
+- Hosting estático: `npm run build` → `dist/` (`vite` `base: '/tazia/'` — path ligado a la URL de proyecto en GitHub Pages; un dominio custom en la raíz exige otro `base`).
+- GitHub Pages: HTTPS sí; **sin** cabeceras de respuesta custom; **sin** TURN en el origen (usa [`tools/tazia-turn`](../tools/tazia-turn/) o coturn). La PWA cachea el shell offline; WebRTC/Nostr siguen necesitando red. Recarga tras un deploy cuando aparezca el banner de actualización para que el crypto del fallback coincida.
+- Opcional más adelante: Netlify/Cloudflare Pages si quieres `_headers` reales (no hace falta para el github.io por defecto).
 - Un solo HTML: `npm run build:single` → `release/tazia-single.html` + `.sha256` (build verificable; cómo abrirlo: [`README.es.md`](../README.es.md)). No sustituye el despliegue multi-archivo de Pages. El workflow de Pages también sube ese artefacto (CSP del single incluye `unsafe-inline`; el deploy `dist/` no).
 - Spike SDP/QR: [`sdp-qr-spike.es.md`](sdp-qr-spike.es.md) — no va en la app; no sustituye Trystero.
 
@@ -164,7 +167,8 @@ Stack: **Trystero** (WebRTC + señalización Nostr). Soporte objetivo: Chrome, B
 | --- | --- | --- | --- | --- |
 | `RTCPeerConnection` / DataChannel | Mesh | Sí | Sí | Sí (11+) |
 | `permissions` `local-network` | Priming LNA | Sí (Chromium reciente) | No | No |
-| `SubtleCrypto` AES-GCM / PBKDF2 / SHA-256 | Frase + fallback | Sí | Sí | Sí |
+| `SubtleCrypto` AES-GCM / HKDF / SHA-256 | Sello fallback | Sí | Sí | Sí |
+| Argon2id (`@noble/hashes`, Worker) | KDF fallback | Sí (JS; más lento que nativo) | Sí | Sí |
 | `SubtleCrypto` Ed25519 | Firmas + attest | 137+; si no → noble | 129+; si no → noble | 17+; si no → noble |
 | `WebSocket` (`wss:`) | Señalización / fallback | Sí | Sí | Sí |
 | `navigator.clipboard.writeText` | Copiar invite | Sí | Sí | Sí (gesto); fallback `execCommand` |

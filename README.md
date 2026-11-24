@@ -104,6 +104,8 @@ On every Pages deploy, Actions also uploads the **`tazia-single`** artifact (`ta
 
 **📶 Connection.** Same Wi‑Fi usually works better. If you can’t connect, **Zones → Fix** walks through next steps. Sometimes you need your own TURN server ([guide](docs/TURN.md)): a relay that helps when direct P2P can’t get through the router or CGNAT. You can also set **custom Nostr relays** (`wss://`) there instead of the public signaling pool.
 
+**🔄 Site updates.** On the live Pages site, if a banner asks you to reload after an update, do it — older cached builds may not share the same encrypted fallback with peers who already reloaded.
+
 **🔑 Phrase.** It’s the key to the room — don’t post it in a public chat. Verifying in **Tribe** (emoji sequence) confirms you’re talking to the right person.
 
 **🗳️ Extinguish bonfire ≠ extinguish flame.** In Forum, extinguishing a bonfire proposes deleting **that** thread: everyone who was online when it was proposed must vote yes. **Extinguish flame** only clears **this** browser (every zone); the rest of the tribe keeps going until they extinguish too.

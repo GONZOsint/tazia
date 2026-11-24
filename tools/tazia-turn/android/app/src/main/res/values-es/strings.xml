@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TAZIA Turn</string>
+    <string name="subtitle">Servidor de apoyo TURN en tu Wi‑Fi. Pega la tarjeta en TAZIA → Zonas → Arreglar.</string>
+    <string name="status_on">Activo — deja Wi‑Fi y la notificación encendidos</string>
+    <string name="status_off">Parado</string>
+    <string name="label_url">URL</string>
+    <string name="label_user">Usuario</string>
+    <string name="label_pass">Contraseña</string>
+    <string name="start">Iniciar</string>
+    <string name="stop">Parar</string>
+    <string name="copy_card">Copiar tarjeta (3 líneas)</string>
+    <string name="rotate_pass">Nueva contraseña y reiniciar</string>
+    <string name="copied">Copiado</string>
+    <string name="hint">Los demás peers usan estos mismos datos. Luego salir y volver a entrar en la zona. Mantén el teléfono despierto y en Wi‑Fi. Si falla al iniciar, otro TURN puede usar el 3478 — la app prueba 3479+ sola.</string>
+    <string name="notif_title">TAZIA Turn</string>
+    <string name="notif_channel">Helper TURN</string>
+    <string name="notif_starting">Arrancando…</string>
+    <string name="notif_running">retransmitiendo</string>
+    <string name="err_helper_died">El helper salió (código %1$d). Pulsa Iniciar para reintentar.</string>
+</resources>

@@ -5,7 +5,7 @@ Español · [English](README.md)
 Cómo usar la app (web, local y single-file) está en [`README.es.md`](../README.es.md).  
 Aquí está el detalle técnico: seguridad, protocolo y red.
 
-Si un número de cifrado o de mensajes en red no coincide con un texto, **prioriza el código**: [`src/core/protocol.ts`](../src/core/protocol.ts) (apagado de hogueras: [`threadDelete.ts`](../src/core/forum/threadDelete.ts)).
+Si un número de cifrado o de mensajes en red no coincide con un texto, **prioriza el código**: [`src/core/protocol.ts`](../src/core/protocol.ts), KDF/blob de fallback [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts) (apagado de hogueras: [`threadDelete.ts`](../src/core/forum/threadDelete.ts)).
 
 ## Guías
 

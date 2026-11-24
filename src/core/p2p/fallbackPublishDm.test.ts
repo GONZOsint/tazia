@@ -4,13 +4,14 @@ import type { NostrFallbackBus } from './nostrFallback';
 
 /**
  * Mirrors fallbackBridge.publishDm / publishForum: propagate bus.publish boolean.
+ * Wire is dm-wrap only (v3); this stub asserts the envelope shape callers must use.
  */
 async function publishDmViaBus(
   bus: NostrFallbackBus | null,
-  dm: DirectMessage
+  blobB64: string
 ): Promise<boolean> {
   if (!bus) return false;
-  return bus.publish({ v: 2, t: 'dm', dm });
+  return bus.publish({ v: 3, t: 'dm-wrap', blobB64 });
 }
 
 async function publishForumViaBus(
@@ -51,7 +52,7 @@ const sampleDm: DirectMessage = {
 
 describe('fallback publishDm delivery boolean', () => {
   it('returns false when bus is missing', async () => {
-    await expect(publishDmViaBus(null, sampleDm)).resolves.toBe(false);
+    await expect(publishDmViaBus(null, 'blob')).resolves.toBe(false);
   });
 
   it('returns false when publish is stopped / over cap (bus reports false)', async () => {
@@ -59,8 +60,8 @@ describe('fallback publishDm delivery boolean', () => {
       publish: vi.fn(async () => false),
       stop: vi.fn(),
     };
-    await expect(publishDmViaBus(bus, sampleDm)).resolves.toBe(false);
-    expect(bus.publish).toHaveBeenCalledOnce();
+    await expect(publishDmViaBus(bus, 'blob')).resolves.toBe(false);
+    expect(bus.publish).toHaveBeenCalledWith({ v: 3, t: 'dm-wrap', blobB64: 'blob' });
   });
 
   it('returns true only when at least one relay send succeeded', async () => {
@@ -68,7 +69,19 @@ describe('fallback publishDm delivery boolean', () => {
       publish: vi.fn(async () => true),
       stop: vi.fn(),
     };
-    await expect(publishDmViaBus(bus, sampleDm)).resolves.toBe(true);
+    await expect(publishDmViaBus(bus, 'blob')).resolves.toBe(true);
+  });
+
+  it('never publishes legacy t:dm envelopes', async () => {
+    const bus: NostrFallbackBus = {
+      publish: vi.fn(async () => true),
+      stop: vi.fn(),
+    };
+    await publishDmViaBus(bus, 'x');
+    const arg = vi.mocked(bus.publish).mock.calls[0]![0] as { t: string };
+    expect(arg.t).toBe('dm-wrap');
+    expect(arg.t).not.toBe('dm');
+    void sampleDm;
   });
 });
 

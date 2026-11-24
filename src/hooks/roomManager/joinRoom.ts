@@ -8,8 +8,8 @@ import {
 } from '../../core/p2p/localNetworkAccess';
 import { normalizePresenceAlias } from '../../core/p2p/p2pPresenceState';
 import { clearInvitePhraseLatch } from '../../core/utils/inviteLink';
-import { buildRtcConfig } from '../../features/rooms/TurnRelaySettings';
-import { buildNostrRelayUrls } from '../../features/rooms/nostrRelayConfig';
+import { buildNostrRelayUrls } from '../../core/net/nostrRelayConfig';
+import { buildRtcConfig } from '../../core/net/turnConfig';
 import { mapRoomError, type SessionError } from '../sessionErrors';
 import {
   deriveMeshStatus,
@@ -334,4 +334,4 @@ export async function joinRoomInternal(deps: JoinRoomDeps, params: RoomJoinParam
   }
 }
 
-export { bumpJoinToken, isJoinTokenCurrent };
+export { bumpJoinToken };

@@ -18,9 +18,15 @@ export class PresenceKeys {
   private readonly webrtcPinned = new Set<string>();
   private readonly lastAttestAtMs = new Map<string, number>();
   private readonly deps: PresenceKeysDeps;
+  /** Fired when knownEnc map gains/updates a peer (dm-wrap retry, etc.). */
+  private onKnownEncUpdated: (() => void) | null = null;
 
   constructor(deps: PresenceKeysDeps) {
     this.deps = deps;
+  }
+
+  setOnKnownEncUpdated(cb: (() => void) | null): void {
+    this.onKnownEncUpdated = cb;
   }
 
   markSelfWebrtcPinned(userId: string): void {
@@ -64,6 +70,7 @@ export class PresenceKeys {
     knownEncPubKeys.set(userId, pinnedEnc);
     if (prev !== pinnedEnc) {
       void dmIngest.flushPendingForUser(userId);
+      this.onKnownEncUpdated?.();
     }
   }
 

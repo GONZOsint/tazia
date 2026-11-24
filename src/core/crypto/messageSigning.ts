@@ -7,11 +7,7 @@ import {
   type DirectMessage,
 } from '../protocol';
 import { b64ToBytes, bytesToB64, bytesToHex, toArrayBuffer } from './bytes';
-
-/** RFC 8410 SPKI prefix for a raw 32-byte Ed25519 public key. */
-const ED25519_SPKI_PREFIX = Uint8Array.from([
-  0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
-]);
+import { rawToSpki, spkiToRaw } from './ed25519Spki';
 
 type SigningBackend = 'webcrypto' | 'noble';
 
@@ -26,29 +22,6 @@ export interface SigningIdentity {
 
 export interface VerifyKey {
   verify(signature: Uint8Array, data: Uint8Array): Promise<boolean>;
-}
-
-function rawPublicKeyToSpki(raw: Uint8Array): Uint8Array {
-  if (raw.length !== 32) throw new Error('Ed25519 public key must be 32 bytes');
-  const spki = new Uint8Array(ED25519_SPKI_PREFIX.length + raw.length);
-  spki.set(ED25519_SPKI_PREFIX, 0);
-  spki.set(raw, ED25519_SPKI_PREFIX.length);
-  return spki;
-}
-
-function spkiToRawPublicKey(spki: Uint8Array): Uint8Array {
-  const expected = ED25519_SPKI_PREFIX.length + 32;
-  if (spki.length === expected) {
-    for (let i = 0; i < ED25519_SPKI_PREFIX.length; i++) {
-      if (spki[i] !== ED25519_SPKI_PREFIX[i]) {
-        throw new Error('Unrecognized Ed25519 SPKI encoding');
-      }
-    }
-    return spki.subarray(ED25519_SPKI_PREFIX.length);
-  }
-  // Legacy raw 32-byte keys (noble path / older peers).
-  if (spki.length === 32) return spki;
-  throw new Error('Unrecognized Ed25519 SPKI encoding');
 }
 
 let nativeEd25519: boolean | null = null;
@@ -90,7 +63,7 @@ export async function generateSigningIdentity(): Promise<SigningIdentity> {
   return {
     backend: 'noble',
     nobleSecret: secretKey,
-    publicKeySpkiB64: bytesToB64(rawPublicKeyToSpki(publicKey)),
+    publicKeySpkiB64: bytesToB64(rawToSpki(publicKey)),
   };
 }
 
@@ -128,11 +101,11 @@ export async function importVerifyKey(spkiB64: string): Promise<VerifyKey> {
         },
       };
     } catch {
-      /* fall through to noble — peers may send raw/SPKI we can still parse */
+      /* fall through to noble SPKI parse */
     }
   }
 
-  const raw = spkiToRawPublicKey(spki);
+  const raw = spkiToRaw(spki);
   return {
     verify: async (signature, data) => {
       try {

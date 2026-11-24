@@ -23,6 +23,7 @@ import {
   type PresenceState,
 } from '../protocol';
 import { isValidAvatarSeed } from '../avatar/avatarSeed';
+import { clearRoomCryptoCache } from './roomCrypto';
 import { buildPresenceState, normalizePresenceAlias } from './p2pPresenceState';
 import type { P2pOnlineCoordinator } from './p2pOnline';
 import type { P2pSessionBag } from './p2pSubsystems';
@@ -90,6 +91,7 @@ async function runP2pLeave(ctx: P2pRoomActionContext): Promise<void> {
   }
   wipeSigningIdentity(ctx.signing);
   wipeEncryptionIdentity(ctx.encIdentity);
+  clearRoomCryptoCache(ctx.roomId);
 }
 
 export function buildJoinedP2pRoomActions(

@@ -9,14 +9,15 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: [
         'favicon.svg',
         'favicon.png',
         'apple-touch-icon.png',
         'brand/tazia-mark.svg',
       ],
-      injectRegister: 'script',
+      // App registers via virtual:pwa-register/react (reload toast on crypto/wire breaks).
+      injectRegister: false,
       manifest: {
         name: 'TAZIA',
         short_name: 'TAZIA',
@@ -58,6 +59,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         // Fonts + large lazy chunks: runtime cache instead of install-time precache.
         maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
         navigateFallback: '/tazia/index.html',
         runtimeCaching: [
           {

@@ -1,7 +1,11 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { clearRoomCryptoCache } from '../../core/p2p/roomCrypto';
 import type { RoomState } from '../roomManagerTypes';
 import { bumpJoinToken } from './joinRoom';
 import { clearAllSyncTimers, clearSyncTimers, type SyncEngineRefs } from './syncEngine';
+
+/** Shared ceiling for session.leave() during leave/burn (hung leave must not pin forever). */
+export const SESSION_LEAVE_TIMEOUT_MS = 15_000;
 
 export function leaveRoomAction(opts: {
   roomId: string;
@@ -45,10 +49,11 @@ export function leaveRoomAction(opts: {
         room.session.leave().catch(() => {
           /* ignore — room already removed from UI state */
         }),
-        new Promise<void>((resolve) => window.setTimeout(resolve, 15_000)),
+        new Promise<void>((resolve) => window.setTimeout(resolve, SESSION_LEAVE_TIMEOUT_MS)),
       ]);
     } finally {
       leavingRoomIdsRef?.current.delete(roomId);
+      clearRoomCryptoCache(roomId);
     }
   })();
 }
@@ -98,12 +103,13 @@ export async function burnSessionAction(opts: {
     const leaveAll = Promise.allSettled(sessions.map(([, room]) => room.session.leave()));
     await Promise.race([
       leaveAll,
-      new Promise<void>((resolve) => window.setTimeout(resolve, 2_000)),
+      new Promise<void>((resolve) => window.setTimeout(resolve, SESSION_LEAVE_TIMEOUT_MS)),
     ]);
   } finally {
     for (const [id] of sessions) {
       leavingRoomIdsRef?.current.delete(id);
     }
+    clearRoomCryptoCache();
   }
 
   try {

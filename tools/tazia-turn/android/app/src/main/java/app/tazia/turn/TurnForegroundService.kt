@@ -19,6 +19,7 @@ class TurnForegroundService : Service() {
         const val ACTION_START = "app.tazia.turn.START"
         const val ACTION_STOP = "app.tazia.turn.STOP"
         const val ACTION_STATE = "app.tazia.turn.STATE"
+        const val ACTION_ROTATE = "app.tazia.turn.ROTATE"
         private const val CHANNEL_ID = "tazia_turn"
         private const val NOTIF_ID = 3478
 
@@ -44,6 +45,25 @@ class TurnForegroundService : Service() {
     @Volatile private var card: TurnCard? = null
     @Volatile private var error: String? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        helper.onProcessDied = { code ->
+            mainHandler.post {
+                running = false
+                error = getString(R.string.err_helper_died, code)
+                lastRunning = false
+                lastError = error
+                publish()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+        }
+        // Restore last card for copy-after-reopen.
+        if (lastCard == null) {
+            lastCard = NativeTurnHelper.loadLastCard(this)
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -53,6 +73,14 @@ class TurnForegroundService : Service() {
                 publish()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
+            }
+            ACTION_ROTATE -> {
+                NativeTurnHelper.clearSavedPassword(this)
+                if (running) {
+                    stopHelper()
+                }
+                startForeground(NOTIF_ID, buildNotification(getString(R.string.notif_starting)))
+                startHelper()
             }
             ACTION_START, null -> {
                 startForeground(NOTIF_ID, buildNotification(getString(R.string.notif_starting)))
@@ -76,12 +104,12 @@ class TurnForegroundService : Service() {
                 error = null
                 mainHandler.post {
                     val nm = getSystemService(NotificationManager::class.java)
-                    nm.notify(NOTIF_ID, buildNotification(started.url))
+                    nm.notify(NOTIF_ID, buildNotification("${started.url} · ${getString(R.string.notif_running)}"))
                     publish()
                 }
             } catch (e: Exception) {
                 running = false
-                card = null
+                card = NativeTurnHelper.loadLastCard(this@TurnForegroundService)
                 error = e.message ?: e.toString()
                 mainHandler.post {
                     publish()
@@ -99,7 +127,7 @@ class TurnForegroundService : Service() {
     }
 
     private fun publish() {
-        lastCard = card
+        lastCard = card ?: lastCard
         lastError = error
         lastRunning = running
         sendBroadcast(
@@ -108,6 +136,7 @@ class TurnForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        helper.onProcessDied = null
         stopHelper()
         lastRunning = false
         executor.shutdownNow()

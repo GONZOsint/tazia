@@ -1,14 +1,10 @@
 /**
  * TAZEP — TAZ Encryption Protocol (`tazep-v2`).
- *
- * Breaking vs agora-forum-v2 / v1:
- * - PROTOCOL_NAME = tazep-v2 (domain tags tazep.*)
- * - PROTOCOL_VERSION = 2
- * - Susurros sealed-only (seal:2 + bodyCipherB64; empty body)
- * - Presence requires encPubKeyRawB64
+ * Domain tags: tazep.* · Susurros sealed-only (seal:2) · presence requires encPubKeyRawB64.
  */
 
 import { b64ToBytes } from './crypto/bytes';
+import { isEd25519Spki } from './crypto/ed25519Spki';
 import { isValidAvatarSeed } from './avatar/avatarSeed';
 import {
   DELETE_VOTE_AYE,
@@ -18,14 +14,12 @@ import { MAX_ALIAS_CHARS, normalizePresenceAlias } from './presenceAlias';
 
 export { MAX_ALIAS_CHARS } from './presenceAlias';
 
-export const PROTOCOL_NAME = 'tazep-v2';
+/** Wire / docs label — not imported elsewhere in src. */
+const PROTOCOL_NAME = 'tazep-v2';
+void PROTOCOL_NAME;
+
 export const PROTOCOL_VERSION = 2 as const;
 
-/** RFC 8410 SPKI prefix for Ed25519 (12 bytes) + 32-byte raw key. */
-const ED25519_SPKI_PREFIX = Uint8Array.from([
-  0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
-]);
-const ED25519_SPKI_LEN = 44;
 const X25519_RAW_LEN = 32;
 /** Opaque peer / msg ids: no `|` so AAD field concat stays unambiguous. */
 const SAFE_ID_RE = /^[A-Za-z0-9_-]+$/;
@@ -40,12 +34,7 @@ function isExactB64Length(b64: string, byteLen: number): boolean {
 
 function isValidEd25519SpkiB64(b64: string): boolean {
   try {
-    const bytes = b64ToBytes(b64);
-    if (bytes.length !== ED25519_SPKI_LEN) return false;
-    for (let i = 0; i < ED25519_SPKI_PREFIX.length; i++) {
-      if (bytes[i] !== ED25519_SPKI_PREFIX[i]) return false;
-    }
-    return true;
+    return isEd25519Spki(b64ToBytes(b64));
   } catch {
     return false;
   }
@@ -130,7 +119,7 @@ export const MAX_PRESENCE_STATE_BYTES = 4_096;
  * Max base64 chars for one Nostr fallback EVENT `content` (sealed envelope).
  * Rejected before schnorr verify / AES-GCM decrypt to bound CPU/RAM griefing.
  */
-export const MAX_FALLBACK_CIPHER_B64_CHARS = 96_000;
+export const MAX_FALLBACK_CIPHER_B64_CHARS = 110_000;
 /** Soft cap for Nostr EVENT created_at skew (±5 min). */
 export const NOSTR_EVENT_CLOCK_SKEW_SEC = 300;
 

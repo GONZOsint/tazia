@@ -6,15 +6,28 @@ release-tmp/
 coverage/
 .DS_Store
 *.log
-.env*
+
+# --- Secrets / local env (never commit real credentials) ---
+.env
+.env.*
 !.env.example
+!**/.env.example
+docker/coturn/.env
+
 docs/papers/*.pdf
 !docs/papers/README.md
 !docs/papers/README.es.md
 
-# Native TURN helper build outputs (rebuild with tools/tazia-turn/build/)
+# --- Native TURN helper (rebuild with tools/tazia-turn/build/) ---
 tools/tazia-turn/dist/
 tools/tazia-turn/android/app/build/
+tools/tazia-turn/android/build/
 tools/tazia-turn/android/.gradle/
+tools/tazia-turn/android/.cxx/
 tools/tazia-turn/android/local.properties
 tools/tazia-turn/android/app/src/main/jniLibs/
+*.apk
+
+# Accidental dumps of OS-persisted TURN session into the tree
+**/tazia-turn/**/session.json
+session.json

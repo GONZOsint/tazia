@@ -1,6 +1,7 @@
 package app.tazia.turn
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.wifi.WifiManager
 import java.io.File
 import java.lang.Process as JavaProcess
@@ -8,7 +9,9 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
 
 data class TurnCard(
@@ -28,11 +31,18 @@ class NativeTurnHelper(private val context: Context) {
     private var multicastLock: WifiManager.MulticastLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private val drainPool = Executors.newCachedThreadPool()
+    private var watchPool: ScheduledExecutorService? = null
+    private val watching = AtomicBoolean(false)
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("tazia_turn", Context.MODE_PRIVATE)
 
-    fun start(port: Int = 3478, username: String = "tazia"): TurnCard {
+    /** Invoked on the helper thread when the native process exits unexpectedly. */
+    @Volatile var onProcessDied: ((exitCode: Int) -> Unit)? = null
+
+    fun start(preferredPort: Int = 3478, username: String = "tazia"): TurnCard {
         stop()
         val ip = lanIPv4() ?: throw IllegalStateException("No Wi‑Fi/LAN IPv4 — connect to Wi‑Fi")
-        val password = randomPassword()
+        val password = loadOrCreatePassword(username)
         val bin = nativeBinary()
         if (!bin.exists()) {
             throw IllegalStateException(
@@ -43,6 +53,60 @@ class NativeTurnHelper(private val context: Context) {
 
         acquireWifiLocks()
 
+        var lastErr: Exception? = null
+        for (offset in 0..10) {
+            val port = preferredPort + offset
+            try {
+                val proc = spawn(bin, ip, port, username, password)
+                process = proc
+                startWatchdog(proc)
+                val card = TurnCard(
+                    url = "turn:$ip:$port",
+                    username = username,
+                    password = password,
+                    externalIp = ip,
+                    port = port,
+                )
+                saveCard(card)
+                return card
+            } catch (e: Exception) {
+                lastErr = e
+                process = null
+            }
+        }
+        releaseWifiLocks()
+        throw lastErr ?: IllegalStateException("Could not bind TURN ports $preferredPort–${preferredPort + 10}")
+    }
+
+    fun stop() {
+        stopWatchdog()
+        process?.let { p ->
+            p.destroy()
+            if (!p.waitFor(2, TimeUnit.SECONDS)) {
+                p.destroyForcibly()
+            }
+        }
+        process = null
+        releaseWifiLocks()
+    }
+
+    fun isAlive(): Boolean {
+        val p = process ?: return false
+        return try {
+            p.exitValue()
+            false
+        } catch (_: IllegalThreadStateException) {
+            true
+        }
+    }
+
+    private fun spawn(
+        bin: File,
+        ip: String,
+        port: Int,
+        username: String,
+        password: String,
+    ): JavaProcess {
         val pb = ProcessBuilder(
             bin.absolutePath,
             "-external-ip", ip,
@@ -50,12 +114,12 @@ class NativeTurnHelper(private val context: Context) {
             "-user", username,
             "-pass", password,
             "-no-firewall",
+            "-auto-port=false",
         )
         pb.redirectErrorStream(true)
         pb.directory(context.filesDir)
         pb.environment()["HOME"] = context.filesDir.absolutePath
         val proc = pb.start()
-        process = proc
 
         // Drain stdout so a full pipe cannot stall the helper.
         drainPool.execute {
@@ -69,33 +133,38 @@ class NativeTurnHelper(private val context: Context) {
             }
         }
 
-        // Fail fast if binary dies immediately.
-        Thread.sleep(500)
+        // Fail fast if binary dies immediately (port busy / blocked).
+        Thread.sleep(450)
         try {
             val code = proc.exitValue()
-            throw IllegalStateException("Helper exited $code (port busy or binary blocked?)")
+            throw IllegalStateException("Helper exited $code (port $port busy or binary blocked?)")
         } catch (_: IllegalThreadStateException) {
             // still running
         }
-
-        return TurnCard(
-            url = "turn:$ip:$port",
-            username = username,
-            password = password,
-            externalIp = ip,
-            port = port,
-        )
+        return proc
     }
 
-    fun stop() {
-        process?.let { p ->
-            p.destroy()
-            if (!p.waitFor(2, TimeUnit.SECONDS)) {
-                p.destroyForcibly()
+    private fun startWatchdog(proc: JavaProcess) {
+        stopWatchdog()
+        watching.set(true)
+        val pool = Executors.newSingleThreadScheduledExecutor()
+        watchPool = pool
+        pool.scheduleWithFixedDelay({
+            if (!watching.get()) return@scheduleWithFixedDelay
+            try {
+                val code = proc.exitValue()
+                watching.set(false)
+                onProcessDied?.invoke(code)
+            } catch (_: IllegalThreadStateException) {
+                // still alive
             }
-        }
-        process = null
-        releaseWifiLocks()
+        }, 1, 2, TimeUnit.SECONDS)
+    }
+
+    private fun stopWatchdog() {
+        watching.set(false)
+        watchPool?.shutdownNow()
+        watchPool = null
     }
 
     private fun nativeBinary(): File {
@@ -155,8 +224,52 @@ class NativeTurnHelper(private val context: Context) {
         return best?.ip
     }
 
-    private fun randomPassword(): String {
+    private fun loadOrCreatePassword(username: String): String {
+        val savedUser = prefs.getString(KEY_USER, null)
+        val savedPass = prefs.getString(KEY_PASS, null)
+        if (savedUser == username && !savedPass.isNullOrBlank()) {
+            return savedPass
+        }
         val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
-        return (1..20).map { alphabet[Random.nextInt(alphabet.length)] }.joinToString("")
+        val fresh = (1..20).map { alphabet[Random.nextInt(alphabet.length)] }.joinToString("")
+        prefs.edit().putString(KEY_USER, username).putString(KEY_PASS, fresh).apply()
+        return fresh
+    }
+
+    private fun saveCard(card: TurnCard) {
+        prefs.edit()
+            .putString(KEY_URL, card.url)
+            .putString(KEY_USER, card.username)
+            .putString(KEY_PASS, card.password)
+            .putString(KEY_IP, card.externalIp)
+            .putInt(KEY_PORT, card.port)
+            .apply()
+    }
+
+    companion object {
+        private const val KEY_URL = "url"
+        private const val KEY_USER = "user"
+        private const val KEY_PASS = "pass"
+        private const val KEY_IP = "ip"
+        private const val KEY_PORT = "port"
+
+        fun loadLastCard(context: Context): TurnCard? {
+            val p = context.getSharedPreferences("tazia_turn", Context.MODE_PRIVATE)
+            val url = p.getString(KEY_URL, null) ?: return null
+            val user = p.getString(KEY_USER, null) ?: return null
+            val pass = p.getString(KEY_PASS, null) ?: return null
+            val ip = p.getString(KEY_IP, null) ?: return null
+            val port = p.getInt(KEY_PORT, 0)
+            if (port <= 0) return null
+            return TurnCard(url, user, pass, ip, port)
+        }
+
+        /** Force a new password on next start. */
+        fun clearSavedPassword(context: Context) {
+            context.getSharedPreferences("tazia_turn", Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_PASS)
+                .apply()
+        }
     }
 }

@@ -1,32 +1,52 @@
-/** Room-phrase AES-GCM helpers for the Nostr data-plane fallback (v2 KDF + AAD). */
+/** Room-phrase AES-GCM helpers for the Nostr data-plane fallback (v3 KDF + v4 blob). */
 
 import { b64ToBytes, bytesToB64, bytesToHex, toArrayBuffer } from '../crypto/bytes';
 import type { DirectMessage } from '../protocol';
+import { argon2idDerive } from './argon2Derive';
+import { padmeLength } from './padme';
 
 const te = new TextEncoder();
 const td = new TextDecoder();
 
-const PBKDF2_ITERATIONS = 210_000;
-const PAD_BLOCK = 256;
-/** Wire blob: version byte + IV(12) + ciphertext(+pad). v3 = AAD bound to roomId. */
-const BLOB_VERSION = 0x03;
-/** Inner DM-wrap blob (pairwise) — distinct from room-layer version. */
-const DM_WRAP_BLOB_VERSION = 0x01;
+/** Wire blob: version + IV(12) + ciphertext. v4 = u32be pad + Padmé + AAD v4. */
+const BLOB_VERSION = 0x04;
+/** Inner DM-wrap blob (pairwise). */
+const DM_WRAP_BLOB_VERSION = 0x02;
+
+type MasterCacheEntry = {
+  master: ArrayBuffer;
+  roomKey?: CryptoKey;
+  topicId?: string;
+};
+
+const masterCache = new Map<string, MasterCacheEntry>();
+
+function cacheKey(roomId: string, phrase: string): string {
+  return `${roomId}\0${phrase}`;
+}
+
+/** Drop cached Argon2/HKDF material for one room or all rooms. */
+export function clearRoomCryptoCache(roomId?: string): void {
+  if (!roomId) {
+    masterCache.clear();
+    return;
+  }
+  const prefix = `${roomId}\0`;
+  for (const k of masterCache.keys()) {
+    if (k.startsWith(prefix)) masterCache.delete(k);
+  }
+}
 
 async function deriveMasterBits(roomId: string, password: string): Promise<ArrayBuffer> {
-  const material = await crypto.subtle.importKey('raw', te.encode(password), 'PBKDF2', false, [
-    'deriveBits',
-  ]);
-  return crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: te.encode(`tazep.fallback.v2:${roomId}`),
-      iterations: PBKDF2_ITERATIONS,
-      hash: 'SHA-256',
-    },
-    material,
-    256
-  );
+  const key = cacheKey(roomId, password);
+  const hit = masterCache.get(key);
+  if (hit) return hit.master;
+
+  const salt = `tazep.fallback.v3:${roomId}`;
+  const masterBytes = await argon2idDerive(password, salt);
+  const master = toArrayBuffer(masterBytes);
+  masterCache.set(key, { master });
+  return master;
 }
 
 async function hkdfExpand(
@@ -47,15 +67,21 @@ async function hkdfExpand(
   );
 }
 
-/** Unified session material (room AES key + Nostr topic id). One PBKDF2, then dual HKDF. */
+/** Unified session material (room AES key + Nostr topic id). One Argon2id, then dual HKDF. */
 export async function deriveSessionMaterial(
   roomId: string,
   phrase: string
 ): Promise<{ roomKey: CryptoKey; topicId: string }> {
+  const key = cacheKey(roomId, phrase);
+  const hit = masterCache.get(key);
+  if (hit?.roomKey && hit.topicId) {
+    return { roomKey: hit.roomKey, topicId: hit.topicId };
+  }
+
   const master = await deriveMasterBits(roomId, phrase);
   const [keyBits, topicBits] = await Promise.all([
-    hkdfExpand(master, 'tazep/room-key', 256),
-    hkdfExpand(master, 'tazep/topic', 256),
+    hkdfExpand(master, 'tazep/v3/room-key', 256),
+    hkdfExpand(master, 'tazep/v3/topic', 256),
   ]);
   const roomKey = await crypto.subtle.importKey(
     'raw',
@@ -65,6 +91,11 @@ export async function deriveSessionMaterial(
     ['encrypt', 'decrypt']
   );
   const topicId = bytesToHex(new Uint8Array(topicBits)).slice(0, 32);
+  const entry = masterCache.get(key) ?? { master };
+  entry.roomKey = roomKey;
+  entry.topicId = topicId;
+  entry.master = master;
+  masterCache.set(key, entry);
   return { roomKey, topicId };
 }
 
@@ -77,7 +108,7 @@ export async function deriveDmWrapKey(
 ): Promise<CryptoKey> {
   const [left, right] = [userA, userB].sort((a, b) => a.localeCompare(b, 'en'));
   const master = await deriveMasterBits(roomId, phrase);
-  const keyBits = await hkdfExpand(master, `tazep/dm-wrap:${left}:${right}`, 256);
+  const keyBits = await hkdfExpand(master, `tazep/v3/dm-wrap:${left}:${right}`, 256);
   return crypto.subtle.importKey(
     'raw',
     keyBits,
@@ -88,10 +119,14 @@ export async function deriveDmWrapKey(
 }
 
 function dmWrapAad(roomId: string): Uint8Array {
-  return te.encode(`tazep.dm-wrap.aad.v1:${roomId}`);
+  return te.encode(`tazep.dm-wrap.aad.v2:${roomId}`);
 }
 
-export async function encryptDmWrap(key: CryptoKey, dm: DirectMessage, roomId: string): Promise<string> {
+export async function encryptDmWrap(
+  key: CryptoKey,
+  dm: DirectMessage,
+  roomId: string
+): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plain = padPlaintext(te.encode(JSON.stringify(dm)));
   const aad = dmWrapAad(roomId);
@@ -152,25 +187,31 @@ export async function tryDecryptDmWrapForSelf(
   return null;
 }
 
-function padPlaintext(plain: Uint8Array): Uint8Array {
+/** u32be length + plaintext + zero pad to Padmé(4 + len). */
+export function padPlaintext(plain: Uint8Array): Uint8Array {
   const len = plain.length;
-  const total = Math.ceil((len + 2) / PAD_BLOCK) * PAD_BLOCK;
+  const headerAndBody = 4 + len;
+  const total = padmeLength(headerAndBody);
+  if (total < headerAndBody) throw new Error('padme undersized');
   const out = new Uint8Array(total);
-  out[0] = (len >> 8) & 0xff;
-  out[1] = len & 0xff;
-  out.set(plain, 2);
+  out[0] = (len >>> 24) & 0xff;
+  out[1] = (len >>> 16) & 0xff;
+  out[2] = (len >>> 8) & 0xff;
+  out[3] = len & 0xff;
+  out.set(plain, 4);
   return out;
 }
 
-function unpadPlaintext(padded: Uint8Array): Uint8Array {
-  if (padded.length < 2) throw new Error('pad too short');
-  const len = (padded[0]! << 8) | padded[1]!;
-  if (len < 0 || len + 2 > padded.length) throw new Error('bad pad length');
-  return padded.subarray(2, 2 + len);
+export function unpadPlaintext(padded: Uint8Array): Uint8Array {
+  if (padded.length < 4) throw new Error('pad too short');
+  const len =
+    ((padded[0]! << 24) | (padded[1]! << 16) | (padded[2]! << 8) | padded[3]!) >>> 0;
+  if (len + 4 > padded.length) throw new Error('bad pad length');
+  return padded.subarray(4, 4 + len);
 }
 
 function aadBytes(roomId: string): Uint8Array {
-  return te.encode(`tazep.fallback.aad.v3:${roomId}`);
+  return te.encode(`tazep.fallback.aad.v4:${roomId}`);
 }
 
 export async function encryptJson(

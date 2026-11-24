@@ -35,6 +35,8 @@ Go binaries ([`tools/tazia-turn/`](../tools/tazia-turn/)) — pion/turn, zero Do
 
 Build: `tools/tazia-turn/build/build-desktop.ps1` · `build-android.ps1`. Details: [`tools/tazia-turn/README.md`](../tools/tazia-turn/README.md).
 
+Native helper **reuses the last password**, auto-falls back if port **3478** is busy (3479+), and prints/copies the exact `turn:ip:port` card. Android watches the process and surfaces a dead-helper error. Do not also bind Docker coturn to the same port on that host.
+
 ## Coturn (Docker, optional)
 
 Zero-friction on LAN with Docker — detects IP, writes `.env`, starts coturn, smoke-tests, prints the card for **Zones → Fix**:
@@ -123,12 +125,12 @@ Symptom: `WebRTC: ICE failed, add a TURN server and see about:webrtc`
 
 ### Without TURN (GitHub Pages)
 
-When ICE fails, TAZIA can still carry **encrypted** forum / DM / presence over Nostr relays. You should see a relay-path notice: chat works, but it is **not** a direct browser-to-browser mesh. Self-hosted TURN remains the path to real WebRTC P2P.
+GitHub Pages is static HTTPS only: it **cannot** serve TURN or custom HTTP security headers. When ICE fails, TAZIA can still carry **encrypted** forum / DM / presence over Nostr relays. You should see a relay-path notice: chat works, but it is **not** a direct browser-to-browser mesh. Run [`tools/tazia-turn`](../tools/tazia-turn/) or coturn yourself for real WebRTC P2P. Optional: Zones → Fix → custom Nostr `wss://` relays (same list on every peer).
 
 ### Same Wi‑Fi (P2P without TURN)
 
 1. Same Pages URL and same phrase.
-2. Chrome/Edge/Brave: **Allow Local network** if prompted. If previously denied: site settings → Local network → Allow, then rejoin.
+2. Chrome/Edge/Brave: **Allow Local network** if prompted (public origin → LAN). If previously denied: site settings → Local network → Allow, then rejoin.
 3. Router: disable AP / client isolation / guest Wi‑Fi that blocks peer-to-peer.
 4. If a helper is enabled for other networks, **uncheck** **Hide my internet address** so same-LAN host candidates can form.
 5. In `chrome://webrtc-internals` / `about:webrtc`, look for `host` or `*.local` candidates.

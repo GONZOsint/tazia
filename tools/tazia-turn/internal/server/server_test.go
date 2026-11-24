@@ -42,3 +42,28 @@ func TestRandomPassword(t *testing.T) {
 		t.Fatalf("password %q err=%v", a, err)
 	}
 }
+
+func TestStartWithFallbackSkipsBusyPort(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Password = "test-pass"
+	cfg.ExternalIP = "127.0.0.1"
+	cfg.Port = 39998
+	cfg.MinPort = 50020
+	cfg.MaxPort = 50030
+	cfg.Logger = log.New(io.Discard, "", 0)
+
+	first, err := Start(cfg)
+	if err != nil {
+		t.Fatalf("first start: %v", err)
+	}
+	defer first.Close()
+
+	second, err := StartWithFallback(cfg, 3)
+	if err != nil {
+		t.Fatalf("fallback: %v", err)
+	}
+	defer second.Close()
+	if second.Config().Port == first.Config().Port {
+		t.Fatalf("expected different port, both %d", second.Config().Port)
+	}
+}

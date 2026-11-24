@@ -5,7 +5,7 @@ English · [Español](README.es.md)
 How to use the app (web, local, and single-file) is in [`README.md`](../README.md).  
 This folder holds the technical detail: security, protocol, and networking.
 
-If a crypto or on-the-wire number disagrees with a doc, **trust the code**: [`src/core/protocol.ts`](../src/core/protocol.ts) (bonfire extinguish: [`threadDelete.ts`](../src/core/forum/threadDelete.ts)).
+If a crypto or on-the-wire number disagrees with a doc, **trust the code**: [`src/core/protocol.ts`](../src/core/protocol.ts), fallback KDF/blob [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts) (bonfire extinguish: [`threadDelete.ts`](../src/core/forum/threadDelete.ts)).
 
 ## Guides
 

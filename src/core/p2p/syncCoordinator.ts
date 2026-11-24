@@ -16,15 +16,21 @@ export function syncPayloadTooLarge(events: unknown): boolean {
   return te.encode(raw).byteLength > MAX_SYNC_TOTAL_BYTES;
 }
 
+/** Keep the newest sync window (shared by snapshot + clamp). */
+export function tailSyncEvents(events: ForumEvent[]): ForumEvent[] {
+  return events.slice(-MAX_SYNC_MESSAGES);
+}
+
 export function snapshotForSync(localMessages: Map<string, ForumEvent>): ForumEvent[] {
   const all = [...localMessages.values()];
   const deleted = deletedThreadIds(all);
-  let list = all
-    .filter(
-      (e) => !deleted.has(e.threadId) || !isContentForumType(e.type)
-    )
-    .sort((a, b) => a.createdAtMs - b.createdAtMs)
-    .slice(-MAX_SYNC_MESSAGES);
+  let list = tailSyncEvents(
+    all
+      .filter(
+        (e) => !deleted.has(e.threadId) || !isContentForumType(e.type)
+      )
+      .sort((a, b) => a.createdAtMs - b.createdAtMs)
+  );
 
   // Keep halving until under wire budget (or empty).
   while (list.length > 0 && syncPayloadTooLarge(list)) {
@@ -53,6 +59,5 @@ export function sampleSyncTargets(allTargets: string[], max = MAX_SYNC_PEER_TARG
 }
 
 export function clampSyncEvents(events: ForumEvent[]): ForumEvent[] {
-  // Match snapshotForSync: keep the newest window, not the oldest.
-  return events.slice(-MAX_SYNC_MESSAGES);
+  return tailSyncEvents(events);
 }

@@ -22,7 +22,7 @@ Modelo UC para cadenas cortas de autenticación; misbinding ε=2^{-t}.
 
 Un binding insuficiente entre cifrado simétrico y firmas permite replay/reorden por insiders. El patrón de arreglo es ligar group id / nonce / AD a firma y ciphertext.
 
-**Para TAZIA (TAZEP `tazep-v2`):** AAD de DM = `tazep.dm.aad.v2:{roomId}|{from}|{to}|{msgId}`; AAD del blob de fallback = `tazep.fallback.aad.v3:{roomId}`.
+**Para TAZIA (TAZEP `tazep-v2`):** AAD de DM = `tazep.dm.aad.v2:{roomId}|{from}|{to}|{msgId}`; AAD del blob de fallback = `tazep.fallback.aad.v4:{roomId}`.
 
 ## 2025/1619 — Anonymity Wrappers (CCS’25)
 

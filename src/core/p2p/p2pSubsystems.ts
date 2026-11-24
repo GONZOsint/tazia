@@ -147,6 +147,7 @@ export function createP2pSubsystems(input: {
     getLastPresence: () => input.session.lastPresence,
     isLiveWebrtc: input.online.isLiveWebrtc,
     mergeOnline: () => input.online.mergeOnline(),
+    setOnOnlineMerged: (cb) => input.online.setOnOnlineMerged(cb),
     knownEncPubKeys: input.knownEncPubKeys,
     readOnlineUserIds: () => input.online.readOnlineUserIds(),
   });

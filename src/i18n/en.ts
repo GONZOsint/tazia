@@ -272,10 +272,13 @@ export const en = {
     'If your network blocks direct browser-to-browser links, chat automatically switches to an encrypted path through helper servers. Whenever you can, use the same Wi‑Fi.',
   helpFixStep1Lead: 'Same Wi‑Fi',
   helpFixStep1Body:
-    'Allow Local network permission if the browser asks, and avoid client isolation on the router.',
+    'From github.io / a public site, Chromium asks for Local network — allow it, then re-enter. Avoid router client isolation. Firefox/Safari have no LNA prompt; same-LAN may still need a helper.',
   helpFixStep2Lead: 'Helper server',
   helpFixStep2Body:
-    'If you still cannot see each other, open Zones → Fix to add a helper server. On Safari that step is often needed even on the same Wi‑Fi.',
+    'GitHub Pages does not host TURN. If you still cannot see each other, open Zones → Fix and add a helper (coturn or tools/tazia-turn). On Safari that step is often needed even on the same Wi‑Fi.',
+  pwaUpdateBody:
+    'A new version is ready. Reload so everyone shares the same crypto — otherwise the encrypted fallback may not match.',
+  pwaUpdateReload: 'Reload',
   browserBlockedTitle: 'This browser cannot use TAZIA',
   browserBlockedBody:
     'You need a current browser (Chrome, Brave, Firefox, or Safari) and a secure connection. Try updating the browser or opening the site in another one.',
@@ -293,7 +296,7 @@ export const en = {
   errIceHint:
     "Can't reach each other. On the same Wi‑Fi, allow Local network if the browser asks. Otherwise use Fix under Zones.",
   errLocalNetworkDenied:
-    'Local network access was blocked. Allow it in site settings, then re-enter — needed on the same Wi‑Fi.',
+    'Local network access was blocked. In site settings → Local network → Allow, then re-enter the zone. Needed for same Wi‑Fi from a public origin (e.g. GitHub Pages).',
   infoRelayPath: 'No direct connection. The plaza continues encrypted another way.',
   errRelay: 'Could not reach the helpers that introduce you. Try again in a few seconds.',
   errPublishRate: 'Too many messages. Wait a moment.',
@@ -370,7 +373,7 @@ export const en = {
 
   turnRelayTitle: "Can't reach each other?",
   turnRelayHint:
-    'On the same Wi‑Fi you rarely need this: allow Local network if the browser asks, and make sure phones/laptops can see each other. On different networks, someone in the group can add a helper server here.',
+    'On the same Wi‑Fi: allow Local network if Chromium asks (github.io is a public origin). Pages cannot serve TURN — run tools/tazia-turn or coturn and paste the card here. On different networks or Safari, a helper is usually required.',
   turnRelayEnabled: 'Use a helper server',
   turnForceRelay: 'Hide my internet address',
   turnForceRelayHint:
@@ -393,14 +396,17 @@ export const en = {
 
   nostrRelayTitle: 'Nostr relays (signaling)',
   nostrRelayHint:
-    'By default Trystero picks public relays. Set your own wss:// list so only operators you trust see your IP for signaling and encrypted fallback.',
+    'By default Trystero picks public relays. Set your own wss:// list so only operators you trust see your IP for signaling and encrypted fallback. Everyone in the zone should paste the same list.',
   nostrRelayEnabled: 'Use custom Nostr relays',
   nostrRelayUrls: 'Relay URLs',
   nostrRelayUrlsHint: 'One wss:// URL per line. Both sides should share a working overlap.',
+  nostrRelayCopyList: 'Copy list',
+  nostrRelayCopied: 'Relay list copied',
+  nostrRelayCopyEmpty: 'Add at least one wss:// URL first.',
   nostrRelayActive: 'Using {n} custom relay(s). Re-enter the zone after changing the list.',
   nostrRelayNeedUrls: 'Add at least one wss:// URL, or turn this off to use defaults.',
   nostrRelayOperatorSeesIp:
-    'Relay operators still see your IP and encrypted traffic metadata. Custom relays are not Tor.',
+    'Relay operators still see your IP, which topic you join, and encrypted traffic metadata. Custom relays are not Tor.',
   nostrRelayRememberDevice: 'Remember on this device',
   nostrRelayRememberDeviceHint:
     'Off by default: the list stays in this tab only. On stores it until you clear site data or Forget this device.',

@@ -22,7 +22,7 @@ UC model for short authentication strings; misbinding ε=2^{-t}.
 
 Insufficient binding between symmetric encryption and signatures enables insider replay/reorder. The fix pattern is to bind group id / nonce / AD to signature and ciphertext.
 
-**For TAZIA (TAZEP `tazep-v2`):** DM AAD = `tazep.dm.aad.v2:{roomId}|{from}|{to}|{msgId}`; fallback blob AAD = `tazep.fallback.aad.v3:{roomId}`.
+**For TAZIA (TAZEP `tazep-v2`):** DM AAD = `tazep.dm.aad.v2:{roomId}|{from}|{to}|{msgId}`; fallback blob AAD = `tazep.fallback.aad.v4:{roomId}`.
 
 ## 2025/1619 — Anonymity Wrappers (CCS’25)
 

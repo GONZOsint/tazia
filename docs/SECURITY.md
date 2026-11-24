@@ -73,7 +73,7 @@ A `forumMsg` is accepted only if `authorUserId` matches the peer’s Trystero `u
 
 ### When WebRTC cannot connect (Nostr fallback)
 
-If ICE fails, chat can continue over **encrypted** Nostr relays (PBKDF2 210k + HKDF `tazep/*`; blob `0x03` + AAD `tazep.fallback.aad.v3:{roomId}`; envelope `v: 2`).
+If ICE fails, chat can continue over **encrypted** Nostr relays (Argon2id OWASP + HKDF `tazep/v3/*`; blob `0x04` + Padmé + AAD `tazep.fallback.aad.v4:{roomId}`; envelope `v: 2`). Join/fallback may take hundreds of ms on phones (JS Argon2id). After a deploy, reload so every peer shares the same build — a PWA update banner prompts when a new service worker is waiting.
 
 Binding there is application-level, not transport: forum messages are accepted with Ed25519 and the **pinned** key registry (no fake `liveUserId`). Presence requires a signed attestation over `["tazep.presence.v4", …, atMs, alias, avatarSeed]` (±5 min clock, strictly increasing `atMs`) before TOFU pin. Goodbye is attested; `sync-res` is signed (WebRTC sync too) and merged until timeout; EVENT clock skew is checked; `schnorr.verify` runs **before** decrypt. Fallback rate limits (forum, DM, sync, presence/goodbye) use the Nostr EVENT pubkey, not only the claimed `userId`.
 
@@ -97,9 +97,10 @@ Safety code (SAS): **6** emojis from a **256**-symbol pool (~48 bits) + `roomId`
 IP consent on first use (peers **and** third parties: default STUN, Nostr relays, TURN if configured). Burn does **not** clear it by default; Help → “Forget this device” clears IP consent + TURN + custom Nostr relays (session and persisted); extinguish can optionally do the same wipe.  
 Phrase in the URL is scrubbed (`public/scrub-phrase.js` + React).  
 Optional TURN: `sessionStorage` (`tazia:turn-config`) by default; remembered TURN only under `tazia:turn-config-persist`. Custom Nostr relays: `tazia:nostr-relays` / `tazia:nostr-relays-persist` (`wss:` only; empty → Trystero defaults). IP consent only under `tazia-ip-consent`. Legacy migration shims (`agora-ip-consent`, non-persist `localStorage` turn key) are gone. Burn clears sessionStorage; remembered prefs / IP consent stay unless you check the forget-device-prefs box on extinguish. Details: [`TURN.md`](TURN.md).  
-CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_headers`](../public/_headers) is a sample for hosts that honor headers (Netlify/CF); Pages does **not** apply `_headers`, so `frame-ancestors` / `X-Frame-Options` are not present on the default github.io deploy (meta CSP cannot set `frame-ancestors` — clickjacking mitigation needs real response headers on production hosts).
+**Repo hygiene:** never commit `docker/coturn/.env`, APKs, or OS `tazia-turn/session.json` — real `TURN_PASS` values stay local (gitignored). CI uses only `GITHUB_TOKEN`.  
+CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_headers`](../public/_headers) is a sample for hosts that honor headers (Netlify/CF); Pages does **not** apply `_headers`, so `frame-ancestors` / `X-Frame-Options` are not present on the default github.io deploy (meta CSP cannot set `frame-ancestors` — clickjacking mitigation needs real response headers on production hosts). The `<meta http-equiv="Permissions-Policy">` for `local-network` is best-effort; Chromium may ignore Permissions-Policy in meta — LNA still relies on the permission prompt + ICE priming.
 
-**Extinguishing the flame** closes meshes, clears trust, wipes refs, `sessionStorage.clear`, and reloads. It is **not** forensic secure delete or practical deniability ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
+**Extinguishing the flame** closes meshes (leave races with a shared **15s** ceiling), clears the room-crypto cache, wipes refs, `sessionStorage.clear`, and reloads. It is **not** forensic secure delete or practical deniability ([PoPETs 2025](https://petsymposium.org/popets/2025/popets-2025-0018.pdf)).
 
 ---
 
@@ -114,7 +115,7 @@ CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_hea
 - **Extinguish vote ≠ global guarantee** — a peer that never received the completed ballot may still show the bonfire; there is no server that forces erasure everywhere.
 - **Sync delete cover skipped** — late joiners apply signed `DELETE_*` tombstones without re-checking electorate cover against their local online set (by design for agreed history).
 - **Nostr TOFU race** — first attested presence for a `userId` wins the pin; a wrong first pin needs SAS + `repin`.
-- **Shared Nostr room key** — every phrase holder derives the same fallback AES key and can decrypt room-layer envelopes (forum, presence, sync). On **Nostr fallback only**, Susurro uses **`dm-wrap` v3** (pairwise inner AES) so co-members no longer see DM metadata after room decrypt; legacy `v:2 dm` may still appear from older tabs. WebRTC Whispers stay **`seal: 2`** on the wire (not dm-wrap). Timing/size still leak. Not an MPCS ([SoK](https://petsymposium.org/popets/2024/popets-2024-0030.pdf)).
+- **Shared Nostr room key** — every phrase holder derives the same fallback AES key (Argon2id → HKDF) and can decrypt room-layer envelopes (forum, presence, sync). On **Nostr fallback only**, Susurro uses **`dm-wrap` v3 only** (pairwise inner AES, blob `0x02`, AAD `tazep.dm-wrap.aad.v2:{roomId}`) so co-members no longer see DM metadata after room decrypt; there is no legacy `t: 'dm'` wire. WebRTC Whispers stay **`seal: 2`** on the wire (not dm-wrap). Padmé hides exact plaintext length (coarse buckets remain); timing still leaks. Not an MPCS ([SoK](https://petsymposium.org/popets/2024/popets-2024-0030.pdf)).
 - **Forum sigs unbound to `roomId`** — canonical forum payload has no room id; cross-zone replay of a signed event is an honest limit (sync-res and DM AAD do bind `roomId`).
 - **Client-only rate limits** — soft hedges; not enforced by relays or a referee.
 - **MLS / Double Ratchet / Key Transparency** — need durable identity or a log operator; incompatible with `identity: 'none'` + pure static hosting ([RFC 9420](https://www.rfc-editor.org/rfc/rfc9420)).
@@ -125,7 +126,9 @@ CSP / fonts: meta CSP in `index.html` (active on GitHub Pages). [`../public/_hea
 
 ## Deployment
 
-- Static hosting: `npm run build` → `dist/`.
+- Static hosting: `npm run build` → `dist/` (`vite` `base: '/tazia/'` — path tied to the GitHub Pages project URL; a custom domain at site root needs a different `base`).
+- GitHub Pages: HTTPS yes; **no** custom response headers; **no** TURN on the origin (use [`tools/tazia-turn`](../tools/tazia-turn/) or coturn). PWA Workbox caches the shell offline; WebRTC/Nostr still need network. Reload after deploy when the update banner appears so fallback crypto matches.
+- Optional later: host on Netlify/Cloudflare Pages if you want real `_headers` (not required for the default github.io deploy).
 - Single HTML: `npm run build:single` → `release/tazia-single.html` + `.sha256` (verifiable build; how to open it: [`README.md`](../README.md)). Does not replace the multi-asset Pages deploy. The Pages workflow also uploads that artifact (single-file CSP allows `unsafe-inline`; the `dist/` deploy does not).
 - SDP/QR spike: [`sdp-qr-spike.md`](sdp-qr-spike.md) — not in the app; does not replace Trystero.
 
@@ -164,7 +167,8 @@ Stack: **Trystero** (WebRTC + Nostr signaling). Target: Chrome, Brave, Firefox, 
 | --- | --- | --- | --- | --- |
 | `RTCPeerConnection` / DataChannel | Mesh | Yes | Yes | Yes (11+) |
 | `permissions` `local-network` | LNA priming | Yes (recent Chromium) | No | No |
-| `SubtleCrypto` AES-GCM / PBKDF2 / SHA-256 | Phrase + fallback | Yes | Yes | Yes |
+| `SubtleCrypto` AES-GCM / HKDF / SHA-256 | Fallback seal | Yes | Yes | Yes |
+| Argon2id (`@noble/hashes`, Worker) | Fallback KDF | Yes (JS; slower than native) | Yes | Yes |
 | `SubtleCrypto` Ed25519 | Signatures + attest | 137+; else → noble | 129+; else → noble | 17+; else → noble |
 | `WebSocket` (`wss:`) | Signaling / fallback | Yes | Yes | Yes |
 | `navigator.clipboard.writeText` | Copy invite | Yes | Yes | Yes (gesture); fallback `execCommand` |

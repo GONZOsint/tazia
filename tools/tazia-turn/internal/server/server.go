@@ -159,13 +159,55 @@ func Start(cfg Config) (*Server, error) {
 }
 
 func wrapListenErr(proto string, port int, err error) error {
-	msg := err.Error()
-	if strings.Contains(msg, "Only one usage") ||
-		strings.Contains(msg, "address already in use") ||
-		strings.Contains(msg, "bind:") {
-		return fmt.Errorf("listen %s :%d: %w — port busy (stop Docker coturn or pass -port)", proto, port, err)
+	if isBusyErr(err) {
+		return fmt.Errorf("listen %s :%d: %w — port busy (stop Docker coturn or pass -port / -auto-port)", proto, port, err)
 	}
 	return fmt.Errorf("listen %s: %w", proto, err)
+}
+
+func isBusyErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "Only one usage") ||
+		strings.Contains(msg, "address already in use") ||
+		strings.Contains(msg, "bind:") ||
+		strings.Contains(msg, "port busy")
+}
+
+// IsBusy reports whether Start failed because the listen port is taken.
+func IsBusy(err error) bool {
+	return isBusyErr(err)
+}
+
+// StartWithFallback tries cfg.Port first, then cfg.Port+1 … cfg.Port+maxExtra.
+// On success, srv.Config().Port is the bound port.
+func StartWithFallback(cfg Config, maxExtra int) (*Server, error) {
+	if maxExtra < 0 {
+		maxExtra = 0
+	}
+	base := cfg.Port
+	if base == 0 {
+		base = 3478
+	}
+	var last error
+	for i := 0; i <= maxExtra; i++ {
+		try := cfg
+		try.Port = base + i
+		srv, err := Start(try)
+		if err == nil {
+			if i > 0 && cfg.Logger != nil {
+				cfg.Logger.Printf("port %d busy — listening on %d", base, try.Port)
+			}
+			return srv, nil
+		}
+		last = err
+		if !IsBusy(err) {
+			return nil, err
+		}
+	}
+	return nil, last
 }
 
 func (s *Server) Config() Config {

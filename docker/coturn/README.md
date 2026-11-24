@@ -1,8 +1,12 @@
 # TAZIA coturn (Docker)
 
-Helper TURN for Zones → Fix. Works on **Docker Desktop** (Windows/macOS) without `--network host`.
+**Fallback** TURN for Zones → Fix when you prefer containers over the native helper. Prefer **[`tools/tazia-turn`](../../tools/tazia-turn/)** (desktop/Android binaries) for day-to-day use. This image works on **Docker Desktop** (Windows/macOS) without `--network host`.
 
-## Zero-friction (recommended)
+Do not run Docker coturn and the native helper on the **same** host port at once. Native `-auto-port` will move to 3479+ if 3478 is taken; keep the URL port in sync with what peers paste into TAZIA.
+
+**Secrets:** `docker/coturn/.env` holds `TURN_PASS` — it is gitignored. Never commit it, never paste it into issues/PRs. Only `.env.example` (placeholder) belongs in git.
+
+## Zero-friction (Docker path)
 
 | OS | Action |
 | --- | --- |

@@ -135,6 +135,14 @@
             android:text="@string/copy_card"
             android:textColor="#E8C547" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRotate"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/rotate_pass"
+            android:textColor="#A8B5A0" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

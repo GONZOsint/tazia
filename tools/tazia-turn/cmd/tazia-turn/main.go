@@ -12,19 +12,31 @@ import (
 	"github.com/tazia-app/tazia-turn/internal/clipboard"
 	"github.com/tazia-app/tazia-turn/internal/firewall"
 	"github.com/tazia-app/tazia-turn/internal/netutil"
+	"github.com/tazia-app/tazia-turn/internal/persist"
 	"github.com/tazia-app/tazia-turn/internal/server"
 )
 
 func main() {
 	port := flag.Int("port", 3478, "TURN listen port")
 	user := flag.String("user", "tazia", "TURN username")
-	pass := flag.String("pass", "", "TURN password (random if empty)")
+	pass := flag.String("pass", "", "TURN password (reuse saved / random if empty)")
 	external := flag.String("external-ip", "", "Advertised IP (auto LAN if empty)")
 	public := flag.Bool("public", false, "Use public IP instead of LAN")
 	noFirewall := flag.Bool("no-firewall", false, "Skip Windows firewall rule")
+	autoPort := flag.Bool("auto-port", true, "If listen port is busy, try the next 10 ports")
+	fresh := flag.Bool("fresh", false, "Ignore saved password; generate a new one")
+	clearSaved := flag.Bool("clear-saved", false, "Delete saved credentials and exit")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", 0)
+
+	if *clearSaved {
+		if err := persist.Clear(); err != nil {
+			logger.Fatalf("clear-saved: %v", err)
+		}
+		logger.Printf("cleared saved TAZIA Turn credentials")
+		return
+	}
 
 	ext := *external
 	var err error
@@ -40,6 +52,12 @@ func main() {
 	}
 
 	password := *pass
+	if password == "" && !*fresh {
+		if saved, ok := persist.LoadPassword(*user); ok {
+			password = saved
+			logger.Printf("reusing saved password (pass -fresh to rotate)")
+		}
+	}
 	if password == "" {
 		password, err = server.RandomPassword()
 		if err != nil {
@@ -60,13 +78,29 @@ func main() {
 		}
 	}
 
-	srv, err := server.Start(cfg)
+	var srv *server.Server
+	if *autoPort {
+		srv, err = server.StartWithFallback(cfg, 10)
+	} else {
+		srv, err = server.Start(cfg)
+	}
 	if err != nil {
 		logger.Fatalf("start: %v", err)
 	}
 	defer srv.Close()
 
-	creds := card.Build(cfg.ExternalIP, cfg.Port, cfg.Username, password)
+	live := srv.Config()
+	creds := card.Build(live.ExternalIP, live.Port, live.Username, password)
+	if err := persist.Save(persist.Session{
+		URL:        creds.URL,
+		Username:   creds.Username,
+		Password:   creds.Password,
+		ExternalIP: creds.ExternalIP,
+		Port:       creds.Port,
+	}); err != nil {
+		logger.Printf("persist: %v", err)
+	}
+
 	fmt.Print(creds.Banner())
 	if err := clipboard.Write(creds.Lines()); err != nil {
 		logger.Printf("clipboard: unavailable (%v)", err)

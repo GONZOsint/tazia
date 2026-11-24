@@ -12,12 +12,11 @@ import {
   type ForumEvent,
   type PresenceState,
 } from '../protocol';
+// DirectMessage retained for handler typings.
 // isFallbackCipherWithinCap shared with inbound path — publish must not exceed the same ceiling.
 import {
   decryptJson,
-  deriveDmWrapKey,
   deriveSessionMaterial,
-  encryptDmWrap,
   encryptJson,
   tryDecryptDmWrapForSelf,
 } from './roomCrypto';
@@ -50,7 +49,6 @@ export type FallbackEnvelope =
       encPubKeyRawB64: string;
       attestSig: string;
     }
-  | { v: 2; t: 'dm'; dm: DirectMessage }
   /** Pairwise-wrapped DM — room decrypt yields no from/to metadata for co-members. */
   | { v: 3; t: 'dm-wrap'; blobB64: string }
   | { v: 2; t: 'sync-req'; fromUserId: string; reqId: string }
@@ -109,7 +107,13 @@ export async function startNostrFallback(
   password: string,
   selfUserId: string,
   handlers: NostrFallbackHandlers,
-  opts?: { getDmPeerCandidates?: () => string[] }
+  opts?: {
+    getDmPeerCandidates?: () => string[];
+    /** Rate-limit before HKDF/AES unwrap (failed blobs must count too). */
+    allowDmWrapAttempt?: (nostrPubkey: string) => boolean;
+    /** Called when dm-wrap unwrap fails (empty candidates / no match) for retry queue. */
+    onDmWrapPending?: (blobB64: string, nostrPubkey: string) => void;
+  }
 ): Promise<NostrFallbackBus> {
   const { roomKey: key, topicId: topic } = await deriveSessionMaterial(roomId, password);
   const kind = topicToKind(topic);
@@ -156,12 +160,10 @@ export async function startNostrFallback(
           );
         }
         break;
-      case 'dm':
-        // Legacy v2 — co-members can still see metadata after room decrypt.
-        if (env.dm.toUserId === selfUserId) handlers.onDirectMessage(env.dm, nostrPubkey);
-        break;
       case 'dm-wrap': {
         if (typeof env.blobB64 !== 'string' || !env.blobB64) break;
+        // Budget before crypto: co-member amp of garbage wraps is expensive (≤32 HKDF).
+        if (opts?.allowDmWrapAttempt && !opts.allowDmWrapAttempt(nostrPubkey)) break;
         void tryDecryptDmWrapForSelf(
           roomId,
           password,
@@ -169,8 +171,12 @@ export async function startNostrFallback(
           opts?.getDmPeerCandidates?.() ?? [],
           env.blobB64
         ).then((dm) => {
-          if (stopped || !dm) return;
-          handlers.onDirectMessage(dm, nostrPubkey);
+          if (stopped) return;
+          if (dm) {
+            handlers.onDirectMessage(dm, nostrPubkey);
+            return;
+          }
+          opts?.onDmWrapPending?.(env.blobB64, nostrPubkey);
         });
         break;
       }
@@ -322,18 +328,7 @@ export async function startNostrFallback(
     if (stopped) return false;
     await new Promise((r) => window.setTimeout(r, Math.floor(Math.random() * 280)));
     if (stopped) return false;
-    let wireEnv: FallbackEnvelope = env;
-    if (env.t === 'dm') {
-      const wrapKey = await deriveDmWrapKey(
-        roomId,
-        password,
-        env.dm.fromUserId,
-        env.dm.toUserId
-      );
-      const blobB64 = await encryptDmWrap(wrapKey, env.dm, roomId);
-      wireEnv = { v: 3, t: 'dm-wrap', blobB64 };
-    }
-    const content = await encryptJson(key, wireEnv, roomId);
+    const content = await encryptJson(key, env, roomId);
     if (!isFallbackCipherWithinCap(content)) return false;
     const wire = await createSignedEvent(topic, content, signer);
     const sockets = await waitForOpenSockets();

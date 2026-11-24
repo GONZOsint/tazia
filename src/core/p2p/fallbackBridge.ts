@@ -4,6 +4,7 @@ import {
 } from '../crypto/presenceAttest';
 import type { SigningIdentity } from '../crypto/messageSigning';
 import {
+  MAX_DM_PER_MINUTE,
   isValidPresenceState,
   type DirectMessage,
   type ForumEvent,
@@ -18,10 +19,13 @@ import {
   startNostrFallback,
   type NostrFallbackBus,
 } from './nostrFallback';
-import type { PeerRateLimiter } from './rateLimit';
+import { allowPeerAndGlobal, type PeerRateLimiter } from './rateLimit';
 import type { PresenceKeys } from './presenceKeys';
+import { deriveDmWrapKey, encryptDmWrap, tryDecryptDmWrapForSelf } from './roomCrypto';
 import type { SyncVerify } from './syncVerify';
 import type { JoinP2pRoomOptions } from './p2pTypes';
+
+const MAX_GLOBAL_DM_PER_MINUTE = MAX_DM_PER_MINUTE * 3;
 
 export interface FallbackBridgeDeps {
   roomId: string;
@@ -42,6 +46,8 @@ export interface FallbackBridgeDeps {
   getLastPresence: () => PresenceState | null;
   isLiveWebrtc: (userId: string) => boolean;
   mergeOnline: () => void;
+  /** Register dm-wrap retry when online set changes (join / fallback touch). */
+  setOnOnlineMerged: (cb: (() => void) | null) => void;
   /** Peers with known enc keys — candidates for dm-wrap unwrap. */
   knownEncPubKeys: Map<string, string>;
   /** Online (WebRTC + fallback) userIds for dm-wrap peer guessing. */
@@ -49,7 +55,10 @@ export interface FallbackBridgeDeps {
 }
 
 /** Cap HKDF tries per dm-wrap; prefer known-enc peers first. */
-const DM_WRAP_CANDIDATE_CAP = 16;
+const DM_WRAP_CANDIDATE_CAP = 32;
+const DM_WRAP_RETRY_TTL_MS = 15_000;
+/** Bound pending unwrap queue (Nostr amp / failed blobs). */
+const DM_WRAP_PENDING_CAP = 64;
 
 function collectDmWrapCandidates(deps: FallbackBridgeDeps): string[] {
   const self = deps.self.userId;
@@ -84,11 +93,86 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
   let fallback: NostrFallbackBus | null = null;
   let fallbackStarting: Promise<void> | null = null;
   let fallbackPresenceTimer: ReturnType<typeof setTimeout> | null = null;
+  const pendingDmWraps: { blobB64: string; nostrPubkey: string; atMs: number }[] = [];
 
   const stopPresenceBeat = () => {
     if (fallbackPresenceTimer) clearTimeout(fallbackPresenceTimer);
     fallbackPresenceTimer = null;
   };
+
+  const prunePendingDmWraps = () => {
+    const now = Date.now();
+    for (let i = pendingDmWraps.length - 1; i >= 0; i--) {
+      if (now - pendingDmWraps[i]!.atMs > DM_WRAP_RETRY_TTL_MS) {
+        pendingDmWraps.splice(i, 1);
+      }
+    }
+  };
+
+  let retryInFlight = false;
+  /** Set when a hook fires while a retry batch is running — one follow-up, no tight loop. */
+  let retryDirty = false;
+
+  const retryPendingDmWraps = () => {
+    if (deps.isLeft()) {
+      pendingDmWraps.length = 0;
+      retryDirty = false;
+      return;
+    }
+    if (retryInFlight) {
+      retryDirty = true;
+      return;
+    }
+    prunePendingDmWraps();
+    if (pendingDmWraps.length === 0) return;
+    const candidates = collectDmWrapCandidates(deps);
+    if (candidates.length === 0) return;
+    const batch = pendingDmWraps.splice(0, pendingDmWraps.length);
+    retryInFlight = true;
+    retryDirty = false;
+    void (async () => {
+      try {
+        for (const item of batch) {
+          if (deps.isLeft()) {
+            pendingDmWraps.length = 0;
+            return;
+          }
+          if (Date.now() - item.atMs > DM_WRAP_RETRY_TTL_MS) continue;
+          // Refresh candidates per item — keys/online may land mid-batch.
+          const peers = collectDmWrapCandidates(deps);
+          if (peers.length === 0) {
+            if (Date.now() - item.atMs <= DM_WRAP_RETRY_TTL_MS) {
+              pendingDmWraps.push(item);
+            }
+            continue;
+          }
+          const dm = await tryDecryptDmWrapForSelf(
+            deps.roomId,
+            deps.password,
+            deps.self.userId,
+            peers,
+            item.blobB64
+          );
+          if (dm) {
+            await deps.dmIngest.accept(dm, null);
+          } else if (Date.now() - item.atMs <= DM_WRAP_RETRY_TTL_MS) {
+            pendingDmWraps.push(item);
+          }
+        }
+      } finally {
+        retryInFlight = false;
+        // Only re-run if a hook fired mid-batch (new keys/online) — never spin on decrypt fails.
+        if (retryDirty && !deps.isLeft()) {
+          retryDirty = false;
+          retryPendingDmWraps();
+        }
+      }
+    })();
+  };
+
+  // Primary hooks: enc keys + online merge (beat is backup; beat alone can exceed TTL).
+  deps.presenceKeys.setOnKnownEncUpdated(retryPendingDmWraps);
+  deps.setOnOnlineMerged(retryPendingDmWraps);
 
   const publishPresence = async (state: PresenceState) => {
     if (!fallback || deps.isLeft()) return;
@@ -132,7 +216,14 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
   const publishDm = async (dm: DirectMessage, ensureIfNeeded = false): Promise<boolean> => {
     const bus = await resolveBus(ensureIfNeeded);
     if (!bus || deps.isLeft()) return false;
-    return bus.publish({ v: 2, t: 'dm', dm });
+    const wrapKey = await deriveDmWrapKey(
+      deps.roomId,
+      deps.password,
+      dm.fromUserId,
+      dm.toUserId
+    );
+    const blobB64 = await encryptDmWrap(wrapKey, dm, deps.roomId);
+    return bus.publish({ v: 3, t: 'dm-wrap', blobB64 });
   };
 
   const claimBusForLeave = async (): Promise<NostrFallbackBus | null> => {
@@ -172,6 +263,22 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
           }),
           {
             getDmPeerCandidates: () => collectDmWrapCandidates(deps),
+            allowDmWrapAttempt: (nostrPubkey) =>
+              allowPeerAndGlobal(
+                deps.dmRateLimiter,
+                `nostr:${nostrPubkey}`,
+                MAX_DM_PER_MINUTE,
+                '__global_fallback_dm__',
+                MAX_GLOBAL_DM_PER_MINUTE
+              ),
+            onDmWrapPending: (blobB64, nostrPubkey) => {
+              if (pendingDmWraps.some((p) => p.blobB64 === blobB64)) return;
+              if (pendingDmWraps.length >= DM_WRAP_PENDING_CAP) {
+                pendingDmWraps.shift();
+              }
+              pendingDmWraps.push({ blobB64, nostrPubkey, atMs: Date.now() });
+              prunePendingDmWraps();
+            },
           }
         );
 
@@ -192,6 +299,8 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
               if (deps.fallbackPeers.pruneStale(deps.isLiveWebrtc)) {
                 deps.mergeOnline();
               }
+              // Backup retry (primary path: PresenceKeys.onKnownEncUpdated).
+              retryPendingDmWraps();
               const last = deps.getLastPresence();
               if (last && isValidPresenceState(last)) {
                 void publishPresence(last);
@@ -206,6 +315,7 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
         if (last && isValidPresenceState(last)) {
           await publishPresence(last);
         }
+        retryPendingDmWraps();
       } catch {
         fallback = null;
         deps.options.onError('unknown', 'Nostr fallback failed to start');
@@ -218,6 +328,9 @@ export function createFallbackBridge(deps: FallbackBridgeDeps): FallbackBridge {
   };
 
   const shutdownForLeave = async (encPubKeyRawB64: string) => {
+    deps.presenceKeys.setOnKnownEncUpdated(null);
+    deps.setOnOnlineMerged(null);
+    pendingDmWraps.length = 0;
     const bus = await claimBusForLeave();
     if (!bus) return;
     try {

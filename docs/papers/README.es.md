@@ -17,6 +17,7 @@ Artículos y RFCs usados al diseñar TAZIA. Los PDF se pueden guardar aquí para
 | — | [RFC 9420 MLS](https://www.rfc-editor.org/rfc/rfc9420) / KT | Ratchet de grupo + key transparency | **No aplicado** — identidad durable / operador de log |
 | — | WebRTC Swarms / Obscura / TEEMS / Myco / Stealthy Peers | Señalización onion, buzón TEE, PIR | **No-goal documentado** (servidores / incentivos) |
 | — | `dm-wrap` v3 pairwise (diseño app) | Ocultar metadatos de Susurro a co-miembros en fallback Nostr | **Aplicado** |
+| — | [OWASP Argon2id](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) + Padmé (PURBs) | KDF memory-hard de sala + padding de longitud en blobs Nostr | **Aplicado** (fallback `roomCrypto`; no es Tor/MPCS) |
 | `arxiv-2206.12762-snow.pdf` | [SnoW](https://arxiv.org/abs/2206.12762) | Mesh degrada ~4–6 peers | Descargado |
 | `arxiv-2510.16168-webrtc-ip.pdf` | [arXiv:2510.16168](https://arxiv.org/abs/2510.16168) | Fuga IP / mDNS / CGNAT WebRTC | Descargado; mitigación app = TURN solo-relay |
 | `arxiv-2510.27500-dcutr.pdf` | [arXiv:2510.27500](https://arxiv.org/abs/2510.27500) | Tasas de hole-punch NAT | Descargado |

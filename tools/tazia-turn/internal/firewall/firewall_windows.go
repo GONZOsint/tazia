@@ -10,25 +10,29 @@ import (
 
 const ruleName = "TAZIA Turn Helper"
 
-// EnsureOpen opens UDP 3478 + relay range for Private/Domain profiles.
+// EnsureOpen opens UDP/TCP listen ports + UDP relay range for Private/Domain profiles.
+// listenPort is the preferred TURN port; we also allow listenPort..(listenPort+10) for -auto-port.
 // Requires Administrator; returns a soft error otherwise.
 func EnsureOpen(port int, minRelay, maxRelay uint16) error {
 	if ruleExists() {
 		return nil
 	}
-	ports := fmt.Sprintf("%d,%d-%d", port, minRelay, maxRelay)
-	// UDP (STUN/TURN + relay) and TCP (TURN over TCP fallback).
-	for _, proto := range []string{"UDP", "TCP"} {
-		localPort := ports
-		if proto == "TCP" {
-			localPort = fmt.Sprintf("%d", port)
-		}
+	listenEnd := port + 10
+	udpPorts := fmt.Sprintf("%d-%d,%d-%d", port, listenEnd, minRelay, maxRelay)
+	tcpPorts := fmt.Sprintf("%d-%d", port, listenEnd)
+	for _, spec := range []struct {
+		proto string
+		ports string
+	}{
+		{"UDP", udpPorts},
+		{"TCP", tcpPorts},
+	} {
 		cmd := exec.Command("netsh", "advfirewall", "firewall", "add", "rule",
-			fmt.Sprintf("name=%s (%s)", ruleName, proto),
+			fmt.Sprintf("name=%s (%s)", ruleName, spec.proto),
 			"dir=in",
 			"action=allow",
-			fmt.Sprintf("protocol=%s", proto),
-			fmt.Sprintf("localport=%s", localPort),
+			fmt.Sprintf("protocol=%s", spec.proto),
+			fmt.Sprintf("localport=%s", spec.ports),
 			"profile=private,domain",
 		)
 		out, err := cmd.CombinedOutput()

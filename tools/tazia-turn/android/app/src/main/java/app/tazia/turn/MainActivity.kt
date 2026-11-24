@@ -94,6 +94,19 @@ class MainActivity : AppCompatActivity() {
             )
             Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show()
         }
+
+        binding.btnRotate.setOnClickListener {
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, TurnForegroundService::class.java).apply {
+                    action = TurnForegroundService.ACTION_ROTATE
+                },
+            )
+            ensureBound()
+            listOf(400L, 900L, 1600L).forEach { delay ->
+                binding.root.postDelayed({ render() }, delay)
+            }
+        }
     }
 
     override fun onStart() {

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { CopyButton } from '../../components/ui/CopyButton';
+import { useToast } from '../../components/ui/ToastHost';
 import { useT } from '../../i18n';
 import {
   NETWORK_PREFS_CLEARED_EVENT,
@@ -11,11 +13,13 @@ import {
 /** Custom Nostr relay list — lives inside Zones → Fix. */
 export function NostrRelaySettings() {
   const t = useT();
+  const toast = useToast();
   const [config, setConfig] = useState<NostrRelayConfig>(loadNostrRelayConfig);
   /** Keep editor open while typing before the first valid wss:// (sanitize may clear enabled). */
   const [editorOpen, setEditorOpen] = useState(() => loadNostrRelayConfig().enabled);
   const activeUrls = buildNostrRelayUrls(config);
   const showFields = editorOpen || config.enabled;
+  const copyListText = activeUrls?.join('\n') ?? '';
 
   const update = (patch: Partial<NostrRelayConfig>) => {
     const safe = saveNostrRelayConfig({ ...config, ...patch });
@@ -82,6 +86,23 @@ export function NostrRelaySettings() {
               data-lpignore="true"
             />
             <p className="type-caption mt-1">{t('nostrRelayUrlsHint')}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {copyListText ? (
+                <CopyButton
+                  text={copyListText}
+                  label={t('nostrRelayCopyList')}
+                  copiedLabel={t('nostrRelayCopied')}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                  onClick={() => toast.push(t('nostrRelayCopyEmpty'), 'warning')}
+                >
+                  {t('nostrRelayCopyList')}
+                </button>
+              )}
+            </div>
           </div>
 
           {activeUrls ? (

@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TAZIA Turn</string>
-    <string name="subtitle">Servidor de apoyo TURN en tu Wi‑Fi. Pega la tarjeta en TAZIA → Zonas → Arreglar.</string>
-    <string name="status_on">Activo — deja la app en primer plano / no fuerces el cierre</string>
-    <string name="status_off">Parado</string>
+    <string name="subtitle">TURN helper on your Wi‑Fi. Paste the card into TAZIA → Zones → Fix.</string>
+    <string name="status_on">Running — keep Wi‑Fi on and the notification alive</string>
+    <string name="status_off">Stopped</string>
     <string name="label_url">URL</string>
-    <string name="label_user">Usuario</string>
-    <string name="label_pass">Contraseña</string>
-    <string name="start">Iniciar</string>
-    <string name="stop">Parar</string>
-    <string name="copy_card">Copiar tarjeta (3 líneas)</string>
-    <string name="copied">Copiado</string>
-    <string name="hint">Los demás peers (PC/iPhone/Android) usan estos mismos datos. Luego salir y volver a entrar en la zona. Mantén el teléfono despierto y en Wi‑Fi. Si falla al iniciar, otro TURN puede estar usando el puerto 3478.</string>
+    <string name="label_user">Username</string>
+    <string name="label_pass">Password</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="copy_card">Copy card (3 lines)</string>
+    <string name="rotate_pass">New password &amp; restart</string>
+    <string name="copied">Copied</string>
+    <string name="hint">Every peer pastes the same card, then leaves and rejoins the zone. Keep the phone awake on Wi‑Fi. If Start fails, another TURN may own port 3478 — this app will try 3479+ automatically.</string>
     <string name="notif_title">TAZIA Turn</string>
-    <string name="notif_channel">Helper TURN</string>
-    <string name="notif_starting">Arrancando…</string>
+    <string name="notif_channel">TURN helper</string>
+    <string name="notif_starting">Starting…</string>
+    <string name="notif_running">relaying</string>
+    <string name="err_helper_died">Helper exited (code %1$d). Tap Start to try again.</string>
 </resources>

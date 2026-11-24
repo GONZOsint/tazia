@@ -275,10 +275,13 @@ export const es: Messages = {
     'Si vuestra red bloquea la conexión directa entre navegadores, el chat cambia automáticamente a una ruta cifrada mediante servidores de apoyo. Siempre que podáis, usad la misma red Wi‑Fi.',
   helpFixStep1Lead: 'Misma Wi‑Fi',
   helpFixStep1Body:
-    'Acepta el permiso de «Red local» si el navegador lo solicita y evita el aislamiento entre dispositivos en el router.',
+    'Desde github.io / un origen público, Chromium pide «Red local» — acéptalo y vuelve a entrar. Evita el aislamiento entre clientes del router. Firefox/Safari no tienen ese permiso; en la misma LAN puede hacer falta un apoyo.',
   helpFixStep2Lead: 'Servidor de apoyo',
   helpFixStep2Body:
-    'Si seguís sin veros, entra en Zonas → Arreglar para añadir un servidor de apoyo. En Safari suele ser necesario incluso en la misma Wi‑Fi.',
+    'GitHub Pages no aloja TURN. Si seguís sin veros, entra en Zonas → Arreglar y añade un apoyo (coturn o tools/tazia-turn). En Safari suele ser necesario incluso en la misma Wi‑Fi.',
+  pwaUpdateBody:
+    'Hay una versión nueva. Recarga para que todos compartáis la misma criptografía — si no, el fallback cifrado puede no coincidir.',
+  pwaUpdateReload: 'Recargar',
   browserBlockedTitle: 'Este navegador no puede usar TAZIA',
   browserBlockedBody:
     'Necesitas un navegador actual (Chrome, Brave, Firefox o Safari) y una conexión segura. Prueba a actualizar el navegador o abrir el sitio en otro.',
@@ -296,7 +299,7 @@ export const es: Messages = {
   errIceHint:
     'No llegáis a conectar. En la misma Wi‑Fi, permite «Red local» si te lo pide el navegador. Si no, usa Arreglar en Zonas.',
   errLocalNetworkDenied:
-    'Se bloqueó el acceso a la red local. Permítelo en los ajustes del sitio y vuelve a entrar — hace falta en la misma Wi‑Fi.',
+    'Se bloqueó el acceso a la red local. En ajustes del sitio → Red local → Permitir, y vuelve a entrar a la zona. Hace falta en la misma Wi‑Fi desde un origen público (p. ej. GitHub Pages).',
   infoRelayPath: 'Sin conexión directa. La plaza sigue cifrada por otro camino.',
   errRelay: 'No se pudo contactar con los servicios que os ayudan a encontraros. Reintenta en unos segundos.',
   errPublishRate: 'Demasiados mensajes. Espera un momento.',
@@ -374,7 +377,7 @@ export const es: Messages = {
 
   turnRelayTitle: '¿No llegáis a conectar?',
   turnRelayHint:
-    'En la misma Wi‑Fi casi nunca hace falta: acepta «Red local» si el navegador lo pide y asegúrate de que los móviles/portátiles pueden verse entre sí. Si estáis en redes distintas, alguien del grupo puede añadir un servidor de apoyo aquí.',
+    'En la misma Wi‑Fi: acepta «Red local» si Chromium lo pide (github.io es un origen público). Pages no sirve TURN — usa tools/tazia-turn o coturn y pega la tarjeta aquí. En redes distintas o Safari suele hacer falta un apoyo.',
   turnRelayEnabled: 'Usar servidor de apoyo',
   turnForceRelay: 'Ocultar mi dirección de internet',
   turnForceRelayHint:
@@ -397,14 +400,17 @@ export const es: Messages = {
 
   nostrRelayTitle: 'Relés Nostr (señalización)',
   nostrRelayHint:
-    'Por defecto Trystero elige relés públicos. Pon tu propia lista wss:// para que solo operadores de confianza vean tu IP en señalización y en el fallback cifrado.',
+    'Por defecto Trystero elige relés públicos. Pon tu propia lista wss:// para que solo operadores de confianza vean tu IP en señalización y en el fallback cifrado. Toda la zona debería pegar la misma lista.',
   nostrRelayEnabled: 'Usar relés Nostr propios',
   nostrRelayUrls: 'URLs de relés',
   nostrRelayUrlsHint: 'Una URL wss:// por línea. Ambos lados deberían compartir un solape que funcione.',
+  nostrRelayCopyList: 'Copiar lista',
+  nostrRelayCopied: 'Lista de relés copiada',
+  nostrRelayCopyEmpty: 'Añade al menos una URL wss:// primero.',
   nostrRelayActive: 'Usando {n} relé(s) propio(s). Vuelve a entrar en la zona tras cambiar la lista.',
   nostrRelayNeedUrls: 'Añade al menos una URL wss://, o desactiva esto para usar los de por defecto.',
   nostrRelayOperatorSeesIp:
-    'Los operadores de relé siguen viendo tu IP y metadatos del tráfico cifrado. Relés propios no son Tor.',
+    'Los operadores de relé siguen viendo tu IP, a qué topic te unes y metadatos del tráfico cifrado. Relés propios no son Tor.',
   nostrRelayRememberDevice: 'Recordar en este dispositivo',
   nostrRelayRememberDeviceHint:
     'Por defecto off: la lista vive solo en esta pestaña. On la guarda hasta que borres datos del sitio o uses Olvidar este dispositivo.',

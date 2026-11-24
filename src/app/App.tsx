@@ -7,6 +7,7 @@ import { useT } from '../i18n';
 import { AppOverlays } from './appShell/AppOverlays';
 import { AppShellLayout } from './appShell/AppShellLayout';
 import { AppTabPanels } from './appShell/AppTabPanels';
+import { PwaUpdateBanner } from './PwaUpdateBanner';
 import { useAppModals } from './appShell/useAppModals';
 import { useAppNavigation } from './appShell/useAppNavigation';
 import { useActiveRoomView } from './appShell/useActiveRoomView';
@@ -231,7 +232,9 @@ export default function App() {
   );
 
   return (
-    <AppShellLayout
+    <>
+      <PwaUpdateBanner />
+      <AppShellLayout
       splashShort={splashShort}
       sessionLit={sessionLit}
       onIgnite={igniteSession}
@@ -287,5 +290,6 @@ export default function App() {
         />
       }
     />
+    </>
   );
 }

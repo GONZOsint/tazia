@@ -6,7 +6,7 @@ import {
 } from '../crypto/messageSigning';
 import { MAX_SYNC_ANSWERS_PER_MINUTE, type ForumEvent } from '../protocol';
 import type { ForumIngest } from './forumIngest';
-import type { PeerRateLimiter } from './rateLimit';
+import { allowPeerAndGlobal, type PeerRateLimiter } from './rateLimit';
 import { clampSyncEvents, syncPayloadTooLarge } from './syncCoordinator';
 import type { VerifyKeyRegistry } from './verifyKeyRegistry';
 
@@ -26,6 +26,8 @@ export const WEBRTC_SYNC_REQ_ID = 'webrtc-sync';
 export const MAX_GLOBAL_SYNC_ANSWERS_PER_MINUTE = MAX_SYNC_ANSWERS_PER_MINUTE * 3;
 
 const NOSTR_SYNC_TIMEOUT_MS = 8_000;
+/** After first successful merge, wait this long for additional sync-res then resolve. */
+const NOSTR_SYNC_GRACE_MS = 600;
 
 export interface SyncVerifyDeps {
   roomId: string;
@@ -43,7 +45,12 @@ export class SyncVerify {
   private rejectedSyncCount = 0;
   private readonly pendingSync = new Map<
     string,
-    { resolve: (n: number) => void; added: number; timer: number }
+    {
+      resolve: (n: number) => void;
+      added: number;
+      timer: number;
+      graceTimer: number | null;
+    }
   >();
   private readonly deps: SyncVerifyDeps;
 
@@ -67,18 +74,13 @@ export class SyncVerify {
 
   /** Per-peer + global amp budget (WebRTC peer id or `nostr:<pubkey>`). */
   allowSyncAnswer(peerKey: string): boolean {
-    if (!this.deps.syncAnswerLimiter.allow(peerKey, MAX_SYNC_ANSWERS_PER_MINUTE)) {
-      return false;
-    }
-    if (
-      !this.deps.syncAnswerLimiter.allow(
-        '__global_sync__',
-        MAX_GLOBAL_SYNC_ANSWERS_PER_MINUTE
-      )
-    ) {
-      return false;
-    }
-    return true;
+    return allowPeerAndGlobal(
+      this.deps.syncAnswerLimiter,
+      peerKey,
+      MAX_SYNC_ANSWERS_PER_MINUTE,
+      '__global_sync__',
+      MAX_GLOBAL_SYNC_ANSWERS_PER_MINUTE
+    );
   }
 
   async buildSignedSyncPayload(
@@ -116,6 +118,15 @@ export class SyncVerify {
     /** When set, transport peer must match claimed fromUserId. */
     transportUserId?: string | null;
   }): Promise<number> {
+    // Soft skip: rate-limited peer answered with empty payload (trysteroIngress).
+    if (
+      Array.isArray(opts.events) &&
+      opts.events.length === 0 &&
+      !opts.fromUserId &&
+      !opts.sig
+    ) {
+      return 0;
+    }
     if (opts.transportUserId != null && opts.transportUserId !== opts.fromUserId) {
       this.rejectOnce();
       return 0;
@@ -163,7 +174,25 @@ export class SyncVerify {
     return added;
   }
 
-  /** Merge Nostr sync-res into an open pending request until timeout. */
+  private finishNostrSync(reqId: string): void {
+    const p = this.pendingSync.get(reqId);
+    if (!p) return;
+    clearTimeout(p.timer);
+    if (p.graceTimer !== null) clearTimeout(p.graceTimer);
+    this.pendingSync.delete(reqId);
+    p.resolve(p.added);
+  }
+
+  private armNostrGrace(reqId: string): void {
+    const p = this.pendingSync.get(reqId);
+    if (!p || p.graceTimer !== null) return;
+    clearTimeout(p.timer);
+    p.graceTimer = setTimeout(() => {
+      this.finishNostrSync(reqId);
+    }, NOSTR_SYNC_GRACE_MS) as unknown as number;
+  }
+
+  /** Merge Nostr sync-res into an open pending request until grace/timeout. */
   applyNostrSyncResponse(
     reqId: string,
     fromUserId: string,
@@ -183,7 +212,11 @@ export class SyncVerify {
       });
       const still = this.pendingSync.get(reqId);
       if (!still) return;
+      const wasEmpty = still.added === 0;
       still.added += added;
+      if (still.added > 0 && (wasEmpty || added > 0)) {
+        this.armNostrGrace(reqId);
+      }
     })();
   }
 
@@ -197,29 +230,29 @@ export class SyncVerify {
   ): Promise<number> {
     const reqId = crypto.randomUUID();
     return new Promise<number>((resolve) => {
-      const timer = window.setTimeout(() => {
-        const p = this.pendingSync.get(reqId);
-        this.pendingSync.delete(reqId);
-        resolve(p?.added ?? 0);
-      }, NOSTR_SYNC_TIMEOUT_MS);
-      this.pendingSync.set(reqId, { resolve, added: 0, timer });
+      const timer = setTimeout(() => {
+        this.finishNostrSync(reqId);
+      }, NOSTR_SYNC_TIMEOUT_MS) as unknown as number;
+      this.pendingSync.set(reqId, { resolve, added: 0, timer, graceTimer: null });
       void publish({
         v: 2,
         t: 'sync-req',
         fromUserId: this.deps.self.userId,
         reqId,
-      }).catch(() => {
-        window.clearTimeout(timer);
-        const p = this.pendingSync.get(reqId);
-        this.pendingSync.delete(reqId);
-        resolve(p?.added ?? 0);
-      });
+      })
+        .then((ok) => {
+          if (ok === false) this.finishNostrSync(reqId);
+        })
+        .catch(() => {
+          this.finishNostrSync(reqId);
+        });
     });
   }
 
   clearPending(): void {
     for (const pending of this.pendingSync.values()) {
-      window.clearTimeout(pending.timer);
+      clearTimeout(pending.timer);
+      if (pending.graceTimer !== null) clearTimeout(pending.graceTimer);
       pending.resolve(pending.added);
     }
     this.pendingSync.clear();

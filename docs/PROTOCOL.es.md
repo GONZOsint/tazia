@@ -27,7 +27,7 @@ Peers con `agora-forum-v1` / `agora-forum-v2` **no** se entienden con `tazep-v2`
 | `MAX_SIG_B64_CHARS` | 128 |
 | `MAX_DM_BODY_CHARS` | 4000 |
 | `MAX_DM_CIPHER_B64_CHARS` | 12_000 |
-| `MAX_FALLBACK_CIPHER_B64_CHARS` | 96_000 (`content` de EVENT Nostr antes de verify/decrypt) |
+| `MAX_FALLBACK_CIPHER_B64_CHARS` | 110_000 (`content` de EVENT Nostr antes de verify/decrypt; margen para Padmé) |
 | `MAX_DM_PER_MINUTE` | 30 |
 | `MAX_SYNC_MESSAGES` | 500 |
 | `MAX_SYNC_TOTAL_BYTES` | 2 MB |
@@ -215,22 +215,21 @@ Canónico firmado:
 
 Si falla ICE (`peer-connect-failed`), TAZIA puede llevar envelopes cifrados por los sockets Nostr abiertos de Trystero.
 
-Material de sala: PBKDF2 210k una vez (salt `tazep.fallback.v2:{roomId}`) + HKDF dual (`tazep/room-key`, `tazep/topic`); blob **`0x03`** + AAD `tazep.fallback.aad.v3:{roomId}`; la mayoría de envelopes `v: 2`.
+Material de sala: **Argon2id** una vez (OWASP `m=19456`, `t=2`, `p=1`; salt `tazep.fallback.v3:{roomId}`) + HKDF dual (`tazep/v3/room-key`, `tazep/v3/topic`); blob **`0x04`** (longitud u32be + pad Padmé con ceros) + AAD `tazep.fallback.aad.v4:{roomId}`; la mayoría de envelopes `v: 2`. Corte limpio frente a clientes PBKDF2/`0x03` (topic distinto). Argon2id corre en un Worker de módulo si está disponible; el master se cachea por `(roomId, frase)` en la sesión.
 
 | `t` | Campos | Auth |
 | --- | --- | --- |
 | `forum` (`v: 2`) | `event` | Ed25519 del evento; sin enlace al transporte WebRTC |
 | `presence` (`v: 2`) | `userId`, `state`, `atMs`, `attestSig` | `tazep.presence.v4` |
 | `goodbye` (`v: 2`) | `userId`, claves, `atMs`, `attestSig` | `tazep.goodbye.v3` |
-| `dm` (`v: 2`, legacy) | `dm` | Igual que Susurro; los co-miembros ven metadatos tras decrypt de sala |
-| `dm-wrap` (`v: 3`) | solo `blobB64` | **Solo fallback Nostr** (en WebRTC los Susurros siguen en `seal: 2`). AES pairwise (HKDF `tazep/dm-wrap:{userIdsOrdenados}`) + AAD `tazep.dm-wrap.aad.v1:{roomId}`; el publish sube `dm` → `dm-wrap`; se acepta `dm` legacy |
+| `dm-wrap` (`v: 3`) | solo `blobB64` | **Solo fallback Nostr** (en WebRTC los Susurros siguen en `seal: 2`). AES pairwise (HKDF `tazep/v3/dm-wrap:{userIdsOrdenados}`) + blob interior **`0x02`** + AAD `tazep.dm-wrap.aad.v2:{roomId}`; publish solo wrap (sin `t: 'dm'`). Unwrap prioriza peers con enc conocida (tope 32); blobs fallidos reintentan ~15s al refrescar claves/presencia |
 | `sync-req` (`v: 2`) | `fromUserId`, `reqId` | — |
 | `sync-res` (`v: 2`) | `fromUserId`, `toUserId`, `reqId`, `events`, `eventsDigest`, `sig` | ver abajo |
 
 - EVENT: schnorr verify del id canónico + skew de `created_at` **antes** de decrypt.
 - `sync-res`: `eventsDigest = hex(SHA-256(JSON.stringify(events)))`; firma sobre  
   `["tazep.sync-res.v1", roomId, reqId, fromUserId, toUserId, eventsDigest]`.
-  Las respuestas válidas se **fusionan** hasta el timeout de la petición (no gana la primera).
+  Las respuestas válidas se **fusionan**; tras el primer merge exitoso una **gracia de 600ms** resuelve pronto (tope absoluto 8s).
 - Los relés ven metadatos y bytes cifrados, no el texto en claro. No es P2P puro.
 - Quien conoce la frase sigue descifrando la capa de **sala**; `dm-wrap` (solo ruta de fallback) oculta metadatos de Susurro a co-miembros (timing/tamaño aún filtran).
 
@@ -260,15 +259,19 @@ late joiner → forumSync.requestMany / Nostr sync-req → sync-res (firmado)
 | --- | --- |
 | Tipos / validadores | [`src/core/protocol.ts`](../src/core/protocol.ts) |
 | Apagado unánime de hoguera | [`src/core/forum/threadDelete.ts`](../src/core/forum/threadDelete.ts) |
+| Ed25519 SPKI (estricto) | [`src/core/crypto/ed25519Spki.ts`](../src/core/crypto/ed25519Spki.ts) |
 | Ed25519 + sync-res | [`src/core/crypto/messageSigning.ts`](../src/core/crypto/messageSigning.ts) |
 | Attest presence / goodbye | [`src/core/crypto/presenceAttest.ts`](../src/core/crypto/presenceAttest.ts) |
 | Sello DM | [`src/core/crypto/dmCrypto.ts`](../src/core/crypto/dmCrypto.ts) |
 | Frase | [`src/core/crypto/passphraseWords.ts`](../src/core/crypto/passphraseWords.ts) |
+| Prefs TURN / Nostr (sin UI) | [`src/core/net/turnConfig.ts`](../src/core/net/turnConfig.ts), [`src/core/net/nostrRelayConfig.ts`](../src/core/net/nostrRelayConfig.ts) |
 | Mesh | [`src/core/p2p/p2pRoom.ts`](../src/core/p2p/p2pRoom.ts) |
 | Ingest foro / DM | [`src/core/p2p/forumIngest.ts`](../src/core/p2p/forumIngest.ts), [`src/core/p2p/dmIngest.ts`](../src/core/p2p/dmIngest.ts) |
 | Snapshot sync (tumbas) | [`syncCoordinator.ts`](../src/core/p2p/syncCoordinator.ts) |
 | Cache verify pinned | [`verifyKeyRegistry.ts`](../src/core/p2p/verifyKeyRegistry.ts) |
-| Fallback Nostr | [`nostrFallback.ts`](../src/core/p2p/nostrFallback.ts), [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts) |
+| Fallback Nostr | [`nostrFallback.ts`](../src/core/p2p/nostrFallback.ts), [`roomCrypto.ts`](../src/core/p2p/roomCrypto.ts), [`fallbackBridge.ts`](../src/core/p2p/fallbackBridge.ts) (cola reintento dm-wrap) |
+| Worker Argon2id / Padmé | [`argon2Derive.ts`](../src/core/p2p/argon2Derive.ts), [`argon2Worker.ts`](../src/core/p2p/argon2Worker.ts), [`padme.ts`](../src/core/p2p/padme.ts) |
+| Banner PWA de actualización | [`PwaUpdateBanner.tsx`](../src/app/PwaUpdateBanner.tsx) |
 | Multi-zona | [`src/hooks/useRoomManager.ts`](../src/hooks/useRoomManager.ts) |
 | Papers | [`papers/`](papers/) |
 

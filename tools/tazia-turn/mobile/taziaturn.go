@@ -68,12 +68,13 @@ func Start(externalIP string, port int, username, password string) *Status {
 	}
 	cfg.ExternalIP = externalIP
 
-	srv, err := server.Start(cfg)
+	srv, err := server.StartWithFallback(cfg, 10)
 	if err != nil {
 		return &Status{Error: err.Error()}
 	}
 	active = srv
-	last = card.Build(externalIP, cfg.Port, cfg.Username, password)
+	live := srv.Config()
+	last = card.Build(live.ExternalIP, live.Port, live.Username, password)
 	return statusLocked()
 }
 

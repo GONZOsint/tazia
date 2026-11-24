@@ -16,6 +16,8 @@ export type P2pOnlineCoordinator = {
    */
   notePeerGone: (userId: string) => void;
   setRoom: (room: Room) => void;
+  /** e.g. dm-wrap retry when online candidate set changes. */
+  setOnOnlineMerged: (cb: (() => void) | null) => void;
 };
 
 export function createP2pOnlineCoordinator(deps: {
@@ -28,6 +30,7 @@ export function createP2pOnlineCoordinator(deps: {
   const gonePeers = new Set<string>();
   let room: Room | null = null;
   const mergeOnlineRef = { current: () => {} };
+  let onOnlineMerged: (() => void) | null = null;
 
   const noteOnlinePeers = (ids: string[]) => {
     const now = Date.now();
@@ -64,6 +67,7 @@ export function createP2pOnlineCoordinator(deps: {
     const ids = readOnlineUserIds();
     noteOnlinePeers(ids);
     deps.onPeerPresence(ids);
+    onOnlineMerged?.();
   };
   mergeOnlineRef.current = mergeOnline;
 
@@ -85,6 +89,9 @@ export function createP2pOnlineCoordinator(deps: {
     notePeerGone,
     setRoom: (r) => {
       room = r;
+    },
+    setOnOnlineMerged: (cb) => {
+      onOnlineMerged = cb;
     },
   };
 }

@@ -3,7 +3,6 @@ import {
   verifyPresenceAttestation,
 } from '../crypto/presenceAttest';
 import {
-  MAX_DM_PER_MINUTE,
   MAX_PRESENCE_PER_MINUTE,
   MAX_PUBLISH_PER_MINUTE,
   isValidPresenceState,
@@ -13,12 +12,11 @@ import type { DmIngest } from './dmIngest';
 import type { FallbackPeerSet } from './fallbackPeerSet';
 import type { ForumIngest } from './forumIngest';
 import type { NostrFallbackHandlers } from './nostrFallback';
-import type { PeerRateLimiter } from './rateLimit';
+import { allowPeerAndGlobal, type PeerRateLimiter } from './rateLimit';
 import type { PresenceKeys } from './presenceKeys';
 import type { SyncVerify } from './syncVerify';
 import type { JoinP2pRoomOptions } from './p2pTypes';
 
-const MAX_GLOBAL_DM_PER_MINUTE = MAX_DM_PER_MINUTE * 3;
 const MAX_GLOBAL_FALLBACK_FORUM_PER_MINUTE = MAX_PUBLISH_PER_MINUTE * 3;
 const MAX_GLOBAL_PRESENCE_PER_MINUTE = MAX_PRESENCE_PER_MINUTE * 3;
 
@@ -37,18 +35,6 @@ export interface FallbackIngressDeps {
   isLeft: () => boolean;
 }
 
-function allowPeerAndGlobal(
-  limiter: PeerRateLimiter,
-  peerKey: string,
-  globalKey: string,
-  peerMax: number,
-  globalMax: number
-): boolean {
-  if (!limiter.allow(peerKey, peerMax)) return false;
-  if (!limiter.allow(globalKey, globalMax)) return false;
-  return true;
-}
-
 /** Build Nostr inbound handlers (rate limits, attest, ingest, sync). */
 export function buildFallbackHandlers(deps: FallbackIngressDeps): NostrFallbackHandlers {
   return {
@@ -57,8 +43,8 @@ export function buildFallbackHandlers(deps: FallbackIngressDeps): NostrFallbackH
         !allowPeerAndGlobal(
           deps.rateLimiter,
           `nostr:${nostrPubkey}`,
-          '__global_fallback_forum__',
           MAX_PUBLISH_PER_MINUTE,
+          '__global_fallback_forum__',
           MAX_GLOBAL_FALLBACK_FORUM_PER_MINUTE
         )
       ) {
@@ -74,8 +60,8 @@ export function buildFallbackHandlers(deps: FallbackIngressDeps): NostrFallbackH
         !allowPeerAndGlobal(
           deps.presenceRateLimiter,
           `nostr:${nostrPubkey}`,
-          '__global_presence__',
           MAX_PRESENCE_PER_MINUTE,
+          '__global_presence__',
           MAX_GLOBAL_PRESENCE_PER_MINUTE
         )
       ) {
@@ -110,8 +96,8 @@ export function buildFallbackHandlers(deps: FallbackIngressDeps): NostrFallbackH
         !allowPeerAndGlobal(
           deps.presenceRateLimiter,
           `nostr:${nostrPubkey}`,
-          '__global_presence__',
           MAX_PRESENCE_PER_MINUTE,
+          '__global_presence__',
           MAX_GLOBAL_PRESENCE_PER_MINUTE
         )
       ) {
@@ -133,18 +119,8 @@ export function buildFallbackHandlers(deps: FallbackIngressDeps): NostrFallbackH
         deps.fallbackPeers.drop(userId);
       });
     },
-    onDirectMessage: (dm, nostrPubkey) => {
-      if (
-        !allowPeerAndGlobal(
-          deps.dmRateLimiter,
-          `nostr:${nostrPubkey}`,
-          '__global_fallback_dm__',
-          MAX_DM_PER_MINUTE,
-          MAX_GLOBAL_DM_PER_MINUTE
-        )
-      ) {
-        return;
-      }
+    // Rate budget already spent in allowDmWrapAttempt (pre-unwrap).
+    onDirectMessage: (dm, _nostrPubkey) => {
       void deps.dmIngest.accept(dm, null).then((ok) => {
         if (ok) deps.fallbackPeers.touch(dm.fromUserId);
       });

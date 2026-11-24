@@ -1,6 +1,6 @@
-# TAZIA Turn — native helper
+# TAZIA Turn — native helper (primary)
 
-Zero-Docker TURN/STUN for TAZIA (**Zones → Fix**), built with [pion/turn](https://github.com/pion/turn).
+**Primary** zero-Docker TURN/STUN for TAZIA (**Zones → Fix**), built with [pion/turn](https://github.com/pion/turn). Use this before the [Docker coturn fallback](../../docker/coturn/).
 
 | Artifact | Path after build |
 | --- | --- |
@@ -28,9 +28,23 @@ chmod +x build/build-desktop.sh TaziaTurn.command
 ./dist/tazia-turn-darwin-arm64   # or linux-amd64 / darwin-amd64
 ```
 
-Flags: `-port 3478` `-user tazia` `-pass …` `-external-ip …` `-public` `-no-firewall`
+### Flags
 
-If port 3478 is busy (e.g. Docker coturn), use `-port 3479` or stop the other process.
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `-port` | `3478` | Listen port |
+| `-auto-port` | `true` | If busy, try the next 10 ports |
+| `-user` | `tazia` | TURN username |
+| `-pass` | *(saved / random)* | Password; reused from user config unless `-fresh` |
+| `-fresh` | off | Ignore saved password |
+| `-clear-saved` | off | Delete saved credentials and exit |
+| `-external-ip` | auto LAN | Advertised IP |
+| `-public` | off | Detect public IP (WAN) instead of LAN |
+| `-no-firewall` | off | Skip Windows firewall rule |
+
+If Docker coturn already owns 3478, native helper moves to **3479+** automatically — copy the printed URL (port matters).
+
+Password is stored under the OS config dir (`tazia-turn/session.json`, outside the repo) so peers can keep the same card across restarts. Rotate with `-fresh`. Do not copy that file into the git tree.
 
 ## Android
 
@@ -41,13 +55,18 @@ adb install -r dist\TaziaTurn-android-debug.apk
 
 Or open `android/` in Android Studio → Run.
 
-On the phone: **Iniciar** → **Copiar tarjeta** → paste into TAZIA on every peer → rejoin the zone. Keep Wi‑Fi on and the notification alive.
+On the phone: **Start** → **Copy card** → paste into TAZIA on every peer → rejoin the zone. Keep Wi‑Fi on and the notification alive.
+
+- Reuses the last password until **New password & restart**
+- If 3478 is busy, tries 3479–3488
+- If the native process dies, the notification stops and the UI shows an error
 
 ## Dev layout
 
 ```text
 cmd/tazia-turn/     CLI entry
-internal/server/    pion/turn wrapper
+internal/server/    pion/turn wrapper (+ port fallback)
+internal/persist/   saved desktop credentials
 mobile/             gomobile-friendly API (optional)
 android/            Kotlin foreground-service app
 build/              desktop + android scripts

@@ -104,6 +104,8 @@ En cada deploy a Pages, Actions también sube el artefacto **`tazia-single`** (`
 
 **📶 Conexión.** La misma Wi‑Fi suele ir mejor. Si no os conectáis, en **Zonas → Arreglar** hay pasos concretos. A veces hace falta un servidor TURN propio ([guía](docs/TURN.es.md)): un retransmisor que ayuda cuando el P2P directo no atraviesa el router o el CGNAT. Ahí también puedes poner **relés Nostr propios** (`wss://`) para no depender del pool público de señalización.
 
+**🔄 Actualizaciones.** En el sitio de Pages, si un banner pide recargar tras una actualización, hazlo — un build en caché antiguo puede no compartir el mismo fallback cifrado con quien ya recargó.
+
 **🔑 Frase.** Es la llave de la sala: no la publiques en un chat abierto. Verificar en **Tribu** (secuencia de emojis) confirma que hablas con quien crees.
 
 **🗳️ Apagar hoguera ≠ apagar llama.** En el Foro, apagar una hoguera propone borrar **ese** hilo: hace falta el sí de todos los que estaban online al proponer. **Apagar llama** solo limpia **este** navegador (todas las zonas); el resto de la tribu sigue hasta que también apague.

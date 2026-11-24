@@ -28,3 +28,16 @@ export class PeerRateLimiter {
     this.hits.clear();
   }
 }
+
+/** Per-peer then global amp budget (shared by fallback ingress + SyncVerify). */
+export function allowPeerAndGlobal(
+  limiter: PeerRateLimiter,
+  peerKey: string,
+  peerMax: number,
+  globalKey: string,
+  globalMax: number
+): boolean {
+  if (!limiter.allow(peerKey, peerMax)) return false;
+  if (!limiter.allow(globalKey, globalMax)) return false;
+  return true;
+}

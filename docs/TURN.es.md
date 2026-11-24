@@ -35,6 +35,8 @@ Binarios Go ([`tools/tazia-turn/`](../tools/tazia-turn/)) — pion/turn, cero Do
 
 Build: `tools/tazia-turn/build/build-desktop.ps1` · `build-android.ps1`. Detalle: [`tools/tazia-turn/README.md`](../tools/tazia-turn/README.md).
 
+El helper nativo **reutiliza la última contraseña**, cambia de puerto si el **3478** está ocupado (3479+), y copia la tarjeta `turn:ip:puerto` exacta. En Android vigila el proceso y muestra error si muere. No levantes también coturn Docker en el mismo puerto de esa máquina.
+
 ## Coturn (Docker, opcional)
 
 Cero fricción en LAN con Docker — detecta IP, escribe `.env`, arranca coturn, smoke y tarjeta para **Zonas → Arreglar**:
@@ -123,12 +125,12 @@ Síntoma: `WebRTC: ICE failed, add a TURN server and see about:webrtc`
 
 ### Sin TURN (GitHub Pages)
 
-Cuando falla ICE, TAZIA aún puede llevar foro / DM / presencia **cifrados** por relés Nostr. Verás un aviso de ruta por relé: el chat funciona, pero **no** es una conexión directa entre navegadores. Un TURN propio sigue siendo el camino a P2P WebRTC real.
+GitHub Pages es solo HTTPS estático: **no** puede servir TURN ni cabeceras HTTP de seguridad custom. Cuando falla ICE, TAZIA aún puede llevar foro / DM / presencia **cifrados** por relés Nostr. Verás un aviso de ruta por relé: el chat funciona, pero **no** es una conexión directa entre navegadores. Usa [`tools/tazia-turn`](../tools/tazia-turn/) o coturn para P2P WebRTC real. Opcional: Zonas → Arreglar → relés Nostr `wss://` propios (misma lista en todos los peers).
 
 ### Misma Wi‑Fi (P2P sin TURN)
 
 1. Misma URL de Pages y misma frase.
-2. Chrome/Edge/Brave: **Permitir Red local** si lo pide. Si lo denegaste antes: ajustes del sitio → Red local → Permitir, y vuelve a entrar.
+2. Chrome/Edge/Brave: **Permitir Red local** si lo pide (origen público → LAN). Si lo denegaste antes: ajustes del sitio → Red local → Permitir, y vuelve a entrar.
 3. Router: desactiva aislamiento AP / clientes / Wi‑Fi de invitados que bloquee peer-to-peer.
 4. Si hay un apoyo activado por otras redes, **desmarca** **Ocultar mi dirección de internet** para que puedan formarse candidatos host en la misma LAN.
 5. En `chrome://webrtc-internals` / `about:webrtc` busca candidatos `host` o `*.local`.

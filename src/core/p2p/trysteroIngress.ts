@@ -105,8 +105,8 @@ export function wireTrysteroIngress(
   unsubs.push(
     forumSync.onRequest((_data, context) => {
       if (!deps.syncVerify.allowSyncAnswer(context.userId)) {
-        // Soft reject: empty payload fails verifyAndIngest on the requester
-        // without throwing a raw Error across the Trystero request channel.
+        // Soft skip on requester: empty + blank from/sig → no rejectOnce (rate-limit).
+        // Avoids throwing a raw Error across the Trystero request channel.
         return Promise.resolve({
           events: [],
           fromUserId: '',
